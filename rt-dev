@@ -96,7 +96,7 @@ function create_secrets {
         echo "you need either python or openssl executable to generate secrets with this script"
         exit 1
     fi
-    for env_variable in SECRET_KEY POSTGRES_PASSWORD REDIS_ACTIVITY_PASSWORD REDIS_BROKER_PASSWORD FLOWER_PASSWORD; do
+    for env_variable in SECRET_KEY POSTGRES_PASSWORD REDIS_PASSWORD; do
         if grep -q -qi "^$env_variable" .env; then
             echo -e "${env_variable} already configured, skipping"
         else
@@ -160,7 +160,7 @@ case "$CMD" in
         prod_error
         $DOCKER_COMPOSE down
         $DOCKER_COMPOSE rm -svf
-        docker volume rm -f dev-wyrm_media_volume dev-wyrm_pgdata dev-wyrm_redis_activity_data dev-wyrm_redis_broker_data dev-wyrm_static_volume, dev-wyrm_exports_volume
+        docker volume rm -f dev-wyrm_media_volume dev-wyrm_pgdata dev-wyrm_redis_data dev-wyrm_static_volume, dev-wyrm_exports_volume
         $DOCKER_COMPOSE up --build -d
         rundev python manage.py admin_code
         ;;

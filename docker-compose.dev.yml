@@ -5,20 +5,17 @@ services:
   web:
     env_file: .env.dev
     volumes:
-      - .:/app
+      # :z = SELinux shared label (no-op on non-SELinux hosts)
+      - .:/app:z
   db-backup-job: !reset null
   celery_worker:
     env_file: .env.dev
     volumes:
-      - .:/app
+      - .:/app:z
   celery_beat:
     env_file: .env.dev
     volumes:
-      - .:/app
-  flower:
-    env_file: .env.dev
-    volumes:
-      - .:/app
+      - .:/app:z
   dev-tools:
     build: dev-tools
     env_file:
@@ -28,6 +25,6 @@ services:
       - main
     volumes:
       - /app/dev-tools/
-      - .:/app
+      - .:/app:z
     profiles:
       - tools

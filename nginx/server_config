@@ -35,10 +35,6 @@ upstream web {
     keepalive 4;
 }
 
-upstream flower{
-    server flower:8888;
-}
-
 upstream anubis {
     server anubis:8000;
 }

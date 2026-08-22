@@ -32,10 +32,10 @@ SESSION_COOKIE_AGE = env.int("SESSION_COOKIE_AGE", 3600 * 24 * 365)  # One year 
 
 # email
 EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
-EMAIL_HOST = env("EMAIL_HOST")
+EMAIL_HOST = env("EMAIL_HOST", "localhost")
 EMAIL_PORT = env.int("EMAIL_PORT", 587)
-EMAIL_HOST_USER = env("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", True)
 EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", False)
 EMAIL_SENDER_NAME = env("EMAIL_SENDER_NAME", "admin")
@@ -102,7 +102,7 @@ if not DEBUG and SECRET_KEY in [
 ]:
     raise ImproperlyConfigured("You must change the SECRET_KEY env variable")
 
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", ["*"])
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", [DOMAIN])
 
 # Application definition
 
@@ -244,13 +244,15 @@ if not DEBUG:
 WSGI_APPLICATION = "reeltalk.wsgi.application"
 
 # redis/activity streams settings
-REDIS_ACTIVITY_HOST = env("REDIS_ACTIVITY_HOST", "localhost")
-REDIS_ACTIVITY_PORT = env.int("REDIS_ACTIVITY_PORT", 6379)
-REDIS_ACTIVITY_PASSWORD = requests.utils.quote(env("REDIS_ACTIVITY_PASSWORD", ""))
-REDIS_ACTIVITY_DB_INDEX = env.int("REDIS_ACTIVITY_DB_INDEX", 0)
+# Single Redis container for the whole stack (see docker-compose.yml):
+# DB 0 = ActivityPub streams / Django cache / sessions, DB 1 = Celery broker.
+REDIS_HOST = env("REDIS_HOST", "redis")
+REDIS_PORT = env.int("REDIS_PORT", 6379)
+REDIS_PASSWORD = requests.utils.quote(env("REDIS_PASSWORD", ""))
+REDIS_DB_INDEX = env.int("REDIS_DB_INDEX", 0)
 REDIS_ACTIVITY_URL = env(
     "REDIS_ACTIVITY_URL",
-    f"redis://:{REDIS_ACTIVITY_PASSWORD}@{REDIS_ACTIVITY_HOST}:{REDIS_ACTIVITY_PORT}/{REDIS_ACTIVITY_DB_INDEX}",
+    f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB_INDEX}",
 )
 MAX_STREAM_LENGTH = env.int("MAX_STREAM_LENGTH", 200)
 

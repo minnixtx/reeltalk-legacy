@@ -9,20 +9,21 @@ services:
     environment:
       - DOMAIN=${DOMAIN}
     volumes:
-      - ./nginx/locations:/etc/nginx/conf.d/locations
-      - ./nginx/server_config:/etc/nginx/conf.d/server_config
-      - ./nginx/server_name:/etc/nginx/conf.d/server_name
-      - ./nginx/ssl_bootstrap:/etc/nginx/templates/default.conf.template
-      - ./certbot/conf:/etc/nginx/ssl
-      - ./certbot/data:/var/www/certbot
+      # :z = SELinux shared label (no-op on non-SELinux hosts)
+      - ./nginx/locations:/etc/nginx/conf.d/locations:z
+      - ./nginx/server_config:/etc/nginx/conf.d/server_config:z
+      - ./nginx/server_name:/etc/nginx/conf.d/server_name:z
+      - ./nginx/ssl_bootstrap:/etc/nginx/templates/default.conf.template:z
+      - ./certbot/conf:/etc/nginx/ssl:z
+      - ./certbot/data:/var/www/certbot:z
   certbot:
     image: certbot/certbot:latest
-    command: certonly --webroot --webroot-path=/var/www/certbot --keep-until-expiring --email ${EMAIL} --agree-tos --no-eff-email -d ${DOMAIN}
+    command: certonly --webroot --webroot-path=/var/www/certbot --keep-until-expiring --email ${CERTBOT_EMAIL} --agree-tos --no-eff-email -d ${DOMAIN}
     depends_on:
       - nginx
     volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/logs:/var/log/letsencrypt
-      - ./certbot/data:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt:z
+      - ./certbot/logs:/var/log/letsencrypt:z
+      - ./certbot/data:/var/www/certbot:z
 networks:
   main:

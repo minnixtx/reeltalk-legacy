@@ -106,11 +106,3 @@ location /images/ {
     # block access to any non-image files from images
     return 403;
 }
-
-# monitor the celery queues with flower, no caching enabled
-location /flower/ {
-   auth_request /.within.website/x/cmd/anubis/api/check;
-   error_page 401 = @redirectToAnubis;
-   proxy_pass http://flower;
-   proxy_cache off;
-}

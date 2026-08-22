@@ -5,10 +5,12 @@ from reeltalk.settings import *  # noqa
 QUERY_TIMEOUT = env.int("CELERY_QUERY_TIMEOUT", env.int("QUERY_TIMEOUT", 30))
 
 
-REDIS_BROKER_PASSWORD = requests.compat.quote(env("REDIS_BROKER_PASSWORD", ""))
-REDIS_BROKER_HOST = env("REDIS_BROKER_HOST", "redis_broker")
-REDIS_BROKER_PORT = env.int("REDIS_BROKER_PORT", 6379)
-REDIS_BROKER_DB_INDEX = env.int("REDIS_BROKER_DB_INDEX", 0)
+# Celery uses the same single Redis container as the app (see docker-compose.yml),
+# on DB 1, with the shared REDIS_PASSWORD.
+REDIS_BROKER_PASSWORD = requests.compat.quote(env("REDIS_PASSWORD", ""))
+REDIS_BROKER_HOST = env("REDIS_HOST", "redis")
+REDIS_BROKER_PORT = env.int("REDIS_PORT", 6379)
+REDIS_BROKER_DB_INDEX = env.int("REDIS_BROKER_DB_INDEX", 1)
 REDIS_BROKER_URL = env(
     "REDIS_BROKER_URL",
     f"redis://:{REDIS_BROKER_PASSWORD}@{REDIS_BROKER_HOST}:{REDIS_BROKER_PORT}/{REDIS_BROKER_DB_INDEX}",
@@ -33,8 +35,6 @@ CELERY_TIMEZONE = env("TIME_ZONE", "UTC")
 
 CELERY_WORKER_CONCURRENCY = env("CELERY_WORKER_CONCURRENCY", None)
 CELERY_TASK_SOFT_TIME_LIMIT = env("CELERY_TASK_SOFT_TIME_LIMIT", None)
-
-FLOWER_PORT = env.int("FLOWER_PORT", 8888)
 
 INSTALLED_APPS = INSTALLED_APPS + [
     "celerytalk",
