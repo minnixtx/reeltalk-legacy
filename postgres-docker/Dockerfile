@@ -4,8 +4,8 @@ FROM postgres:17
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked apt-get update && apt-get -y install cron
 
 RUN mkdir /backups
-COPY ./backup.sh /usr/local/bin/bookwyrm-backup.sh
-COPY ./weed.sh /usr/local/bin/bookwyrm-weed.sh
+COPY ./backup.sh /usr/local/bin/reeltalk-backup.sh
+COPY ./weed.sh /usr/local/bin/reeltalk-weed.sh
 COPY ./cronfile /etc/cron.d/cronfile
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod 0644 /etc/cron.d/cronfile

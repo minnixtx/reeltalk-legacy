@@ -71,9 +71,9 @@ jobs:
           python -m pip install --upgrade "pip>=25.1.0"
           pip install --group main --group dev
       - name: Check code formatting with ruff
-        run: ruff format --check bookwyrm/ celerywyrm/
+        run: ruff format --check reeltalk/ celerytalk/
       - name: Lint code with ruff
-        run: ruff check bookwyrm/ celerywyrm/
+        run: ruff check reeltalk/ celerytalk/
 
   mypy:
     name: Typing (mypy)
@@ -92,4 +92,4 @@ jobs:
       - name: Set up .env
         run: cp .env.example .env
       - name: Analyse code with mypy
-        run: mypy bookwyrm celerywyrm
+        run: mypy reeltalk celerytalk

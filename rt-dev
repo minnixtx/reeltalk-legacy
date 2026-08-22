@@ -1,0 +1,386 @@
+#!/usr/bin/env bash
+
+# exit on errors
+set -e
+
+# check if we're in DEBUG mode
+DEBUG=$(sed <.env -ne 's/^DEBUG=//p')
+
+CMD=$1
+COMPOSE_ARGS=""
+if [ "$CMD" == "dev" ]; then
+    COMPOSE_ARGS="-f docker-compose.yml -f docker-compose.dev.yml --env-file .env --env-file .env.dev"
+    shift
+fi
+# disallow certain commands when debug is false
+function prod_error {
+    if [ "$COMPOSE_ARGS" == "" ]; then
+        echo "This command is not safe to run in production environments"
+        exit 1
+    fi
+}
+
+# import our ENV variables
+# catch exits and give a friendly error message
+function showerr {
+    echo "Failed to load configuration! You may need to update your .env and quote values with special characters in them."
+}
+trap showerr EXIT
+source .env
+trap - EXIT
+
+if docker compose &> /dev/null ; then
+	DOCKER_COMPOSE="docker compose $COMPOSE_ARGS"
+else
+	DOCKER_COMPOSE="docker-compose $COMPOSE_ARGS"
+fi
+
+function clean {
+    $DOCKER_COMPOSE stop
+    $DOCKER_COMPOSE rm -f
+}
+
+function runweb {
+    $DOCKER_COMPOSE run --rm web "$@"
+}
+
+# dev-tools that don't need db to be up
+function runtools {
+    $DOCKER_COMPOSE -f docker-compose.yml -f docker-compose.dev.yml  --env-file .env --env-file .env.dev run -e DEBUG=true --rm dev-tools "$@"
+}
+
+# dev-tools that needs db etc to be up
+function rundev {
+    $DOCKER_COMPOSE -f docker-compose.yml -f docker-compose.dev.yml  --env-file .env --env-file .env.dev run -e DEBUG=true --rm web "$@"
+}
+
+function execdb {
+    $DOCKER_COMPOSE exec db "$@"
+}
+
+function execweb {
+    $DOCKER_COMPOSE exec web "$@"
+}
+
+function initdb {
+    runweb python manage.py initdb "$@"
+}
+
+function migrate {
+    runweb python manage.py migrate "$@"
+}
+
+function admin_code {
+    runweb python manage.py admin_code
+}
+
+function awscommand {
+    # expose env vars
+    export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+    export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    export AWS_DEFAULT_REGION=${AWS_S3_REGION_NAME}
+    # first arg is mountpoint, second is the whole aws command
+    docker run --rm -it -v $1\
+        -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_DEFAULT_REGION\
+        amazon/aws-cli $2
+}
+
+function create_secrets {
+
+    set +x
+    if python3 -c 'import secrets' &>/dev/null; then
+        SECRETS_COMMAND="python3 -c 'import secrets; print(secrets.token_urlsafe(50))'"
+    elif openssl &>null; then
+        SECRETS_COMMAND="openssl rand -hex 50"
+    else
+        echo "you need either python or openssl executable to generate secrets with this script"
+        exit 1
+    fi
+    for env_variable in SECRET_KEY POSTGRES_PASSWORD REDIS_ACTIVITY_PASSWORD REDIS_BROKER_PASSWORD FLOWER_PASSWORD; do
+        if grep -q -qi "^$env_variable" .env; then
+            echo -e "${env_variable} already configured, skipping"
+        else
+            echo -e "generating random secret in ${env_variable}"
+            generated_secret=$(eval "${SECRETS_COMMAND}")
+
+            if grep -q -qi "^#[[:blank:]]*$env_variable" .env; then
+                sed -i.bak -e "s/#[[:blank:]]*${env_variable}=.*/${env_variable}=\"${generated_secret}\"/" .env
+            else
+                echo "${env_variable}=\"${generated_secret}\"" >>.env
+            fi
+        fi
+    done
+    set -x
+}
+
+CMD=$1
+if [ -n "$CMD" ]; then
+    shift
+fi
+
+# show commands as they're executed
+set -x
+
+case "$CMD" in
+    up)
+        $DOCKER_COMPOSE up "$@"
+        ;;
+    down)
+        $DOCKER_COMPOSE down
+        ;;
+    devcommand)
+        $DOCKER_COMPOSE -f docker-compose.yml -f docker-compose.dev.yml  --env-file .env --env-file .env.dev "$@"
+        ;;
+    docker_cache_cleanup)
+        echo "Showing current docker storage usage"
+        docker system df
+
+        echo "Cleaning out docker build caches that hasn't been used in the last 24 hours"
+        docker buildx prune -af --filter=until=24h
+
+        echo "Docker storage usage after cache cleanup"
+        docker system df
+
+        echo "If you still need to reclaim more space, you can consider running 'docker system prune --volumes'"
+        ;;
+    service_ports_web)
+        prod_error
+        $DOCKER_COMPOSE run --rm --service-ports web
+        ;;
+    initdb)
+        initdb "$@"
+        ;;
+    init_ssl)
+        $DOCKER_COMPOSE --file ./docker-compose-init_letsencrypt.yml up --exit-code-from=certbot
+        ;;
+    upgrade_db_version)
+        $DOCKER_COMPOSE --file docker-compose-upgrade-db.yml run --rm db_update
+        ;;
+    resetdb)
+        prod_error
+        $DOCKER_COMPOSE down
+        $DOCKER_COMPOSE rm -svf
+        docker volume rm -f dev-wyrm_media_volume dev-wyrm_pgdata dev-wyrm_redis_activity_data dev-wyrm_redis_broker_data dev-wyrm_static_volume, dev-wyrm_exports_volume
+        $DOCKER_COMPOSE up --build -d
+        rundev python manage.py admin_code
+        ;;
+    makemigrations)
+        rundev python manage.py makemigrations "$@"
+        ;;
+    migrate)
+        migrate "$@"
+        ;;
+    bash)
+        runweb bash
+        ;;
+    shell)
+        runweb python manage.py shell
+        ;;
+    dbshell)
+        execdb psql -U ${POSTGRES_USER} ${POSTGRES_DB}
+        ;;
+    restart_celery)
+        $DOCKER_COMPOSE restart celery_worker
+        ;;
+    pytest)
+        rundev pytest --no-cov-on-fail "$@"
+        ;;
+    pytest_coverage_report)
+        rundev pytest -n 3 --cov-report term-missing "$@"
+        ;;
+    compile_themes)
+        runweb python manage.py compile_themes
+        ;;
+    collectstatic)
+        runweb python manage.py collectstatic --no-input
+        ;;
+    makemessages)
+        runtools django-admin makemessages --no-wrap --ignore=venv -l en_US $@
+        ;;
+    compilemessages)
+        runtools django-admin compilemessages --ignore venv $@
+        ;;
+    update_locales)
+        runtools django-admin makemessages --no-wrap --ignore=venv -l en_US "$@"
+        runtools django-admin compilemessages --ignore venv
+        ;;
+    build)
+        $DOCKER_COMPOSE build
+        ;;
+    clean)
+        prod_error
+        clean
+        ;;
+    ruff)
+        runtools ruff format celerytalk reeltalk
+        runtools ruff check celerytalk reeltalk
+        ;;
+    ruff-format)
+        runtools ruff format celerytalk reeltalk
+        ;;
+    ruff-check)
+        runtools ruff check celerytalk reeltalk
+        ;;
+    ruff-fix)
+        runtools ruff check --fix celerytalk reeltalk
+        ;;
+    prettier)
+        runtools prettier --write reeltalk/static/js/*.js
+        ;;
+    eslint)
+        runtools eslint reeltalk/static --ext .js
+        ;;
+    stylelint)
+        runtools stylelint --fix reeltalk/static/css \
+            --config dev-tools/.stylelintrc.js --ignore-path dev-tools/.stylelintignore
+        ;;
+    formatters)
+        runtools ruff format celerytalk reeltalk
+        runtools ruff check --fix celerytalk reeltalk
+        runtools prettier --write reeltalk/static/js/*.js
+        runtools eslint reeltalk/static --ext .js
+        runtools stylelint --fix reeltalk/static/css \
+            --config dev-tools/.stylelintrc.js --ignore-path dev-tools/.stylelintignore
+        ;;
+    mypy)
+        runtools mypy celerytalk reeltalk
+        ;;
+    create_secrets)
+        create_secrets
+        ;;
+    collectstatic_watch)
+        prod_error
+        npm run --prefix dev-tools watch:static
+        ;;
+    update)
+        git pull
+        $DOCKER_COMPOSE build
+        runweb python manage.py migrate
+        $DOCKER_COMPOSE up -d
+        ;;
+    populate_streams)
+        runweb python manage.py populate_streams "$@"
+        ;;
+    populate_lists_streams)
+        runweb python manage.py populate_lists_streams $@
+        ;;
+    populate_suggestions)
+        runweb python manage.py populate_suggestions
+        ;;
+    generate_thumbnails)
+        runweb python manage.py generateimages
+        ;;
+    generate_preview_images)
+        runweb python manage.py generate_preview_images "$@"
+        ;;
+    remove_remote_user_preview_images)
+        runweb python manage.py remove_remote_user_preview_images
+        ;;
+    erase_deleted_user_data)
+        runweb python manage.py erase_deleted_user_data "$@"
+        ;;
+    copy_media_to_s3)
+        awscommand "reeltalk_media_volume:/images"\
+            "s3 cp /images s3://${AWS_STORAGE_BUCKET_NAME}/images\
+            --endpoint-url ${AWS_S3_ENDPOINT_URL}\
+            --recursive --acl public-read" "$@"
+        ;;
+    sync_media_to_s3)
+        awscommand "reeltalk_media_volume:/images"\
+            "s3 sync /images s3://${AWS_STORAGE_BUCKET_NAME}/images\
+            --endpoint-url ${AWS_S3_ENDPOINT_URL}\
+            --acl public-read" "$@"
+        ;;
+    set_cors_to_s3)
+        set +x
+        config_file=$1
+        if [ -z "$config_file" ]; then
+            echo "This command requires a JSON file containing a CORS configuration as an argument"
+            exit 1
+        fi
+        set -x
+        awscommand "$(pwd):/bw"\
+            "s3api put-bucket-cors\
+            --bucket ${AWS_STORAGE_BUCKET_NAME}\
+            --endpoint-url ${AWS_S3_ENDPOINT_URL}\
+            --cors-configuration file:///bw/$config_file" "$@"
+        ;;
+    admin_code)
+        admin_code
+        ;;
+    setup)
+        migrate
+        migrate django_celery_beat
+        initdb
+        runweb python manage.py compile_themes
+        runweb python manage.py collectstatic --no-input
+        admin_code
+        ;;
+    runweb)
+        runweb "$@"
+        ;;
+    remove_2fa)
+        runweb python manage.py remove_2fa "$@"
+        ;;
+    confirm_email)
+        runweb python manage.py confirm_email "$@"
+        ;;
+    *)
+        set +x # No need to echo echo
+        echo "Unrecognised command. Try:"
+        echo " Development flow commands:"
+        echo "    makemessages"
+        echo "    resetdb"
+        echo "    compilemessages [locale]"
+        echo "    pytest [path]"
+        echo "    makemigrations [migration]"
+        echo "    update_locales"
+        echo "    ruff (format and check)"
+        echo "    ruff-format (format code only)"
+        echo "    ruff-check (check code only)"
+        echo "    ruff-fix (auto-fix ruff issues)"
+        echo "    prettier"
+        echo "    eslint"
+        echo "    stylelint"
+        echo "    formatters"
+        echo "    mypy"
+        echo " "
+        echo " Commands that run in prod, but can be prefixed with 'dev' to run in devevelopment environment:"
+        echo "  To run command in dev environment, prefix it with 'dev'"
+        echo "  example './rt-dev dev migrate' or './rt-dev dev up -d"
+        echo "    setup"
+        echo "    up [container]"
+        echo "    down"
+        echo "    service_ports_web"
+        echo "    upgrade_db_version"
+        echo "    initdb"
+        echo "    init_ssl"
+        echo "    migrate [migration]"
+        echo "    create_secrets"
+        echo "    bash"
+        echo "    shell"
+        echo "    dbshell"
+        echo "    restart_celery"
+        echo "    compile_themes"
+        echo "    collectstatic"
+        echo "    build"
+        echo "    docker_cache_cleanup"
+        echo "    clean"
+        echo "    collectstatic_watch"
+        echo "    populate_streams [--stream=<stream name>]"
+        echo "    populate_lists_streams"
+        echo "    populate_suggestions"
+        echo "    generate_thumbnails"
+        echo "    generate_preview_images [--all]"
+        echo "    remove_remote_user_preview_images"
+        echo "    set_cors_to_s3 [cors file]"
+        echo "    runweb [command]"
+        echo "    remove_2fa"
+        echo "    confirm_email"
+        echo " "
+        echo " Command that only operate production"
+        echo "    copy_media_to_s3"
+        echo "    sync_media_to_s3"
+        echo " "
+        ;;
+esac

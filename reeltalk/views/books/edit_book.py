@@ -1,0 +1,514 @@
+"""the good stuff! the books!"""
+
+from re import sub, findall
+
+from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.postgres.search import SearchRank, SearchVector
+from django.db import transaction
+from django.db.utils import IntegrityError
+from django.http import HttpResponseBadRequest
+from django.db.models import Subquery
+from django.shortcuts import get_object_or_404, redirect
+from django.template.response import TemplateResponse
+from django.utils.decorators import method_decorator
+from django.utils.translation import gettext_lazy as _
+from django.views.decorators.http import require_POST
+from django.views import View
+
+from reeltalk import book_search, forms, models
+
+from reeltalk.settings import INSTANCE_ACTOR_USERNAME
+from reeltalk.utils.images import remove_uploaded_image_exif, set_cover_from_url
+
+# from reeltalk.activitypub.base_activity import ActivityObject
+from reeltalk.utils.isni import (
+    find_authors_by_name,
+    build_author_from_isni,
+    augment_author_metadata,
+)
+from reeltalk.views.helpers import get_edition, get_mergeable_object_or_404
+
+
+@method_decorator(login_required, name="dispatch")
+@method_decorator(
+    permission_required("reeltalk.edit_book", raise_exception=True), name="dispatch"
+)
+class EditBook(View):
+    """edit a book"""
+
+    def get(self, request, book_id):
+        """info about a book"""
+        book = get_edition(book_id)
+        seriesbooks = book.parent_work.seriesbooks.all()
+        # This doesn't update the sort title, just pre-populates it in the form
+        if book.sort_title in ["", None]:
+            book.sort_title = book.guess_sort_title(user=request.user)
+        if not book.description:
+            book.description = book.parent_work.description
+        data = {
+            "book": book,
+            "seriesbooks": seriesbooks,
+            "form": forms.EditionForm(instance=book),
+        }
+        return TemplateResponse(request, "book/edit/edit_book.html", data)
+
+    def post(self, request, book_id):
+        """edit a book cool"""
+        book = get_mergeable_object_or_404(models.Edition, id=book_id)
+
+        form = forms.EditionForm(request.POST, request.FILES, instance=book)
+
+        data = {"book": book, "form": form}
+        ensure_transient_values_persist(request, data)
+        if not form.is_valid():
+            if "cover" in form.errors and form.has_error("cover", "invalid_image"):
+                del data["form"].files["cover"]
+            ensure_transient_values_persist(request, data, add_author=True)
+            return TemplateResponse(request, "book/edit/edit_book.html", data)
+
+        data = add_or_remove_authors(request, data)
+        data = add_or_remove_series(request, data)
+
+        series_errors = []
+        for sb in book.parent_work.seriesbooks.all():
+            if value := request.POST.get(f"series_number-{sb.id}"):
+                try:
+                    sb.series_number = value
+                    sb.save(update_fields=["series_number"])
+                except IntegrityError as e:
+                    # This is a bit of a hack but provides a friendlier error message
+                    if "duplicate key value violates unique constraint" in str(e):
+                        error = _(
+                            "There is another book in the series with the same value"
+                        )
+                    else:
+                        error = e
+                    series_errors.append(error)
+        if len(series_errors) > 0:
+            data["series_errors"] = series_errors
+            ensure_transient_values_persist(request, data, form=form)
+            return TemplateResponse(request, "book/edit/edit_book.html", data)
+
+        # adding authors or series requires additional confirmation
+        clean = form.cleaned_data
+        if data.get("add_author") or clean["series"]:
+            return TemplateResponse(request, "book/edit/edit_book.html", data)
+
+        remove_authors = request.POST.getlist("remove_authors")
+        for author_id in remove_authors:
+            book.authors.remove(author_id)
+
+        for seriesbook_id in request.POST.getlist("remove_series"):
+            # remove seriesbook and, if it was the only one in the series, delete series
+            # do this before updating seriesbooks so we don't update series we're about to delete
+            if seriesbook := models.SeriesBook.objects.filter(id=seriesbook_id).first():
+                series = seriesbook.series
+                seriesbook.delete()
+                if series.seriesbooks.count() == 0:
+                    series.delete()
+
+        book = form.save(request, commit=False)
+
+        url = request.POST.get("cover-url")
+        if url:
+            image = set_cover_from_url(url)
+            if image:
+                book.cover.save(*image, save=False)
+        elif "cover" in form.files:
+            book.cover = remove_uploaded_image_exif(form.files["cover"])
+
+        book.save()
+        return redirect(f"/book/{book.id}")
+
+
+@method_decorator(login_required, name="dispatch")
+@method_decorator(
+    permission_required("reeltalk.edit_book", raise_exception=True), name="dispatch"
+)
+class CreateBook(View):
+    """brand new book"""
+
+    def get(self, request):
+        """info about a book"""
+        data = {"form": forms.EditionForm()}
+        return TemplateResponse(request, "book/edit/edit_book.html", data)
+
+    def post(self, request):
+        """create a new book"""
+        # returns None if no match is found
+        form = forms.EditionForm(request.POST, request.FILES)
+        data = {"form": form}
+
+        # collect data provided by the work or import item
+        parent_work_id = request.POST.get("parent_work")
+        authors = None
+        if request.POST.get("authors"):
+            author_ids = findall(r"\d+", request.POST["authors"])
+            authors = models.Author.objects.filter(id__in=author_ids)
+
+        # fake book in case we need to keep editing
+        if parent_work_id:
+            data["book"] = {
+                "parent_work": {"id": parent_work_id},
+                "authors": authors,
+            }
+
+        if not form.is_valid():
+            if "cover" in form.errors and form.has_error("cover", "invalid_image"):
+                del data["form"].files["cover"]
+            ensure_transient_values_persist(request, data, form=form)
+            return TemplateResponse(request, "book/edit/edit_book.html", data)
+
+        # we have to call this twice because it requires form.cleaned_data
+        # which only exists after we validate the form
+        ensure_transient_values_persist(request, data, form=form)
+        data = add_or_remove_authors(request, data)
+        data = add_or_remove_series(request, data)
+
+        # check if this is an edition of an existing work
+        author_text = ", ".join(data.get("add_author", []))
+        data["book_matches"] = book_search.search(
+            f"{form.cleaned_data.get('title')} {author_text}",
+            min_confidence=0.1,
+        )[:5]
+
+        # go to confirm mode
+        clean = form.cleaned_data
+        if not parent_work_id or data.get("add_author") or clean["series"]:
+            data["confirm_mode"] = True
+            return TemplateResponse(request, "book/edit/edit_book.html", data)
+
+        with transaction.atomic():
+            book = form.save(request)
+            parent_work = get_mergeable_object_or_404(models.Work, id=parent_work_id)
+            book.parent_work = parent_work
+
+            if authors:
+                book.authors.add(*authors)
+
+            url = request.POST.get("cover-url")
+            if url:
+                image = set_cover_from_url(url)
+                if image:
+                    book.cover.save(*image, save=False)
+            elif "cover" in form.files:
+                book.cover = remove_uploaded_image_exif(form.files["cover"])
+
+            book.save()
+        return redirect(f"/book/{book.id}")
+
+
+def ensure_transient_values_persist(request, data, **kwargs):
+    """ensure that values of transient form fields persist when re-rendering the form"""
+    data["cover_url"] = request.POST.get("cover-url")
+    if data.get("book") and hasattr(data.get("book"), "parent_work"):
+        data["seriesbooks"] = []
+        for sb in data["book"].parent_work.seriesbooks.all():
+            series_number = request.POST.get(f"series_number-{sb.id}")
+            seriesbook = {}
+            seriesbook["id"] = sb.id
+            seriesbook["series_number"] = series_number
+            seriesbook["series"] = {}
+            seriesbook["series"]["local_path"] = sb.series.local_path
+            seriesbook["series"]["name"] = sb.series.name
+            data["seriesbooks"].append(seriesbook)
+    if kwargs and kwargs.get("form"):
+        data["book"] = data.get("book") or {}
+        data["book"]["subjects"] = kwargs["form"].cleaned_data["subjects"]
+        if request.POST.getlist("add_author") != [""]:
+            data["add_author"] = request.POST.getlist("add_author")
+    elif kwargs and kwargs.get("add_author") is True:
+        if request.POST.getlist("add_author") != [""]:
+            data["add_author"] = request.POST.getlist("add_author")
+
+
+def add_or_remove_authors(request, data):
+    """helper for adding authors"""
+    # this isn't preserved because it isn't part of the form obj
+    data["remove_authors"] = request.POST.getlist("remove_authors")
+    add_author = [author for author in request.POST.getlist("add_author") if author]
+    if not add_author:
+        data["add_author"] = []
+        return data
+
+    data["add_author"] = add_author
+    data["author_matches"] = []
+    data["isni_matches"] = []
+
+    # creating a book or adding an author to a book needs another step
+    data["confirm_mode"] = True
+
+    for author in add_author:
+        # filter out empty author fields
+        if not author:
+            continue
+        # check for existing authors
+        vector = SearchVector("name", weight="A") + SearchVector("aliases", weight="B")
+
+        author_matches = (
+            models.Author.objects.annotate(search=vector)
+            .annotate(rank=SearchRank(vector, author, normalization=32))
+            .filter(rank__gt=0.19)  # short alias names like XY get rank around 0.1956
+            .order_by("-rank")[:5]
+        )
+
+        isni_authors = find_authors_by_name(
+            author, description=True
+        )  # find matches from ISNI API
+
+        # dedupe isni authors we already have in the DB
+        exists = [
+            i
+            for i in isni_authors
+            for a in author_matches
+            if sub(r"\D", "", str(i.isni)) == sub(r"\D", "", str(a.isni))
+        ]
+
+        matches = list(filter(lambda x: x not in exists, isni_authors))
+        # combine existing and isni authors
+        matches.extend(author_matches)
+
+        data["author_matches"].append(
+            {
+                "name": author.strip(),
+                "matches": matches,
+                "existing_isnis": exists,
+            }
+        )
+    return data
+
+
+def add_or_remove_series(request, data):
+    """helper for adding series"""
+
+    # need to retain this
+    data["remove_series"] = request.POST.getlist("remove_series")
+
+    # check for existing series
+    vector = SearchVector("name", weight="A") + SearchVector(
+        "alternative_names", weight="B"
+    )
+    series = data["form"]["series"].value()
+    # creating or matching a series needs another step
+    if series:
+        data["confirm_mode"] = True
+
+    matches = (
+        models.Series.objects.annotate(search=vector)
+        .annotate(rank=SearchRank(vector, series, normalization=32))
+        .filter(rank__gt=0.19)
+        .order_by("-rank")[:10]
+    )
+
+    data["series_matches"] = matches
+
+    return data
+
+
+def clear_series(book):
+    """clear the series data from the book"""
+
+    book.series = None
+    book.series_number = None
+    return book
+
+
+@require_POST
+@permission_required("reeltalk.edit_book", raise_exception=True)
+def create_book_from_data(request):
+    """create a book with starter data"""
+    author_ids = findall(r"\d+", request.POST.get("authors"))
+    book = {
+        "parent_work": {"id": request.POST.get("parent_work")},
+        "authors": models.Author.objects.filter(id__in=author_ids).all(),
+        "subjects": request.POST.getlist("subjects"),
+    }
+
+    data = {"book": book, "form": forms.EditionForm(request.POST)}
+    return TemplateResponse(request, "book/edit/edit_book.html", data)
+
+
+@method_decorator(login_required, name="dispatch")
+@method_decorator(
+    permission_required("reeltalk.edit_book", raise_exception=True), name="dispatch"
+)
+class ConfirmEditBook(View):
+    """confirm edits to a book"""
+
+    def post(self, request, book_id=None):
+        """edit a book cool"""
+        # returns None if no match is found
+        book = models.Edition.objects.filter(id=book_id).first()
+        form = forms.EditionForm(request.POST, request.FILES, instance=book)
+
+        data = {"book": book, "form": form}
+        if not form.is_valid():
+            return TemplateResponse(request, "book/edit/edit_book.html", data)
+
+        with transaction.atomic():
+            # save book
+            book = form.save(request)
+
+            # add known authors
+            authors = None
+            if request.POST.get("authors"):
+                author_ids = findall(r"\d+", request.POST["authors"])
+                authors = models.Author.objects.filter(id__in=author_ids)
+                book.authors.add(*authors)
+
+            # get or create author as needed
+            for i in range(int(request.POST.get("author-match-count", 0))):
+                match = request.POST.get(f"author_match-{i}")
+                if not match:
+                    return HttpResponseBadRequest()
+                try:
+                    # if it's an int, it's an ID
+                    match = int(match)
+                    author = get_object_or_404(
+                        models.Author, id=request.POST[f"author_match-{i}"]
+                    )
+                    # update author metadata if the ISNI record is more complete
+                    isni = request.POST.get(f"isni-for-{match}", None)
+                    if isni is not None:
+                        augment_author_metadata(author, isni)
+                except ValueError:
+                    # otherwise it's a new author
+                    isni_match = request.POST.get(f"author_match-{i}")
+                    author_object = build_author_from_isni(isni_match)
+                    # with author data class from isni id
+                    if "author" in author_object:
+                        skeleton = models.Author.objects.create(
+                            name=author_object["author"].name
+                        )
+                        author = author_object["author"].to_model(
+                            model=models.Author, overwrite=True, instance=skeleton
+                        )
+                    else:
+                        # or it's just a name
+                        author = models.Author.objects.create(name=match)
+                book.authors.add(author)
+
+            # create work, if needed
+            if not book.parent_work:
+                work_match = request.POST.get("parent_work")
+                if work_match and work_match != "0":
+                    work = get_mergeable_object_or_404(models.Work, id=work_match)
+                else:
+                    work = models.Work.objects.create(title=form.cleaned_data["title"])
+                    work.authors.set(book.authors.all())
+                book.parent_work = work
+
+            for author_id in request.POST.getlist("remove_authors"):
+                book.authors.remove(author_id)
+
+            user = models.User.objects.get(localname=INSTANCE_ACTOR_USERNAME)
+
+            if series_match := request.POST.get("series_match"):
+                if series_match != "0":  # add known series
+                    series = models.Series.objects.get(id=int(series_match))
+                    models.SeriesBook.objects.get_or_create(
+                        series=series,
+                        book=book.parent_work,
+                        defaults={
+                            "series_number": book.series_number,
+                            "user": user,
+                        },
+                    )
+
+                    book = clear_series(book)
+
+                else:  # User claims this is a new series, let's double check
+                    if not request.POST.get("confirm_series_mode"):
+                        vector = SearchVector("name", weight="A") + SearchVector(
+                            "alternative_names", weight="B"
+                        )
+                        seriesbooks = models.SeriesBook.objects.filter(
+                            book__authors__in=Subquery(book.authors.values("pk"))
+                        )
+                        possible_series = (
+                            models.Series.objects.filter(
+                                seriesbooks__in=Subquery(seriesbooks.values("pk"))
+                            )
+                            .annotate(search=vector)
+                            .annotate(
+                                rank=SearchRank(vector, book.series, normalization=32)
+                            )
+                            .filter(rank__gt=0.19)
+                            .order_by("-rank")
+                        )
+
+                        if possible_series.exists():
+                            # this looks pretty suss, make the user confirm again
+                            data["confirm_mode"] = True
+                            data["confirm_series_mode"] = True
+                            data["series_matches"] = possible_series
+                            return TemplateResponse(
+                                request, "book/edit/edit_book.html", data
+                            )
+
+                    # Ok it really is a new series
+                    series = models.Series.objects.create(user=user, name=book.series)
+                    models.SeriesBook.objects.create(
+                        user=user,
+                        series=series,
+                        book=book.parent_work,
+                        series_number=book.series_number,
+                    )
+
+                    book = clear_series(book)
+
+            elif book.series:
+                # doesn't look like any existing series
+                series = models.Series.objects.create(user=user, name=book.series)
+                models.SeriesBook.objects.create(
+                    user=user,
+                    series=series,
+                    book=book.parent_work,
+                    series_number=book.series_number,
+                )
+
+                book = clear_series(book)
+
+            for id in request.POST.getlist("remove_series"):
+                # remove seriesbook
+                if seriesbook := models.SeriesBook.objects.get(id=id):
+                    if seriesbook.series.seriesbooks.count() == 0:
+                        seriesbook.series.delete()  # will cascade
+                    seriesbook.delete()
+
+            series_errors = []
+            for sb in book.parent_work.seriesbooks.all():
+                if value := request.POST.get(f"series_number-{sb.id}"):
+                    try:
+                        sb.series_number = value
+                        sb.save(update_fields=["series_number"])
+                    except IntegrityError as e:
+                        if "duplicate key value violates unique constraint" in str(e):
+                            error = _(
+                                "There is another book in the series with the same value"
+                            )
+                        else:
+                            error = e
+                        series_errors.append(error)
+            if len(series_errors) > 0:
+                data["series_errors"] = series_errors
+                ensure_transient_values_persist(request, data, form=form)
+                return TemplateResponse(request, "book/edit/edit_book.html", data)
+
+            # import cover, if requested
+            url = request.POST.get("cover-url")
+            if url:
+                image = set_cover_from_url(url)
+                if image:
+                    book.cover.save(*image, save=False)
+            elif "cover" in form.files:
+                book.cover = remove_uploaded_image_exif(form.files["cover"])
+
+            # add a sort title if we don't have one
+            if book.sort_title in ["", None]:
+                book.sort_title = book.guess_sort_title(user=request.user)
+
+            # we don't tell the world when creating a book
+            book.save(broadcast=False)
+
+        return redirect(f"/book/{book.id}")

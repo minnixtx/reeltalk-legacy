@@ -1,0 +1,49 @@
+"""using django model forms"""
+
+from django import forms
+from django.forms import ChoiceField
+from django.utils.translation import gettext_lazy as _
+
+from reeltalk import models
+from .custom_form import CustomForm
+
+
+class ListForm(CustomForm):
+    class Meta:
+        model = models.List
+        fields = ["user", "name", "description", "curation", "privacy", "group"]
+
+
+class ListItemForm(CustomForm):
+    class Meta:
+        model = models.ListItem
+        fields = ["user", "edition", "book_list", "notes", "raw_notes"]
+
+
+class SuggestionListForm(CustomForm):
+    class Meta:
+        model = models.SuggestionList
+        fields = ["suggests_for"]
+
+
+class SuggestionListItemForm(CustomForm):
+    class Meta:
+        model = models.SuggestionListItem
+        fields = ["user", "work", "book_list", "notes", "raw_notes"]
+
+
+class SortListForm(forms.Form):
+    sort_by = ChoiceField(
+        choices=(
+            ("order", _("List Order")),
+            ("sort_title", _("Book Title")),
+            ("rating", _("Rating")),
+        ),
+        label=_("Sort By"),
+    )
+    direction = ChoiceField(
+        choices=(
+            ("ascending", _("Ascending")),
+            ("descending", _("Descending")),
+        ),
+    )

@@ -1,1 +1,1 @@
-./bw-dev migrate django_celery_beat
+./rt-dev migrate django_celery_beat

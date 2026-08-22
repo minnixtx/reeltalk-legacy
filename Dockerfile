@@ -31,11 +31,11 @@ COPY --from=build /app /app
 COPY entrypoint.sh /entrypoint.sh
 COPY README.md LICENSE.md VERSION /app/
 COPY manage.py gunicorn.conf.py /app/
-COPY celerywyrm /app/celerywyrm
+COPY celerytalk /app/celerytalk
 COPY locale /app/locale
-COPY bookwyrm /app/bookwyrm
+COPY reeltalk /app/reeltalk
 
-RUN python3 -mcompileall /app/bookwyrm /app/celerywyrm /app/manage.py /app/gunicorn.conf.py
+RUN python3 -mcompileall /app/reeltalk /app/celerytalk /app/manage.py /app/gunicorn.conf.py
 
 VOLUME ["/app/exports", "/app/images", "/app/static"]
 

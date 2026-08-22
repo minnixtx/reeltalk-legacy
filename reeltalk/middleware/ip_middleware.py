@@ -1,0 +1,20 @@
+"""Block IP addresses"""
+
+from django.http import Http404
+from reeltalk import models
+
+
+class IPBlocklistMiddleware:
+    """check incoming traffic against an IP block-list"""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if "x-forwarded-for" in request.headers:
+            address = request.headers.get("x-forwarded-for").split(",")[0]
+        else:
+            address = request.META.get("REMOTE_ADDR")
+        if models.IPBlocklist.objects.filter(address=address).exists():
+            raise Http404()
+        return self.get_response(request)

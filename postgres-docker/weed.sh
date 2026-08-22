@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Weed old backups. See HELP for details.
 # Tests for this script can be found in:
-# bookwyrm/postgres-docker/tests/testing-entrypoint.sh
+# reeltalk/postgres-docker/tests/testing-entrypoint.sh
 set -euo pipefail
 
 DAILY_THRESHOLD=14
@@ -73,7 +73,7 @@ function weed_directory {
     local date=""
 
     # We would like to loop through all the backup files in the backup directory in
-    # reverse-chronological order. Bookwyrm backup files are named such that
+    # reverse-chronological order. Reeltalk backup files are named such that
     # chronological and lexical order match. So we should be safe to find all backup
     # files and reverse sort them. We should be terrified of deleting a backup an
     # instance maintainer wants to keep, so we will be extra cautious. We're ignoring

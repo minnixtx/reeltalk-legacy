@@ -13,15 +13,15 @@
 *.db
 *.db-journal
 
-# BookWyrm
+# ReelTalk
 .env
 .env.dev
 /images/
 /exports/
 /static/
-bookwyrm/static/css/bookwyrm.css
-bookwyrm/static/css/themes/
-!bookwyrm/static/css/themes/bookwyrm-*.scss
+reeltalk/static/css/reeltalk.css
+reeltalk/static/css/themes/
+!reeltalk/static/css/themes/reeltalk-*.scss
 
 # Testing
 .coverage

@@ -99,7 +99,7 @@ services:
     build: .
     restart: unless-stopped
     env_file: .env
-    command: gunicorn bookwyrm.wsgi:application
+    command: gunicorn reeltalk.wsgi:application
     volumes:
       - static_volume:/app/static
       - media_volume:/app/images
@@ -144,9 +144,9 @@ services:
     build: .
     networks:
       - main
-    command: celery -A celerywyrm worker --pool=threads --concurrency=20 -l info -Q high_priority,medium_priority,low_priority,streams,images,suggested_users,email,connectors,lists,inbox,imports,import_triggered,broadcast,misc
+    command: celery -A celerytalk worker --pool=threads --concurrency=20 -l info -Q high_priority,medium_priority,low_priority,streams,images,suggested_users,email,connectors,lists,inbox,imports,import_triggered,broadcast,misc
     healthcheck:
-      test: celery -A celerywyrm status
+      test: celery -A celerytalk status
       interval: 10s
       timeout: 10s
       start_period: 2s
@@ -168,9 +168,9 @@ services:
     build: .
     networks:
       - main
-    command: celery -A celerywyrm beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: celery -A celerytalk beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
     healthcheck:
-      test: celery -A celerywyrm status
+      test: celery -A celerytalk status
       interval: 10s
       timeout: 10s
       retries: 6
@@ -185,9 +185,9 @@ services:
     restart: unless-stopped
   flower:
     build: .
-    command: celery -A celerywyrm flower --basic_auth=${FLOWER_USER}:${FLOWER_PASSWORD} --url_prefix=flower
+    command: celery -A celerytalk flower --basic_auth=${FLOWER_USER}:${FLOWER_PASSWORD} --url_prefix=flower
     healthcheck:
-      test: celery -A celerywyrm status
+      test: celery -A celerytalk status
       interval: 10s
       timeout: 10s
       retries: 6

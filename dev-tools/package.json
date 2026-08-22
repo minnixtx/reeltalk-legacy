@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "watch:static": "watch \"cd .. && ./bw-dev collectstatic\" ../bookwyrm/static/**"
+    "watch:static": "watch \"cd .. && ./rt-dev collectstatic\" ../reeltalk/static/**"
   },
   "devDependencies": {
     "bulma": "^0.9.3",

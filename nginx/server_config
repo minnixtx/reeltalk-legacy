@@ -10,8 +10,8 @@ log_format cache_log '$upstream_cache_status - '
 
 # Create a cache for responses from the web app
 proxy_cache_path
-    /var/cache/nginx/bookwyrm_cache
-    keys_zone=bookwyrm_cache:20m
+    /var/cache/nginx/reeltalk_cache
+    keys_zone=reeltalk_cache:20m
     loader_threshold=400
     loader_files=400
     max_size=400m;

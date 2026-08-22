@@ -1,6 +1,6 @@
 # Federation
 
-BookWyrm uses the [ActivityPub](http://activitypub.rocks/) protocol to send and receive user activity between other BookWyrm instances and other services that implement ActivityPub. To handle book data, BookWyrm has a handful of extended Activity types which are not part of the standard, but are legible to other BookWyrm instances.
+ReelTalk uses the [ActivityPub](http://activitypub.rocks/) protocol to send and receive user activity between other ReelTalk instances and other services that implement ActivityPub. To handle book data, ReelTalk has a handful of extended Activity types which are not part of the standard, but are legible to other ReelTalk instances.
 
 ## Activities and Objects
 
@@ -28,7 +28,7 @@ User's books and lists are represented by [`OrderedCollection`](https://www.w3.o
 
 ### Statuses
 
-BookWyrm is focused on book reading activities - it is not a general-purpose messaging application. For this reason, BookWyrm only accepts status `Create` activities if they are:
+ReelTalk is focused on book reading activities - it is not a general-purpose messaging application. For this reason, ReelTalk only accepts status `Create` activities if they are:
 
 - Direct messages (i.e., `Note`s with the privacy level `direct`, which mention a local user),
 - Related to a book (of a custom status type that includes the field `inReplyToBook`),
@@ -38,11 +38,11 @@ All other statuses will be received by the instance inbox, but by design **will 
 
 ### Custom Object types
 
-With the exception of `Note`, the following object types are used in Bookwyrm but are not currently provided with a custom JSON-LD `@context` extension IRI. This is likely to change in future to make them true deserialisable JSON-LD objects.
+With the exception of `Note`, the following object types are used in Reeltalk but are not currently provided with a custom JSON-LD `@context` extension IRI. This is likely to change in future to make them true deserialisable JSON-LD objects.
 
 ##### Note
 
-Within BookWyrm a `Note` is constructed according to [the ActivityStreams vocabulary](https://www.w3.org/TR/activitystreams-vocabulary/#dfn-note), however `Note`s can only be created as direct messages or as replies to other statuses. As mentioned above, this also applies to incoming `Note`s.
+Within ReelTalk a `Note` is constructed according to [the ActivityStreams vocabulary](https://www.w3.org/TR/activitystreams-vocabulary/#dfn-note), however `Note`s can only be created as direct messages or as replies to other statuses. As mentioned above, this also applies to incoming `Note`s.
 
 ##### Review
 
@@ -307,7 +307,7 @@ Example:
 - `Remove`: Removes a book from a shelf or list.
 
 ## Alternative Serialization
-Because BookWyrm uses custom object types that aren't listed in [the standard ActivityStreams Vocabulary](https://www.w3.org/TR/activitystreams-vocabulary), some statuses are transformed into standard types when sent to or viewed by non-BookWyrm services. `Review`s are converted into `Article`s, and `Comment`s and `Quotation`s are converted into `Note`s, with a link to the book and the cover image attached.
+Because ReelTalk uses custom object types that aren't listed in [the standard ActivityStreams Vocabulary](https://www.w3.org/TR/activitystreams-vocabulary), some statuses are transformed into standard types when sent to or viewed by non-ReelTalk services. `Review`s are converted into `Article`s, and `Comment`s and `Quotation`s are converted into `Note`s, with a link to the book and the cover image attached.
 
 In future this may be done with [JSON-LD type arrays](https://www.w3.org/TR/json-ld/#specifying-the-type) instead.
 
@@ -315,21 +315,21 @@ In future this may be done with [JSON-LD type arrays](https://www.w3.org/TR/json
 
 ### Webfinger
 
-Bookwyrm uses the [Webfinger](https://datatracker.ietf.org/doc/html/rfc7033) standard to identify and disambiguate fediverse actors. The [Webfinger documentation on the Mastodon project](https://docs.joinmastodon.org/spec/webfinger/) provides a good overview of how Webfinger is used.
+Reeltalk uses the [Webfinger](https://datatracker.ietf.org/doc/html/rfc7033) standard to identify and disambiguate fediverse actors. The [Webfinger documentation on the Mastodon project](https://docs.joinmastodon.org/spec/webfinger/) provides a good overview of how Webfinger is used.
 
 ### HTTP Signatures
 
-Bookwyrm uses and requires HTTP signatures for all `POST` requests. `GET` requests are not signed by default, but if Bookwyrm receives a `403` response to a `GET` it will re-send the request, signed by the default server user. This usually will have a user id of `https://example.net/user/bookwyrm.instance.actor`
+Reeltalk uses and requires HTTP signatures for all `POST` requests. `GET` requests are not signed by default, but if Reeltalk receives a `403` response to a `GET` it will re-send the request, signed by the default server user. This usually will have a user id of `https://example.net/user/reeltalk.instance.actor`
 
 As of the first version to be released in 2025, all `GET` requests will be signed by the instance user instead of re-sending requests that are rejected.
 
 #### publicKey id
 
-In older versions of Bookwyrm the `publicKey.id` was incorrectly listed in request headers as `https://example.net/user/username#main-key`. As of v0.6.3 the id is now listed correctly, as `https://example.net/user/username/#main-key`. In most ActivityPub implementations this will make no difference as the URL will usually resolve to the same place.
+In older versions of Reeltalk the `publicKey.id` was incorrectly listed in request headers as `https://example.net/user/username#main-key`. As of v0.6.3 the id is now listed correctly, as `https://example.net/user/username/#main-key`. In most ActivityPub implementations this will make no difference as the URL will usually resolve to the same place.
 
 ### NodeInfo
 
-Bookwyrm uses the [NodeInfo](http://nodeinfo.diaspora.software/) standard to provide statistics and version information for each instance.
+Reeltalk uses the [NodeInfo](http://nodeinfo.diaspora.software/) standard to provide statistics and version information for each instance.
 
 ## Further Documentation
 

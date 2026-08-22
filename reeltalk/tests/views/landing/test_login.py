@@ -1,0 +1,269 @@
+"""test for app action functionality"""
+
+from importlib import import_module
+from unittest.mock import patch
+
+from django.conf import settings
+from django.contrib.auth.models import AnonymousUser
+from django.contrib.sessions.middleware import SessionMiddleware
+from django.template.response import TemplateResponse
+from django.test import TestCase
+from django.test.client import RequestFactory
+
+from reeltalk import forms, models, views
+from reeltalk.tests.validate_html import validate_html
+
+SessionStore = import_module(settings.SESSION_ENGINE).SessionStore
+
+
+@patch("reeltalk.suggested_users.rerank_suggestions_task.delay")
+@patch("reeltalk.activitystreams.populate_stream_task.delay")
+class LoginViews(TestCase):
+    """login and password management"""
+
+    @classmethod
+    def setUpTestData(cls):
+        """we need basic test data and mocks"""
+        with (
+            patch("reeltalk.suggested_users.rerank_suggestions_task.delay"),
+            patch("reeltalk.activitystreams.populate_stream_task.delay"),
+            patch("reeltalk.lists_stream.populate_lists_task.delay"),
+        ):
+            cls.local_user = models.User.objects.create_user(
+                "mouse@your.domain.here",
+                "mouse@mouse.com",
+                "password",
+                local=True,
+                localname="mouse",
+                two_factor_auth=False,
+            )
+            cls.rat = models.User.objects.create_user(
+                "rat@your.domain.here",
+                "rat@rat.com",
+                "password",
+                local=True,
+                localname="rat",
+            )
+            cls.badger = models.User.objects.create_user(
+                "badger@your.domain.here",
+                "badger@badger.com",
+                "password",
+                local=True,
+                localname="badger",
+                two_factor_auth=True,
+            )
+        site = models.SiteSettings.get()
+        site.require_confirm_email = False
+        site.save()
+
+    def setUp(self):
+        """individual test setup"""
+        self.factory = RequestFactory()
+        self.anonymous_user = AnonymousUser
+        self.anonymous_user.is_authenticated = False
+
+    def test_login_get(self, *_):
+        """there are so many views, this just makes sure it LOADS"""
+        login = views.Login.as_view()
+        request = self.factory.get("")
+        request.user = self.anonymous_user
+
+        result = login(request)
+        self.assertIsInstance(result, TemplateResponse)
+        validate_html(result.render())
+        self.assertEqual(result.status_code, 200)
+
+        request.user = self.local_user
+        result = login(request)
+        self.assertEqual(result.url, "/")
+        self.assertEqual(result.status_code, 302)
+
+    def test_login_post_localname(self, *_):
+        """there are so many views, this just makes sure it LOADS"""
+        view = views.Login.as_view()
+        form = forms.LoginForm()
+        form.data["localname"] = "mouse@mouse.com"
+        form.data["password"] = "password"
+        request = self.factory.post("", form.data)
+        middleware = SessionMiddleware(lambda x: None)
+        middleware.process_request(request)
+        request.session["session_key"] = "1234abcd"
+        request.session.save()
+        request.user = self.anonymous_user
+
+        with patch("reeltalk.views.landing.login.login"):
+            result = view(request)
+        self.assertEqual(result.url, "/")
+        self.assertEqual(result.status_code, 302)
+
+    def test_login_post_username(self, *_):
+        """valid login where the user provides their user@domain.com username"""
+        view = views.Login.as_view()
+        form = forms.LoginForm()
+        form.data["localname"] = "mouse@your.domain.here"
+        form.data["password"] = "password"
+        request = self.factory.post("", form.data)
+        middleware = SessionMiddleware(lambda x: None)
+        middleware.process_request(request)
+        request.session["session_key"] = "1234abcd"
+        request.session.save()
+        request.user = self.anonymous_user
+
+        with patch("reeltalk.views.landing.login.login"):
+            result = view(request)
+        self.assertEqual(result.url, "/")
+        self.assertEqual(result.status_code, 302)
+
+    def test_login_post_email(self, *_):
+        """there are so many views, this just makes sure it LOADS"""
+        view = views.Login.as_view()
+        form = forms.LoginForm()
+        form.data["localname"] = "mouse"
+        form.data["password"] = "password"
+        request = self.factory.post("", form.data)
+        middleware = SessionMiddleware(lambda x: None)
+        middleware.process_request(request)
+        request.session["session_key"] = "1234abcd"
+        request.session.save()
+        request.user = self.anonymous_user
+
+        with patch("reeltalk.views.landing.login.login"):
+            result = view(request)
+        self.assertEqual(result.url, "/")
+        self.assertEqual(result.status_code, 302)
+
+    def test_login_post_invalid_credentials(self, *_):
+        """there are so many views, this just makes sure it LOADS"""
+        view = views.Login.as_view()
+        form = forms.LoginForm()
+        form.data["localname"] = "mouse"
+        form.data["password"] = "password1"
+        request = self.factory.post("", form.data)
+        middleware = SessionMiddleware(lambda x: None)
+        middleware.process_request(request)
+        request.session["session_key"] = "1234abcd"
+        request.session.save()
+        request.user = self.anonymous_user
+
+        with patch("reeltalk.views.landing.login.login"):
+            result = view(request)
+        validate_html(result.render())
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(
+            result.context_data["login_form"].non_field_errors,
+            "Username or password are incorrect",
+        )
+
+    def test_login_post_no_2fa_set(self, *_):
+        """test user with 2FA null value is redirected to 2FA prompt page"""
+        view = views.Login.as_view()
+        form = forms.LoginForm()
+        form.data["localname"] = "rat"
+        form.data["password"] = "password"
+        request = self.factory.post("", form.data)
+        middleware = SessionMiddleware(lambda x: None)
+        middleware.process_request(request)
+        request.session["session_key"] = "1234abcd"
+        request.session.save()
+        request.user = self.anonymous_user
+
+        with patch("reeltalk.views.landing.login.login"):
+            result = view(request)
+        self.assertEqual(result.url, "/2fa-prompt")
+        self.assertEqual(result.status_code, 302)
+
+    def test_login_post_with_2fa(self, *_):
+        """test user with 2FA turned on is redirected to 2FA login page"""
+        view = views.Login.as_view()
+        form = forms.LoginForm()
+        form.data["localname"] = "badger"
+        form.data["password"] = "password"
+        request = self.factory.post("", form.data)
+        middleware = SessionMiddleware(lambda x: None)
+        middleware.process_request(request)
+        request.session["session_key"] = "1234abcd"
+        request.session.save()
+        request.user = self.anonymous_user
+        middleware = SessionMiddleware(request)
+        middleware.process_request(request)
+        request.session.save()
+
+        with patch("reeltalk.views.landing.login.login"):
+            result = view(request)
+        self.assertEqual(result.url, "/2fa-check")
+        self.assertEqual(result.status_code, 302)
+
+    def test_login_records_session(self, *_):
+        """does login record a session in the user object?"""
+
+        self.assertEqual(self.local_user.sessions.count(), 0)
+
+        view = views.Login.as_view()
+        form = forms.LoginForm()
+        form.data["localname"] = "mouse@mouse.com"
+        form.data["password"] = "password"
+        request = self.factory.post("", form.data)
+
+        middleware = SessionMiddleware(lambda x: None)
+        middleware.process_request(request)
+        request.session["session_key"] = "1234abcd"
+        request.session.save()
+
+        request.user = self.anonymous_user
+
+        with patch("reeltalk.views.landing.login.login"):
+            view(request)
+
+        self.assertEqual(self.local_user.sessions.count(), 1)
+
+
+class LogoutViews(TestCase):
+    """logout and session management"""
+
+    @classmethod
+    def setUpTestData(cls):
+        """we need basic test data and mocks"""
+        with (
+            patch("reeltalk.suggested_users.rerank_suggestions_task.delay"),
+            patch("reeltalk.activitystreams.populate_stream_task.delay"),
+            patch("reeltalk.lists_stream.populate_lists_task.delay"),
+        ):
+            cls.local_user = models.User.objects.create_user(
+                "mouse@your.domain.here",
+                "mouse@mouse.com",
+                "password",
+                local=True,
+                localname="mouse",
+                two_factor_auth=False,
+            )
+
+        models.UserSession.objects.create(
+            user=cls.local_user,
+            session_key="1234abcd",
+            operating_system="CSIRAC",
+            browser_type="Lynx",
+        )
+
+    def setUp(self):
+        """individual test setup"""
+        self.factory = RequestFactory()
+
+    def test_logout_clears_session(self, *_):
+        """when we log out we should also delete the user session"""
+
+        self.assertEqual(self.local_user.sessions.count(), 1)
+
+        view = views.Logout.as_view()
+        request = self.factory.post("")
+        middleware = SessionMiddleware(lambda x: None)
+        middleware.process_request(request)
+        request.session["session_key"] = "1234abcd"
+        request.session.save()
+
+        request.user = self.local_user
+
+        with patch("reeltalk.views.landing.login.login"):
+            view(request)
+
+        self.local_user.refresh_from_db()
+        self.assertEqual(self.local_user.sessions.count(), 0)

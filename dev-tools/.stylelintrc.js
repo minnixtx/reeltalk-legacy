@@ -21,7 +21,7 @@ module.exports = {
     },
     "overrides": [
         {
-            "files": [ "../**/themes/bookwyrm-*.scss" ],
+            "files": [ "../**/themes/reeltalk-*.scss" ],
             "rules": {
                 "no-invalid-position-at-import-rule": null
             }

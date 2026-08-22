@@ -6,7 +6,7 @@
 
 <!--
 Thanks for contributing! This template has some checkboxes that help keep track of what changes go into a release.
-You can find more information and tips for BookWyrm contributors at https://docs.joinbookwyrm.com/contributing.html
+You can find more information and tips for ReelTalk contributors at https://docs.joinbookwyrm.com/contributing.html
 -->
 ## What type of Pull Request is this?
 
@@ -34,7 +34,7 @@ Our documentation is maintained in a separate repository at https://github.com/b
 - [ ] I intend to create a matching pull request in the Documentation repository after this PR is merged
 
 <!-- Amazing! Thanks for filling that out. Your PR will need to have passing tests and happy linters before we can merge
-You will need to check your code with `ruff` and `mypy`, or `./bw-dev formatters`
+You will need to check your code with `ruff` and `mypy`, or `./rt-dev formatters`
 -->
 
 ### Tests

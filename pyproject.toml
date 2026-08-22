@@ -68,16 +68,16 @@ dev = [
 ]
 
 [tool.coverage.run]
-omit = ["*/test*", "celerywyrm*", "bookwyrm/migrations/*"]
+omit = ["*/test*", "celerytalk*", "reeltalk/migrations/*"]
 
 [tool.pytest.ini_options]
 markers = [
     "integration: marks tests as requiring external resources (deselect with '-m \"not integration\"')",
 ]
-DJANGO_SETTINGS_MODULE = "bookwyrm.settings"
+DJANGO_SETTINGS_MODULE = "reeltalk.settings"
 python_files = ["tests.py", "test_*.py"]
-addopts = "--cov=bookwyrm"
-testpaths = ["bookwyrm/tests"]
+addopts = "--cov=reeltalk"
+testpaths = ["reeltalk/tests"]
 
 env = [
     "LANGUAGE_CODE = en-US",
@@ -86,7 +86,7 @@ env = [
     "DOMAIN = localhost",
     "PORT = 4242",
     "ALLOWED_HOSTS = your.domain.here",
-    "BOOKWYRM_DATABASE_BACKEND = postgres",
+    "REELTALK_DATABASE_BACKEND = postgres",
     "MEDIA_ROOT = images/",
     "CELERY_BROKER_URL = memory://",
     "CELERY_RESULT_BACKEND = cache+memory://",
@@ -107,22 +107,22 @@ strict = true
 plugins = ["mypy_django_plugin.main"]
 
 [tool.django-stubs]
-django_settings_module = "bookwyrm.settings"
+django_settings_module = "reeltalk.settings"
 
 [[tool.mypy.overrides]]
 ignore_errors = true
 implicit_reexport = true
 
-module = "bookwyrm.*"
+module = "reeltalk.*"
 
 [[tool.mypy.overrides]]
 ignore_errors = false
 module = [
-    "bookwyrm.connectors.*",
-    "bookwyrm.utils.*",
-    "bookwyrm.importers.*",
-    "bookwyrm.isbn.*",
-    "celerywyrm.*",
+    "reeltalk.connectors.*",
+    "reeltalk.utils.*",
+    "reeltalk.importers.*",
+    "reeltalk.isbn.*",
+    "celerytalk.*",
 ]
 
 [tool.ruff]

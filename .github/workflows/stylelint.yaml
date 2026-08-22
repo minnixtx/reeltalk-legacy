@@ -1,4 +1,4 @@
-name: Lint Stylesheets files (run `./bw-dev stylelint` to fix errors)
+name: Lint Stylesheets files (run `./rt-dev stylelint` to fix errors)
 
 on:
   push:
@@ -17,5 +17,5 @@ jobs:
 
       - name: Run Stylelint
         run: >
-          npx stylelint bookwyrm/static/css \
+          npx stylelint reeltalk/static/css \
             --config dev-tools/.stylelintrc.js --ignore-path dev-tools/.stylelintignore

@@ -15,7 +15,7 @@ proxy_read_timeout 1800s;
 chunked_transfer_encoding on;
 
 # store responses to anonymous users for up to 1 minute
-proxy_cache bookwyrm_cache;
+proxy_cache reeltalk_cache;
 proxy_cache_valid any 1m;
 add_header X-Cache-Status $upstream_cache_status;
 
@@ -86,7 +86,7 @@ location / {
 }
 
 # directly serve static files from the
-# bookwyrm filesystem using sendfile.
+# reeltalk filesystem using sendfile.
 # make the logs quieter by not reporting these requests
 location /static/ {
     root /app;

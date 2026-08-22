@@ -1,0 +1,345 @@
+"""testing book data connectors"""
+
+from unittest.mock import patch
+from django.test import TestCase
+import responses
+
+from reeltalk import models
+from reeltalk.connectors import abstract_connector, ConnectorException
+from reeltalk.connectors.abstract_connector import (
+    Mapping,
+    get_data,
+    activitydata_to_seriesbook,
+    update_connector_status,
+)
+from reeltalk.settings import BASE_URL, INSTANCE_ACTOR_USERNAME
+
+
+class AbstractConnector(TestCase):
+    """generic code for connecting to outside data sources"""
+
+    @classmethod
+    def setUpTestData(cls):
+        """we need an example connector in the database"""
+        cls.connector = models.Connector.objects.create(
+            identifier="example.com",
+            connector_file="openlibrary",
+            base_url="https://example.com",
+            books_url="https://example.com/books",
+            covers_url="https://example.com/covers",
+            search_url="https://example.com/search?q=",
+        )
+        cls.book = models.Edition.objects.create(
+            title="Test Book",
+            remote_id="https://example.com/book/1234",
+            openlibrary_key="OL1234M",
+        )
+
+        cls.local_user = models.User.objects.create_user(
+            "instance@local.com",
+            local=True,
+            localname=INSTANCE_ACTOR_USERNAME,
+            remote_id="https://example.com/users/instance_actor",
+        )
+
+    def setUp(self):
+        """test data"""
+        work_data = {
+            "id": "abc1",
+            "title": "Test work",
+            "type": "work",
+            "openlibraryKey": "OL1234W",
+        }
+        edition_data = {
+            "id": "abc2",
+            "title": "Test edition",
+            "type": "edition",
+            "openlibraryKey": "OL1234M",
+        }
+        self.work_data = work_data
+        self.edition_data = edition_data
+
+        class TestConnector(abstract_connector.AbstractConnector):
+            """nothing added here"""
+
+            generated_remote_link_field = "openlibrary_link"
+
+            def parse_search_data(self, data, min_confidence):
+                return data
+
+            def parse_isbn_search_data(self, data):
+                return data
+
+            def is_work_data(self, data):
+                return data["type"] == "work"
+
+            def get_edition_from_work_data(self, data):
+                return edition_data
+
+            def get_work_from_edition_data(self, data):
+                return work_data
+
+            def get_authors_from_data(self, data):
+                return []
+
+            def expand_book_data(self, book):
+                pass
+
+        self.connector = TestConnector("example.com")
+        self.connector.book_mappings = [
+            Mapping("id"),
+            Mapping("title"),
+            Mapping("openlibraryKey"),
+        ]
+
+    def test_abstract_connector_init(self):
+        """barebones connector for search with defaults"""
+        self.assertIsInstance(self.connector.book_mappings, list)
+
+    def test_get_or_create_book_existing(self):
+        """find an existing book by remote/origin id"""
+        self.assertEqual(models.Book.objects.count(), 1)
+        self.assertEqual(self.book.remote_id, f"{BASE_URL}/book/{self.book.id}")
+        self.assertEqual(self.book.origin_id, "https://example.com/book/1234")
+
+        # dedupe by origin id
+        result = self.connector.get_or_create_book("https://example.com/book/1234")
+        self.assertEqual(models.Book.objects.count(), 1)
+        self.assertEqual(result, self.book)
+
+        # dedupe by remote id
+        result = self.connector.get_or_create_book(f"{BASE_URL}/book/{self.book.id}")
+
+        self.assertEqual(models.Book.objects.count(), 1)
+        self.assertEqual(result, self.book)
+
+    @responses.activate
+    def test_get_or_create_book_deduped(self):
+        """load remote data and deduplicate"""
+        responses.add(
+            responses.GET, "https://example.com/book/abcd", json=self.edition_data
+        )
+        with patch("reeltalk.connectors.abstract_connector.load_more_data.delay"):
+            result = self.connector.get_or_create_book("https://example.com/book/abcd")
+        self.assertEqual(result, self.book)
+        self.assertEqual(models.Edition.objects.count(), 1)
+        self.assertEqual(models.Edition.objects.count(), 1)
+
+    @responses.activate
+    def test_get_or_create_author(self):
+        """load an author"""
+        self.connector.author_mappings = [
+            Mapping("id"),
+            Mapping("name"),
+        ]
+
+        responses.add(
+            responses.GET,
+            "https://www.example.com/author",
+            json={"id": "https://www.example.com/author", "name": "Test Author"},
+        )
+        result = self.connector.get_or_create_author("https://www.example.com/author")
+        self.assertIsInstance(result, models.Author)
+        self.assertEqual(result.name, "Test Author")
+        self.assertEqual(result.origin_id, "https://www.example.com/author")
+
+    def test_get_or_create_author_existing(self):
+        """get an existing author"""
+        author = models.Author.objects.create(name="Test Author")
+        result = self.connector.get_or_create_author(author.remote_id)
+        self.assertEqual(author, result)
+
+    @responses.activate
+    def test_update_author_from_remote(self):
+        """trigger the function that looks up the remote data"""
+        author = models.Author.objects.create(name="Test", openlibrary_key="OL123A")
+        self.connector.author_mappings = [
+            Mapping("id"),
+            Mapping("name"),
+            Mapping("isni"),
+        ]
+
+        responses.add(
+            responses.GET,
+            "https://openlibrary.org/authors/OL123A",
+            json={"id": "https://www.example.com/author", "name": "Beep", "isni": "hi"},
+        )
+
+        self.connector.update_author_from_remote(author)
+
+        author.refresh_from_db()
+        self.assertEqual(author.name, "Test")
+        self.assertEqual(author.isni, "hi")
+
+    def test_get_data_invalid_url(self):
+        """load json data from an arbitrary url"""
+        with self.assertRaises(ConnectorException):
+            get_data("file://hello.com/image/jpg")
+
+        with self.assertRaises(ConnectorException):
+            get_data("http://127.0.0.1/image/jpg")
+
+    def test_get_or_create_seriesbook_from_data(self):
+        """do we make a seriesbook?"""
+
+        work = models.Work.objects.create(title="Test Book")
+        work.series = [{"name": "Test Series 1"}]
+        edition = self.book
+
+        self.assertEqual(models.Series.objects.count(), 0)
+        self.assertEqual(models.SeriesBook.objects.count(), 0)
+
+        self.connector.get_or_create_seriesbook_from_data(work=work, edition=edition)
+
+        self.assertEqual(models.Series.objects.count(), 1)
+        self.assertEqual(models.SeriesBook.objects.count(), 1)
+
+    def test_get_or_create_seriesbook_from_empty_series(self):
+        """don't make empty series"""
+
+        work = models.Work.objects.create(title="Test Book")
+        work.series = ""
+        edition = self.book
+
+        self.assertEqual(models.Series.objects.count(), 0)
+        self.assertEqual(models.SeriesBook.objects.count(), 0)
+
+        self.connector.get_or_create_seriesbook_from_data(work=work, edition=edition)
+
+        self.assertEqual(models.Series.objects.count(), 0)
+        self.assertEqual(models.SeriesBook.objects.count(), 0)
+
+    def test_get_or_create_seriesbook_from_empty_inventaire_series(self):
+        """don't make empty series when fetching Inventaire books"""
+
+        work = models.Work.objects.create(title="Test Book")
+        work.series = []
+        edition = self.book
+
+        self.assertEqual(models.Series.objects.count(), 0)
+        self.assertEqual(models.SeriesBook.objects.count(), 0)
+
+        self.connector.get_or_create_seriesbook_from_data(work=work, edition=edition)
+
+        self.assertEqual(models.Series.objects.count(), 0)
+        self.assertEqual(models.SeriesBook.objects.count(), 0)
+
+    def test_get_or_create_seriesbook_from_existing_series(self):
+        """do we get a seriesbook with existing series?"""
+
+        author = models.Author.objects.create(name="Sammy")
+        series = models.Series.objects.create(
+            user=self.local_user, name="Test Series 1"
+        )
+        work = models.Work.objects.create(title="Test Book")
+        work.authors.add(author)
+        models.SeriesBook.objects.create(user=self.local_user, book=work, series=series)
+
+        work_2 = models.Work.objects.create(title="Testing again")
+        work_2.series = [{"name": "Test Series 1"}]
+        edition = models.Edition.objects.create(title="Testing again")
+        edition.authors.add(author)
+
+        self.assertEqual(models.Series.objects.count(), 1)
+        self.assertEqual(models.SeriesBook.objects.count(), 1)
+
+        self.connector.get_or_create_seriesbook_from_data(work=work_2, edition=edition)
+
+        self.assertEqual(models.Series.objects.count(), 1)
+        self.assertEqual(models.SeriesBook.objects.count(), 2)
+
+    def test_get_or_create_seriesbook_with_ambiguous_series(self):
+        """do we get series info in the book when we can't match author?"""
+
+        series = models.Series.objects.create(
+            user=self.local_user, name="Test Series 1"
+        )
+        work = models.Work.objects.create(title="Test Book 1")
+        models.SeriesBook.objects.create(user=self.local_user, book=work, series=series)
+        work_2 = models.Work.objects.create(title="Test Book 2")
+        work_2.series = [{"name": "Test Series 1"}]
+        edition = models.Edition.objects.create(title="Test Book 2")
+
+        self.assertEqual(models.Series.objects.count(), 1)
+        self.assertEqual(models.SeriesBook.objects.count(), 1)
+
+        self.connector.get_or_create_seriesbook_from_data(work=work_2, edition=edition)
+
+        self.assertEqual(models.Series.objects.count(), 1)
+        self.assertEqual(models.SeriesBook.objects.count(), 1)
+        self.assertEqual(edition.series, "Test Series 1")
+
+    def test_activitydata_to_seriesbook(self):
+        """do we get a seriesbook?"""
+
+        work = models.Work.objects.create(title="Test Book 2")
+        new = models.Series(name="Test Series A")
+
+        self.assertEqual(models.Series.objects.count(), 0)
+        self.assertEqual(models.SeriesBook.objects.count(), 0)
+
+        activitydata_to_seriesbook(
+            user=self.local_user, work=work, new=new, instance=None
+        )
+
+        self.assertEqual(models.Series.objects.count(), 1)
+        self.assertEqual(models.SeriesBook.objects.count(), 1)
+
+    def test_activitydata_to_seriesbook_with_existing_series(self):
+        """do we get a seriesbook but not a duplicate series?"""
+
+        work = models.Work.objects.create(title="Test Book 2")
+        series = models.Series.objects.create(
+            user=self.local_user, name="Test Series A"
+        )
+
+        self.assertEqual(models.Series.objects.count(), 1)
+        self.assertEqual(models.SeriesBook.objects.count(), 0)
+
+        activitydata_to_seriesbook(
+            user=self.local_user, work=work, new=series, instance=series
+        )
+
+        self.assertEqual(models.Series.objects.count(), 1)
+        self.assertEqual(models.SeriesBook.objects.count(), 1)
+
+    def test_activitydata_to_seriesbook_with_existing_seriesbook(self):
+        """do we reuse the existing series and seriesbook?"""
+
+        work = models.Work.objects.create(title="Test Book 2")
+        series = models.Series.objects.create(
+            user=self.local_user, name="Test Series A"
+        )
+        models.SeriesBook.objects.create(user=self.local_user, book=work, series=series)
+
+        self.assertEqual(models.Series.objects.count(), 1)
+        self.assertEqual(models.SeriesBook.objects.count(), 1)
+
+        activitydata_to_seriesbook(
+            user=self.local_user, work=work, new=series, instance=None
+        )
+
+        self.assertEqual(models.Series.objects.count(), 1)
+        self.assertEqual(models.SeriesBook.objects.count(), 1)
+
+    def test_update_connector_status(self):
+        """make sure we save errors correctly"""
+        self.assertIsNone(self.connector.connector.most_recent_error)
+
+        message = "normal length message"
+        update_connector_status(self.connector.connector.id, message)
+
+        self.connector.connector.refresh_from_db()
+        self.assertIsNotNone(self.connector.connector.most_recent_error)
+        self.assertEqual(self.connector.connector.latest_error, "normal length message")
+
+    def test_update_connector_status_long(self):
+        """make sure we save errors correctly"""
+        self.assertIsNone(self.connector.connector.most_recent_error)
+
+        message = "abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz"
+        update_connector_status(self.connector.connector.id, message)
+
+        self.connector.connector.refresh_from_db()
+        self.assertIsNotNone(self.connector.connector.most_recent_error)
+        self.assertEqual(self.connector.connector.latest_error, message[:255])

@@ -1,5 +1,5 @@
 # @url https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions
-name: JavaScript Prettier (run ./bw-dev prettier to fix)
+name: JavaScript Prettier (run ./rt-dev prettier to fix)
 
 on:
   push:
@@ -20,4 +20,4 @@ jobs:
         run: npm install prettier@2.5.1
 
       - name: Run Prettier
-        run: npx prettier --check bookwyrm/static/js/*.js
+        run: npx prettier --check reeltalk/static/js/*.js
