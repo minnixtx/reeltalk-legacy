@@ -1,8 +1,8 @@
 # Agent guidance
 
 ReelTalk is a fork of [BookWyrm](https://github.com/bookwyrm-social/bookwyrm).
-Contributions (including agent-assisted changes) are welcome; see
-[CONTRIBUTING.md](CONTRIBUTING.md).
+Until the project reaches a confirmed working state, all code contributions are
+made by the project owner.
 
 Hard constraints:
 

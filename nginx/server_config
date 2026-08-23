@@ -35,7 +35,3 @@ upstream web {
     keepalive 4;
 }
 
-upstream anubis {
-    server anubis:8000;
-}
-

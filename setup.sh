@@ -62,19 +62,9 @@ for var in SECRET_KEY POSTGRES_PASSWORD REDIS_PASSWORD; do
     fi
 done
 
-# --- certbot email (only needed for https setup) ------------------------------
-nginx_setup="$(get_var NGINX_SETUP)"
-if [ -z "$nginx_setup" ] || [ "$nginx_setup" = "https" ]; then
-    if [ -z "$(get_var CERTBOT_EMAIL)" ]; then
-        email="$(prompt CERTBOT_EMAIL)"
-        if [ -n "$email" ]; then
-            set_var CERTBOT_EMAIL "$email"
-        fi
-    fi
-fi
-
 echo
 echo "Done. Next steps:"
 echo "  1. Review $ENV_FILE (DOMAIN and the generated secrets)."
 echo "  2. docker compose up -d --build"
-echo "  3. For https: obtain the initial certificate with ./rt-dev init_ssl"
+echo "  3. The site is now reachable at http://<host>:3030 (plain HTTP);"
+echo "     terminate TLS with your own reverse proxy in front of that port."

@@ -28,10 +28,8 @@ docker compose up -d --build
 ```
 
 - `DOMAIN` must be the hostname users will reach the instance at.
-- **HTTPS:** the default is Let's Encrypt (`NGINX_SETUP=https`). After the stack is up, obtain the initial certificate with `./rt-dev init_ssl`, then restart nginx (`docker compose restart nginx`). For local development without TLS, set `NGINX_SETUP=reverse_proxy` in `.env`.
+- **TLS is your responsibility:** the stack exposes a plain-HTTP endpoint at `http://<host>:3030` (override with `WEB_PORT` in `.env`). Terminate TLS with your own reverse proxy and point it at that port, forwarding `X-Forwarded-Proto: https`.
 - **Email (optional):** the site runs without SMTP; to enable it, uncomment the `EMAIL_*` block in `.env`.
-
-Developer setup and contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Tech stack
 
@@ -40,7 +38,7 @@ Developer setup and contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md).
 - [ActivityPub](http://activitypub.rocks/) federation
 - [Celery](https://docs.celeryproject.org/) task queue + [Redis](https://redis.io/) (single container: streams/cache on DB 0, Celery broker on DB 1)
 - Django templates, [Bulma.io](https://bulma.io/), vanilla JavaScript
-- [Docker](https://www.docker.com/) Compose deployment, [Gunicorn](https://gunicorn.org/), [Nginx](https://nginx.org/en/), [Anubis](https://github.com/techaro/anubis) bot protection
+- [Docker](https://www.docker.com/) Compose deployment, [Gunicorn](https://gunicorn.org/), [Nginx](https://nginx.org/en/) (plain-HTTP endpoint; TLS via your own proxy)
 
 ## Roadmap
 
