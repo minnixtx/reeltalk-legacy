@@ -404,7 +404,9 @@ else:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 BASE_URL = f"{PROTOCOL}://{NETLOC}"
-CSRF_TRUSTED_ORIGINS = [BASE_URL]
+# BASE_URL is the canonical origin; operators reaching the instance via other
+# hosts (LAN IP, extra domains) add them here to keep form POSTs working
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", [BASE_URL])
 
 USER_AGENT = f"ReelTalk (ReelTalk/{VERSION}; +{BASE_URL})"
 
