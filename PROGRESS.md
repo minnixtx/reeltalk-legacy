@@ -23,7 +23,7 @@
 | Pre-Phase-2 changes (no HTTPS, no anubis, :3030 endpoint, no CONTRIBUTING) | ✅ Done, pushed (owner-directed, 2026-08-23) |
 | CSRF trusted-origins fix | ✅ Done, pushed (2026-08-24) |
 | Local instance | ✅ Running and **initialized**: DB migrated, `initdb` seeded, admin account created via the `/setup` wizard (2 users exist), `install_mode=false`. Reachable at **http://192.168.1.138:3030** |
-| Phase 2 — milestone 1 (UI rebrand books→films + binary film shelf model) | ✅ Done locally, committed, tests green (1332 passed) — **not yet pushed** |
+| Phase 2 — milestone 1 (UI rebrand books→films + binary film shelf model) | ✅ Done, committed, pushed, verified live (full test suite green: 1332 passed) |
 | Phase 2 — remainder (film domain model, TMDB importer/connector, artwork, public deploy) | ⬜ Not started — to be **designed with the owner** before implementation |
 
 ## 3. Commit history (`main`)
