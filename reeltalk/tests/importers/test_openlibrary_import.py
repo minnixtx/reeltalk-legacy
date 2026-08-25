@@ -66,7 +66,7 @@ class OpenLibraryImport(TestCase):
         self.assertEqual(import_items[1].data["Work Id"], "OL361393W")
         self.assertEqual(import_items[1].data["Edition Id"], "OL7798182M")
 
-        self.assertEqual(import_items[0].normalized_data["shelf"], "reading")
+        self.assertEqual(import_items[0].normalized_data["shelf"], "to-read")
         self.assertEqual(import_items[0].normalized_data["openlibrary_key"], "")
         self.assertEqual(
             import_items[0].normalized_data["openlibrary_work_key"], "OL102749W"
@@ -86,7 +86,7 @@ class OpenLibraryImport(TestCase):
     def test_handle_imported_book(self, *_):
         """openlibrary import added a book, this adds related connections"""
         shelf = self.local_user.shelf_set.filter(
-            identifier=models.Shelf.READING
+            identifier=models.Shelf.TO_READ
         ).first()
         self.assertIsNone(shelf.books.first())
 

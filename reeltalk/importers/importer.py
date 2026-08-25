@@ -38,13 +38,21 @@ class Importer:
         ),
     ]
 
-    # TODO: stopped
-
     date_fields = ["date_added", "date_started", "date_finished"]
+    # in-progress and abandoned titles map to to-read: the film model has no
+    # watching state, so anything not watched lands on "Want to Watch"
     shelf_mapping_guesses = {
-        "to-read": ["to-read", "want to read"],
+        "to-read": [
+            "to-read",
+            "want to read",
+            "currently-reading",
+            "reading",
+            "currently reading",
+            "stopped-reading",
+            "abandoned",
+            "dnf",
+        ],
         "read": ["read", "already read"],
-        "reading": ["currently-reading", "reading", "currently reading"],
     }
 
     def create_job(

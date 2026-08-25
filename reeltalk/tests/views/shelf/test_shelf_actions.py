@@ -2,11 +2,10 @@
 
 from unittest.mock import patch
 
-from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 from django.test.client import RequestFactory
 
-from reeltalk import forms, models, views
+from reeltalk import models, views
 
 
 @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
@@ -90,19 +89,6 @@ class ShelfActionViews(TestCase):
         # make sure the book is on the shelf
         self.assertEqual(shelf.books.get(), self.book)
 
-    def test_shelve_reading(self, *_):
-        """special behavior for the reading shelf"""
-        shelf = models.Shelf.objects.get(user=self.local_user, identifier="reading")
-        request = self.factory.post(
-            "", {"book": self.book.id, "shelf": shelf.identifier}
-        )
-        request.user = self.local_user
-
-        with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            views.shelve(request)
-        # make sure the book is on the shelf
-        self.assertEqual(shelf.books.get(), self.book)
-
     def test_shelve_read(self, *_):
         """special behavior for the read shelf"""
         shelf = models.Shelf.objects.get(user=self.local_user, identifier="read")
@@ -119,7 +105,7 @@ class ShelfActionViews(TestCase):
     def test_shelve_read_with_change_shelf(self, *_):
         """special behavior for the read shelf"""
         previous_shelf = models.Shelf.objects.get(
-            user=self.local_user, identifier="reading"
+            user=self.local_user, identifier="to-read"
         )
         models.ShelfBook.objects.create(
             shelf=previous_shelf, user=self.local_user, book=self.book
@@ -162,79 +148,3 @@ class ShelfActionViews(TestCase):
         self.assertEqual(activity["type"], "Remove")
         self.assertEqual(activity["object"]["id"], item.remote_id)
         self.assertEqual(self.shelf.books.count(), 0)
-
-    def test_create_shelf(self, *_):
-        """a brand new custom shelf"""
-        form = forms.ShelfForm()
-        form.data["user"] = self.local_user.id
-        form.data["name"] = "new shelf name"
-        form.data["description"] = "desc"
-        form.data["privacy"] = "unlisted"
-        request = self.factory.post("", form.data)
-        request.user = self.local_user
-
-        views.create_shelf(request)
-
-        shelf = models.Shelf.objects.get(user=self.local_user, name="new shelf name")
-        self.assertEqual(shelf.privacy, "unlisted")
-        self.assertEqual(shelf.description, "desc")
-        self.assertEqual(shelf.user, self.local_user)
-
-    def test_create_shelf_wrong_user(self, *_):
-        """a brand new custom shelf"""
-        form = forms.ShelfForm()
-        form.data["user"] = self.another_user.id
-        form.data["name"] = "new shelf name"
-        form.data["description"] = "desc"
-        form.data["privacy"] = "unlisted"
-        request = self.factory.post("", form.data)
-        request.user = self.local_user
-
-        with self.assertRaises(PermissionDenied):
-            views.create_shelf(request)
-
-    def test_delete_shelf(self, *_):
-        """delete a brand new custom shelf"""
-        request = self.factory.post("")
-        request.user = self.local_user
-        shelf_id = self.shelf.id
-
-        views.delete_shelf(request, shelf_id)
-
-        self.assertFalse(models.Shelf.objects.filter(id=shelf_id).exists())
-
-    def test_delete_shelf_unauthorized(self, *_):
-        """delete a brand new custom shelf"""
-        request = self.factory.post("")
-        request.user = self.another_user
-
-        with self.assertRaises(PermissionDenied):
-            views.delete_shelf(request, self.shelf.id)
-
-        self.assertTrue(models.Shelf.objects.filter(id=self.shelf.id).exists())
-
-    def test_delete_shelf_has_book(self, *_):
-        """delete a brand new custom shelf"""
-        with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            models.ShelfBook.objects.create(
-                book=self.book, user=self.local_user, shelf=self.shelf
-            )
-        request = self.factory.post("")
-        request.user = self.local_user
-
-        with self.assertRaises(PermissionDenied):
-            views.delete_shelf(request, self.shelf.id)
-
-        self.assertTrue(models.Shelf.objects.filter(id=self.shelf.id).exists())
-
-    def test_delete_shelf_not_editable(self, *_):
-        """delete a brand new custom shelf"""
-        shelf = self.local_user.shelf_set.first()
-        self.assertFalse(shelf.editable)
-        request = self.factory.post("")
-        request.user = self.local_user
-
-        with self.assertRaises(PermissionDenied):
-            views.delete_shelf(request, shelf.id)
-
-        self.assertTrue(models.Shelf.objects.filter(id=shelf.id).exists())

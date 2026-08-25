@@ -43,10 +43,10 @@
             <ul>
                 <li class="{% if shelf.identifier == 'all' %}is-active{% endif %}">
                     <a href="{% url 'user-shelves' user|username %}"{% if shelf.identifier == 'all' %} aria-current="page"{% endif %}>
-                        {% trans "All books" %}
+                        {% trans "All films" %}
                     </a>
                 </li>
-                {% for shelf_tab in shelves %}
+                {% for shelf_tab in shelf_tabs %}
                 <li class="{% if shelf_tab.identifier == shelf.identifier %}is-active{% endif %}">
                     <a
                         href="{{ shelf_tab.local_path }}"
@@ -68,32 +68,21 @@
                 <li>
                     <a href="{% url 'import' %}" id="tour-import-books">
                         <span class="icon icon-list" aria-hidden="true"></span>
-                        <span>{% trans "Import Books" %}</span>
+                        <span>{% trans "Import Films" %}</span>
                     </a>
                 </li>
             </ul>
         </div>
     </div>
-
-    <div class="column is-narrow" id="tour-create-shelf">
-        {% trans "Create shelf" as button_text %}
-        {% include 'snippets/toggle/open_button.html' with text=button_text icon_with_text="plus" controls_text="create_shelf_form" focus="create_shelf_form_header" %}
-    </div>
     {% endif %}
 </nav>
-
-<div class="block">
-    {% include 'shelf/create_shelf_form.html' with controls_text='create_shelf_form' %}
-</div>
 
 <div>
     <div class="block columns is-mobile">
         <div class="column">
             <h2 class="title is-3">
-                {% if shelf.identifier == 'to-read' %}{% trans "To Read" %}
-                {% elif shelf.identifier == 'reading' %}{% trans "Currently Reading" %}
-                {% elif shelf.identifier == 'read' %}{% trans "Read" %}
-                {% elif shelf.identifier == 'stopped-reading' %}{% trans "Stopped Reading" %}
+                {% if shelf.identifier == 'to-read' %}{% trans "Want to Watch" %}
+                {% elif shelf.identifier == 'read' %}{% trans "Watched" %}
                 {% else %}{{ shelf.name }}{% endif %}
                 <span class="subtitle">
                     {% include 'snippets/privacy-icons.html' with item=shelf %}
@@ -102,9 +91,9 @@
                 {% if count %}
                 <span class="help">
                     {% blocktrans trimmed count counter=count with formatted_count=count|intcomma %}
-                        {{ formatted_count }} book
+                        {{ formatted_count }} film
                     {% plural %}
-                        {{ formatted_count }} books
+                        {{ formatted_count }} films
                     {% endblocktrans %}
                     {% if books.has_other_pages %}
                         {% blocktrans trimmed with start=books.start_index end=books.end_index %}
@@ -118,32 +107,10 @@
             {% include 'shelf/shelves_filters.html' with user=user query=query %}
 
         </div>
-        {% if is_self and shelf.id %}
-        <div class="column is-narrow">
-            <div class="is-flex">
-                {% trans "Edit shelf" as button_text %}
-                {% include 'snippets/toggle/open_button.html' with text=button_text icon_with_text="pencil" controls_text="edit_shelf_form" focus="edit_shelf_form_header" %}
-
-                {% if shelf.deletable %}
-                <form class="ml-1" name="delete-shelf" action="/delete-shelf/{{ shelf.id }}" method="post">
-                    {% csrf_token %}
-                    <input type="hidden" name="user" value="{{ request.user.id }}">
-                    <button class="button is-danger is-light" type="submit">
-                        {% trans "Delete shelf" %}
-                    </button>
-                </form>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
     </div>
     {% if shelf.description %}
     <p>{{ shelf.description }}</p>
     {% endif %}
-</div>
-
-<div class="block mt-2">
-    {% include 'shelf/edit_shelf_form.html' with controls_text="edit_shelf_form" %}
 </div>
 
 <div class="block">
@@ -219,7 +186,7 @@
             <em>
                 {% if shelves_filter_query %}
                     {% blocktrans trimmed %}
-                        We couldn't find any books that matched {{ shelves_filter_query }}
+                        We couldn't find any films that matched {{ shelves_filter_query }}
                     {% endblocktrans %}
                 {% else %}
                     {% trans "This shelf is empty." %}

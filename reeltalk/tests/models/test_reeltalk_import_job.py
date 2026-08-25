@@ -668,7 +668,9 @@ class ReeltalkImport(TestCase):
             models.ShelfBook.objects.filter(user=self.local_user.id).count(), 0
         )
 
-        shelf = models.Shelf.objects.get(name="Read", user=self.local_user)
+        shelf = models.Shelf.objects.get(
+            identifier=models.Shelf.READ_FINISHED, user=self.local_user
+        )
 
         with (
             patch("reeltalk.activitystreams.add_book_statuses_task.delay"),
@@ -710,9 +712,10 @@ class ReeltalkImport(TestCase):
             models.ShelfBook.objects.filter(user=self.local_user.id).count(), 2
         )
 
-        # check we didn't create an extra shelf
+        # check we didn't create an extra shelf: the legacy "Read" and
+        # "To Read" names map onto the current default shelves
         self.assertEqual(
-            models.Shelf.objects.filter(user=self.local_user.id).count(), 4
+            models.Shelf.objects.filter(user=self.local_user.id).count(), 2
         )
 
     def test_update_followers_address(self):

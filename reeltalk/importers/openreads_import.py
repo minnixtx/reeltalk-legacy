@@ -47,16 +47,16 @@ class OpenReadsImporter(Importer):
             match read_status:
                 case "finished":
                     normalized["shelf"] = Shelf.READ_FINISHED
-                case "in_progress":
-                    normalized["shelf"] = Shelf.READING
-                case "abandoned":
-                    normalized["shelf"] = Shelf.STOPPED_READING
+                # no watching state in the film model: unwatched titles go to
+                # "Want to Watch"
+                case "in_progress" | "abandoned":
+                    normalized["shelf"] = Shelf.TO_READ
         return normalized
 
     def get_shelf(self, normalized_row: dict[str, Optional[str]]) -> Optional[str]:
         if normalized_row["date_finished"]:
             return Shelf.READ_FINISHED
         if normalized_row["date_started"]:
-            return Shelf.READING
+            return Shelf.TO_READ
         # no reading dates: fall back to the "shelf" column
         return super().get_shelf(normalized_row) or Shelf.TO_READ

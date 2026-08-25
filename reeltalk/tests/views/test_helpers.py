@@ -248,11 +248,17 @@ class ViewsHelpers(TestCase):
 
     def test_handle_reading_status_reading(self, *_):
         """posts shelve activities"""
-        shelf = self.local_user.shelf_set.get(identifier="reading")
+        # no local user has a reading shelf anymore, but remote instances may
+        # still send them, so the helper keeps handling the identifier
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            views.helpers.handle_reading_status(
-                self.local_user, shelf, self.book, "public"
+            shelf = models.Shelf.objects.create(
+                name="Currently Reading",
+                identifier="reading",
+                user=self.local_user,
             )
+        views.helpers.handle_reading_status(
+            self.local_user, shelf, self.book, "public"
+        )
         status = models.GeneratedNote.objects.get()
         self.assertEqual(status.user, self.local_user)
         self.assertEqual(status.mention_books.first(), self.book)

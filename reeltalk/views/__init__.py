@@ -110,7 +110,6 @@ from .landing.password import PasswordResetRequest, PasswordReset, ForcePassword
 
 # shelves
 from .shelf.shelf import Shelf
-from .shelf.shelf_actions import create_shelf, delete_shelf
 from .shelf.shelf_actions import shelve, unshelve
 
 # csv and user import

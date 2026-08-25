@@ -564,8 +564,22 @@ def upsert_shelves(user, book, shelves):
     """Take shelf JSON objects and create
     DB entries if they don't already exist"""
 
+    # exports from before the film rebrand use the old default shelf names;
+    # map them onto the current defaults so we don't create duplicates
+    legacy_names = {
+        "To Read": "to-read",
+        "Currently Reading": "to-read",
+        "Stopped Reading": "to-read",
+        "Read": "read",
+    }
+
     for shelf in shelves:
-        book_shelf = models.Shelf.objects.filter(name=shelf["name"], user=user).first()
+        identifier = legacy_names.get(shelf["name"])
+        book_shelf = (
+            user.shelf_set.filter(identifier=identifier).first()
+            if identifier
+            else None
+        ) or models.Shelf.objects.filter(name=shelf["name"], user=user).first()
 
         if not book_shelf:
             book_shelf = models.Shelf.objects.create(name=shelf["name"], user=user)

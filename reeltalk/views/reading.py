@@ -30,9 +30,7 @@ class ReadingStatus(View):
         book = get_edition(book_id)
         template = {
             "want": "want.html",
-            "start": "start.html",
             "finish": "finish.html",
-            "stop": "stop.html",
         }.get(status)
         if not template:
             return HttpResponseNotFound()
@@ -42,11 +40,10 @@ class ReadingStatus(View):
     @transaction.atomic
     def post(self, request, status, book_id):
         """Change the state of a book by shelving it and adding reading dates"""
+        # the film model has no watching state: only "want" and "finish"
         identifier = {
             "want": models.Shelf.TO_READ,
-            "start": models.Shelf.READING,
             "finish": models.Shelf.READ_FINISHED,
-            "stop": models.Shelf.STOPPED_READING,
         }.get(status)
         if not identifier:
             logger.exception("Invalid reading status type: %s", status)

@@ -60,6 +60,7 @@ class User(PrivateProfileMixin, View):
             shelf_preview.append(
                 {
                     "name": user_shelf.name,
+                    "identifier": user_shelf.identifier,
                     "local_path": user_shelf.local_path,
                     "books": user_shelf.books.exclude(parent_work__in=blocked)
                     .order_by("-shelfbook__shelved_date")

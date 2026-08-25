@@ -31,12 +31,6 @@ class ImportUserForm(forms.Form):
     archive_file = forms.FileField(widget=ClearableFileInputWithWarning)
 
 
-class ShelfForm(CustomForm):
-    class Meta:
-        model = models.Shelf
-        fields = ["user", "name", "privacy", "description"]
-
-
 class ReportForm(CustomForm):
     class Meta:
         model = models.Report

@@ -2,34 +2,11 @@
 
 from django.db import IntegrityError, transaction
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST
 
-from reeltalk import forms, models
+from reeltalk import models
 from reeltalk.views.helpers import redirect_to_referer, get_mergeable_object_or_404
-
-
-@login_required
-@require_POST
-def create_shelf(request):
-    """user generated shelves"""
-    form = forms.ShelfForm(request.POST)
-    if not form.is_valid():
-        return redirect("user-shelves", request.user.localname)
-
-    shelf = form.save(request)
-    return redirect(shelf.local_path)
-
-
-@login_required
-@require_POST
-def delete_shelf(request, shelf_id):
-    """user generated shelves"""
-    shelf = get_object_or_404(models.Shelf, id=shelf_id)
-    shelf.raise_not_deletable(request.user)
-
-    shelf.delete()
-    return redirect("user-shelves", request.user.localname)
 
 
 @login_required

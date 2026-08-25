@@ -7,8 +7,8 @@
 
     tour.addSteps([
         {
-            text: "{% trans 'This is the page where your books are listed, organised into shelves.' %}",
-            title: "{% trans 'Your books' %}",
+            text: "{% trans 'This is the page where your films are listed, organised into shelves.' %}",
+            title: "{% trans 'Your films' %}",
             buttons: [
                 {
                     action() {
@@ -28,8 +28,8 @@
             ],
         },
         {
-            text: "{% trans '<strong>To Read</strong>, <strong>Currently Reading</strong>, <strong>Read</strong>, and <strong>Stopped Reading</strong> are default shelves. When you change the reading status of a book it will automatically be moved to the matching shelf. A book can only be on one default shelf at a time.' %}",
-            title: "{% trans 'Reading status shelves' %}",
+            text: "{% trans '<strong>Want to Watch</strong> and <strong>Watched</strong> are your shelves. When you change the viewing status of a film it will automatically be moved to the matching shelf. A film can only be on one of them at a time.' %}",
+            title: "{% trans 'Status shelves' %}",
             attachTo: {
                 element: "#tour-user-shelves",
                 on: "bottom-start",
@@ -52,30 +52,7 @@
             ],
         },
         {
-            text: "{% trans 'You can create additional custom shelves to organise your books. A book on a custom shelf can be on any number of other shelves simultaneously, including one of the default reading status shelves' %}",
-            title: "{% trans 'Adding custom shelves.' %}",
-            attachTo: {
-                element: "#tour-create-shelf",
-                on: "left",
-            },
-            buttons: [
-                {
-                    action() {
-                        return this.back();
-                    },
-                    secondary: true,
-                    text: "{% trans 'Back' %}",
-                },
-                {
-                    action() {
-                        return this.next();
-                    },
-                    text: "{% trans 'Next' %}",
-                },
-            ],
-        },
-        {
-            text: "{% trans 'If you have an export file from another service like Goodreads or LibraryThing, you can import it here.' %}",
+            text: "{% trans 'If you have an export file from another service, you can import it here.' %}",
             title: "{% trans 'Import from another service' %}",
             attachTo: {
                 element: "#tour-import-books",
@@ -98,7 +75,7 @@
             ],
         },
         {
-            text: `{% trans "Now that we've explored book shelves, let's take a look at a related concept: book lists!" %}<p class="notification is-warning is-light mt-3">{% trans "Click on the <strong>Lists</strong> link here to continue the tour." %}`,
+            text: `{% trans "Now that we've explored film shelves, let's take a look at a related concept: film lists!" %}<p class="notification is-warning is-light mt-3">{% trans "Click on the <strong>Lists</strong> link here to continue the tour." %}`,
             title: "{% trans 'Lists' %}",
             attachTo: {
                 element: () => {

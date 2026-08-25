@@ -11,10 +11,10 @@ register = template.Library()
 
 
 SHELF_NAMES = {
-    "all": _("All books"),
-    "to-read": _("To Read"),
+    "all": _("All films"),
+    "to-read": _("Want to Watch"),
     "reading": _("Currently Reading"),
-    "read": _("Read"),
+    "read": _("Watched"),
     "stopped-reading": _("Stopped Reading"),
 }
 
@@ -33,15 +33,11 @@ def get_is_book_on_shelf(book, shelf):
 
 @register.filter(name="next_shelf")
 def get_next_shelf(current_shelf):
-    """shelf you'd use to update reading progress"""
+    """shelf you'd use to update viewing status"""
     if current_shelf == "to-read":
-        return "reading"
-    if current_shelf == "reading":
         return "read"
     if current_shelf == "read":
         return "complete"
-    if current_shelf == "stopped-reading":
-        return "stopped-reading-complete"
     return "to-read"
 
 

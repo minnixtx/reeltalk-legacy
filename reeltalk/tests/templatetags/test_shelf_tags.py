@@ -59,8 +59,7 @@ class ShelfTags(TestCase):
 
     def test_get_next_shelf(self, *_):
         """self progress helper"""
-        self.assertEqual(shelf_tags.get_next_shelf("to-read"), "reading")
-        self.assertEqual(shelf_tags.get_next_shelf("reading"), "read")
+        self.assertEqual(shelf_tags.get_next_shelf("to-read"), "read")
         self.assertEqual(shelf_tags.get_next_shelf("read"), "complete")
         self.assertEqual(shelf_tags.get_next_shelf("blooooga"), "to-read")
 

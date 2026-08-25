@@ -232,7 +232,7 @@ class Replies(View):
 def get_suggested_books(user, max_books=5):
     """helper to get a user's recent books"""
     book_count = 0
-    preset_shelves = {"reading": max_books, "read": 2, "to-read": max_books}
+    preset_shelves = {"read": 2, "to-read": max_books}
     suggested_books = []
 
     user_shelves = {

@@ -44,9 +44,10 @@ class ReadThrough(TestCase):
         """A basic readthrough doesn't create a progress update"""
         self.assertEqual(self.edition.readthrough_set.count(), 0)
 
-        self.client.post(
-            f"/reading-status/start/{self.edition.id}",
-            {"start_date": "2020-11-27"},
+        models.ReadThrough.objects.create(
+            user=self.user,
+            book=self.edition,
+            start_date=datetime(2020, 11, 27, tzinfo=timezone.utc),
         )
 
         readthroughs = self.edition.readthrough_set.all()
@@ -63,9 +64,10 @@ class ReadThrough(TestCase):
         """a readthrough with progress"""
         self.assertEqual(self.edition.readthrough_set.count(), 0)
 
-        self.client.post(
-            f"/reading-status/start/{self.edition.id}",
-            {"start_date": "2020-11-27"},
+        models.ReadThrough.objects.create(
+            user=self.user,
+            book=self.edition,
+            start_date=datetime(2020, 11, 27, tzinfo=timezone.utc),
         )
 
         readthroughs = self.edition.readthrough_set.all()

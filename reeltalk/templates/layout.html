@@ -36,9 +36,9 @@
                 <div class="field has-addons">
                     <div class="control">
                         {% if request.user.is_authenticated %}
-                            {% trans "Search for a book, author, user, or list" as search_placeholder %}
+                            {% trans "Search for a film, user, or list" as search_placeholder %}
                         {% else %}
-                            {% trans "Search for a book" as search_placeholder %}
+                            {% trans "Search for a film" as search_placeholder %}
                         {% endif %}
                         <input aria-label="{{ search_placeholder }}" id="tour-search" class="input" type="text" name="q" placeholder="{{ search_placeholder }}" value="{{ query }}" spellcheck="false">
                     </div>
@@ -83,7 +83,7 @@
                     {% trans "Discover" %}
                 </a>
                 <a href="{% url 'user-shelves' request.user.localname %}" class="navbar-item mt-3 py-0">
-                    {% trans "Your Books" %}
+                    {% trans "Your Films" %}
                 </a>
                 {% endif %}
             </div>

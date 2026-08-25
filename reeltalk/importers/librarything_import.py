@@ -34,7 +34,9 @@ class LibrarythingImporter(Importer):
     def get_shelf(self, normalized_row: dict[str, Optional[str]]) -> Optional[str]:
         if normalized_row["date_finished"]:
             return Shelf.READ_FINISHED
+        # no watching state in the film model: started-but-unwatched titles go
+        # to "Want to Watch"
         if normalized_row["date_started"]:
-            return Shelf.READING
+            return Shelf.TO_READ
         # no reading dates: fall back to the "shelf" column
         return super().get_shelf(normalized_row) or Shelf.TO_READ

@@ -59,7 +59,7 @@ const homeTour = new Shepherd.Tour({
 
 homeTour.addSteps([
     {
-        text: "{% trans 'Search for books, users, or lists using this search box.' %}",
+        text: "{% trans 'Search for films, users, or lists using this search box.' %}",
         title: "{% trans 'Search box' %}",
         attachTo: {
             element: "#tour-search",
@@ -76,7 +76,7 @@ homeTour.addSteps([
         ],
     },
     {
-        text: "{% trans 'Use the <strong>Lists</strong>, <strong>Discover</strong>, and <strong>Your Books</strong> links to discover reading suggestions and the latest happenings on this server, or to see your catalogued books!' %}",
+        text: "{% trans 'Use the <strong>Lists</strong>, <strong>Discover</strong>, and <strong>Your Films</strong> links to discover viewing suggestions and the latest happenings on this server, or to see your catalogued films!' %}",
         title: "{% trans 'Navigation Bar' %}",
         attachTo: {
             element: checkResponsiveState('#tour-navbar-start'),
@@ -100,8 +100,8 @@ homeTour.addSteps([
         ],
     },
     {
-        text: "{% trans 'Books on your reading status shelves will be shown here.' %}",
-        title: "{% trans 'Your Books' %}",
+        text: "{% trans 'Films on your status shelves will be shown here.' %}",
+        title: "{% trans 'Your Films' %}",
         attachTo: {
             element: "#tour-suggested-books",
             on: "right",
@@ -125,7 +125,7 @@ homeTour.addSteps([
         ],
     },
     {
-        text: "{% trans 'Updates from people you are following will appear in your <strong>Home</strong> timeline.<br><br>The <strong>Books</strong> tab shows activity from anyone, related to your books.' %}",
+        text: "{% trans 'Updates from people you are following will appear in your <strong>Home</strong> timeline.<br><br>The <strong>Films</strong> tab shows activity from anyone, related to your films.' %}",
         title: "{% trans 'Timelines' %}",
         attachTo: {
             element: "#feed",

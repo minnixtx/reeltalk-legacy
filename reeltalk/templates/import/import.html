@@ -3,8 +3,8 @@
 {% load humanize %}
 {% load shelf_tags %}
 
-{% block title %}{% trans "Import Book List" %}{% endblock %}
-{% block header %}{% trans "Import Book List" %}{% endblock %}
+{% block title %}{% trans "Import Film List" %}{% endblock %}
+{% block header %}{% trans "Import Film List" %}{% endblock %}
 
 {% block panel %}
 <div class="block">
@@ -19,9 +19,9 @@
             <div class="notification">
                 <p>
                     {% blocktrans trimmed count days=import_limit_reset with display_size=import_size_limit|intcomma %}
-                        Currently, you are allowed to import {{ display_size }} books every {{ import_limit_reset }} day.
+                        Currently, you are allowed to import {{ display_size }} films every {{ import_limit_reset }} day.
                     {% plural %}
-                        Currently, you are allowed to import {{ display_size }} books every {{ import_limit_reset }} days.
+                        Currently, you are allowed to import {{ display_size }} films every {{ import_limit_reset }} days.
                     {% endblocktrans %}
                 </p>
                 <p>{% blocktrans with display_left=allowed_imports|intcomma %}You have {{ display_left }} left.{% endblocktrans %}</p>
@@ -48,6 +48,11 @@
 
             <div class="columns">
             <div class="column is-half">
+                <p class="help">
+                    {% blocktrans trimmed %}
+                        ReelTalk's native format is a list exported from The Movie Database (TMDB); importing TMDB exports is coming soon. In the meantime, you can import from one of the sources below.
+                    {% endblocktrans %}
+                </p>
                 <div class="field">
                     <label class="label" for="source">
                         {% trans "Data source:" %}
@@ -107,7 +112,7 @@
                 </div>
                 <div class="field">
                     <label class="label" for="shelf_override">
-                        {% trans "Shelve all imported books on:" %}
+                        {% trans "Shelve all imported films on:" %}
                     </label>
 
                     <div class="select">

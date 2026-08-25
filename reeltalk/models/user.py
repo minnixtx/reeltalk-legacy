@@ -496,20 +496,12 @@ class User(OrderedCollectionPageMixin, AbstractUser):
         """default shelves for a new user"""
         shelves = [
             {
-                "name": "To Read",
+                "name": "Want to Watch",
                 "identifier": "to-read",
             },
             {
-                "name": "Currently Reading",
-                "identifier": "reading",
-            },
-            {
-                "name": "Read",
+                "name": "Watched",
                 "identifier": "read",
-            },
-            {
-                "name": "Stopped Reading",
-                "identifier": "stopped-reading",
             },
         ]
 

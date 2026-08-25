@@ -3,7 +3,6 @@
 from unittest.mock import patch
 
 from django.contrib.auth.models import AnonymousUser
-from django.http import Http404
 from django.template.response import TemplateResponse
 from django.test import TestCase
 from django.test.client import RequestFactory
@@ -305,102 +304,6 @@ class ShelfViews(TestCase):
             )
         self.assertIsInstance(result, ActivitypubResponse)
         self.assertEqual(result.status_code, 200)
-
-    def test_edit_shelf_privacy(self):
-        """set name or privacy on shelf"""
-        view = views.Shelf.as_view()
-        shelf = self.local_user.shelf_set.get(identifier="to-read")
-        self.assertEqual(shelf.privacy, "public")
-
-        request = self.factory.post(
-            "",
-            {
-                "privacy": "unlisted",
-                "user": self.local_user.id,
-                "name": "To Read",
-            },
-        )
-        request.user = self.local_user
-        view(
-            request,
-            username=self.local_user.username,
-            shelf_identifier=shelf.identifier,
-        )
-        shelf.refresh_from_db()
-
-        self.assertEqual(shelf.privacy, "unlisted")
-
-    def test_edit_shelf_name(self):
-        """change the name of an editable shelf"""
-        view = views.Shelf.as_view()
-        shelf = models.Shelf.objects.create(name="Test Shelf", user=self.local_user)
-        self.assertEqual(shelf.privacy, "public")
-
-        request = self.factory.post(
-            "", {"privacy": "public", "user": self.local_user.id, "name": "cool name"}
-        )
-        request.user = self.local_user
-        with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            view(
-                request,
-                username=request.user.username,
-                shelf_identifier=shelf.identifier,
-            )
-        shelf.refresh_from_db()
-
-        self.assertEqual(shelf.name, "cool name")
-        self.assertEqual(shelf.identifier, f"testshelf-{shelf.id}")
-
-    def test_edit_shelf_by_non_owner_blocked(self):
-        view = views.Shelf.as_view()
-        shelf = models.Shelf.objects.create(name="Test Shelf", user=self.local_user)
-        with (
-            patch("reeltalk.suggested_users.rerank_suggestions_task.delay"),
-            patch("reeltalk.activitystreams.populate_stream_task.delay"),
-            patch("reeltalk.lists_stream.populate_lists_task.delay"),
-        ):
-            attacker = models.User.objects.create_user(
-                "rat@local.com",
-                "rat@rat.com",
-                "ratword",
-                local=True,
-                localname="rat",
-                remote_id="https://example.com/users/rat",
-            )
-
-        request = self.factory.post(
-            "", {"privacy": "public", "user": attacker.pk, "name": "Hijacked"}
-        )
-        request.user = attacker
-        with self.assertRaises(Http404):
-            view(
-                request,
-                username=self.local_user.username,
-                shelf_identifier=shelf.identifier,
-            )
-        shelf.refresh_from_db()
-
-        self.assertEqual(shelf.name, "Test Shelf")
-        self.assertEqual(shelf.user, self.local_user)
-
-    def test_edit_shelf_name_not_editable(self):
-        """can't change the name of an non-editable shelf"""
-        view = views.Shelf.as_view()
-        shelf = self.local_user.shelf_set.get(identifier="to-read")
-        self.assertEqual(shelf.privacy, "public")
-
-        request = self.factory.post(
-            "", {"privacy": "public", "user": self.local_user.id, "name": "cool name"}
-        )
-        request.user = self.local_user
-        with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            view(
-                request,
-                username=request.user.username,
-                shelf_identifier=shelf.identifier,
-            )
-
-        self.assertEqual(shelf.name, "To Read")
 
     def test_filter_shelf_found(self):
         """display books that match a filter keyword"""

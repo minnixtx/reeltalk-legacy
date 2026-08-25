@@ -88,7 +88,7 @@ class CalibreImport(TestCase):
         cases = [
             ("Read", models.Shelf.READ_FINISHED),
             ("read", models.Shelf.READ_FINISHED),
-            ("Currently reading", models.Shelf.READING),
+            ("Currently reading", models.Shelf.TO_READ),
             ("to-read", models.Shelf.TO_READ),
         ]
         for value, expected in cases:

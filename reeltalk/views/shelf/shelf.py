@@ -4,17 +4,14 @@ from collections import namedtuple
 import re
 
 from django.db.models import OuterRef, Subquery, F, Max
-from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.http import HttpResponseBadRequest
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
-from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
 from django.views import View
 from django.views.decorators.vary import vary_on_headers
 
-from reeltalk import forms, models
+from reeltalk import models
 from reeltalk.activitypub import ActivitypubResponse
 from reeltalk.settings import PAGE_LENGTH
 from reeltalk.views.helpers import is_api_request
@@ -59,7 +56,7 @@ class Shelf(PrivateProfileMixin, View):
                 .distinct()
             )
 
-            shelf = FakeShelf("all", _("All books"), user, books, "public")
+            shelf = FakeShelf("all", _("All films"), user, books, "public")
 
         if is_api_request(request) and shelf_identifier:
             return ActivitypubResponse(shelf.to_activity(**request.GET))
@@ -118,10 +115,9 @@ class Shelf(PrivateProfileMixin, View):
             "user": user,
             "is_self": is_self,
             "shelves": shelves,
+            "shelf_tabs": shelves.filter(identifier__in=["to-read", "read"]),
             "shelf": shelf,
             "books": page,
-            "edit_form": forms.ShelfForm(instance=shelf if shelf_identifier else None),
-            "create_form": forms.ShelfForm(),
             "sort": sort,
             "page_range": paginated.get_elided_page_range(
                 page.number, on_each_side=2, on_ends=1
@@ -131,21 +127,6 @@ class Shelf(PrivateProfileMixin, View):
         }
 
         return TemplateResponse(request, "shelf/shelf.html", data)
-
-    @method_decorator(login_required, name="dispatch")
-    def post(self, request, username, shelf_identifier):
-        """edit a shelf"""
-        shelf = get_object_or_404(request.user.shelf_set, identifier=shelf_identifier)
-
-        # you can't change the name of the default shelves
-        if not shelf.editable and request.POST.get("name") != shelf.name:
-            return HttpResponseBadRequest()
-
-        form = forms.ShelfForm(request.POST, instance=shelf)
-        if not form.is_valid():
-            return redirect(shelf.local_path)
-        shelf = form.save(request)
-        return redirect(shelf.local_path)
 
 
 def sort_books(books, sort):

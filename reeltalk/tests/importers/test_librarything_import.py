@@ -202,7 +202,7 @@ class LibrarythingImport(TestCase):
                     "shelf": "Read",
                 }
             ),
-            models.Shelf.READING,
+            models.Shelf.TO_READ,
         )
 
     def test_get_shelf_falls_back_to_shelf_column(self, *_):
@@ -210,7 +210,7 @@ class LibrarythingImport(TestCase):
         cases = [
             ("Read", models.Shelf.READ_FINISHED),
             ("read", models.Shelf.READ_FINISHED),
-            ("Currently reading", models.Shelf.READING),
+            ("Currently reading", models.Shelf.TO_READ),
             ("to-read", models.Shelf.TO_READ),
         ]
         for value, expected in cases:
