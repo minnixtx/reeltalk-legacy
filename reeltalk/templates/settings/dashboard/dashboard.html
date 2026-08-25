@@ -49,15 +49,9 @@
     {% include 'settings/dashboard/warnings/check_for_updates.html' with warning_level="success" fullwidth=True %}
     {% endif %}
 
-    {% if missing_privacy or missing_conduct %}
+    {% if missing_privacy %}
     <div class="column is-12 columns m-0 p-0">
-        {% if missing_privacy %}
         {% include 'settings/dashboard/warnings/missing_privacy.html' with warning_level="danger" %}
-        {% endif %}
-
-        {% if missing_conduct %}
-        {% include 'settings/dashboard/warnings/missing_conduct.html' with warning_level="warning" %}
-        {% endif %}
     </div>
     {% endif %}
 

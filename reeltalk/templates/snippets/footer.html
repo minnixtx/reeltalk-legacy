@@ -24,9 +24,6 @@
             </div>
             <div class="column is-2">
                 <p>
-                    <a href ="{% url 'conduct' %}">{% trans "Code of Conduct" %}</a>
-                </p>
-                <p>
                     <a href ="{% url 'privacy' %}">{% trans "Privacy Policy" %}</a>
                 </p>
                 {% if site.show_impressum %}
@@ -36,15 +33,6 @@
                 {% endif %}
             </div>
             <div class="column content">
-                {% if site.support_link %}
-                <p>
-                    <span class="icon icon-heart"></span>
-                    {% blocktrans trimmed with site_name=site.name support_link=site.support_link support_title=site.support_title %}
-                        Support {{ site_name }} on
-                        <a href="{{ support_link }}" target="_blank" rel="nofollow noopener noreferrer">{{ support_title }}</a>
-                    {% endblocktrans %}
-                </p>
-                {% endif %}
                 <p>
                 {% blocktrans trimmed %}
                     ReelTalk's source code is freely available. You can contribute or report issues on

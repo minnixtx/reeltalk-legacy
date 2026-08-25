@@ -77,14 +77,6 @@
 </div>
 {% endif %}
 
-{% if goal %}
-<div class="block">
-    {% now 'Y' as current_year%}
-    <h2 class="title">{% blocktrans %}{{ current_year }} Reading Goal{% endblocktrans %}</h2>
-    {% include 'snippets/goal_progress.html' with goal=goal %}
-</div>
-{% endif %}
-
 <div>
     <div class="columns is-mobile">
         <h2 class="title column">{% trans "User Activity" %}</h2>

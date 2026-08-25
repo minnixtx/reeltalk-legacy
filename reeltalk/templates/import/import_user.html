@@ -104,9 +104,6 @@
                                     {% trans "Whether following/followers are shown on your profile" %}
                                 </li>
                                 <li>
-                                    {% trans "Whether your reading goal is shown on your profile" %}
-                                </li>
-                                <li>
                                     {% trans "Whether you see user follow suggestions" %}
                                 </li>
                                 <li>
@@ -132,15 +129,6 @@
                     </label>
                 </div>
                 <div class="column is-half">
-                    <div class="field">
-                        <label class="label mb-0">
-                            <input type="checkbox" name="include_goals" checked aria-describedby="desc_include_goals">
-                            {% trans "Reading goals" %}
-                        </label>
-                        <p id="desc_include_goals">
-                            {% trans "Overwrites reading goals for all years listed in the import file" %}
-                        </p>
-                    </div>
                     <label class="label">
                         <input type="checkbox" name="include_shelves" checked> {% trans "Shelves" %}
                     </label>

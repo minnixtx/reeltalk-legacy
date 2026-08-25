@@ -6,7 +6,6 @@ from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
-from django.utils import timezone
 from django.views import View
 from django.views.decorators.http import require_POST
 from django.views.decorators.vary import vary_on_headers
@@ -96,14 +95,6 @@ class User(PrivateProfileMixin, View):
         )
 
         paginated = Paginator(activities, PAGE_LENGTH)
-        goal = models.AnnualGoal.objects.filter(
-            user=user, year=timezone.now().year
-        ).first()
-        if goal:
-            try:
-                goal.raise_visible_to_user(request.user)
-            except Http404:
-                goal = None
 
         data = {
             "user": user,
@@ -111,7 +102,6 @@ class User(PrivateProfileMixin, View):
             "shelves": shelf_preview,
             "shelf_count": shelves.count(),
             "activities": paginated.get_page(request.GET.get("page", 1)),
-            "goal": goal,
             "is_profile_locked": False,
         }
 

@@ -28,29 +28,6 @@ tour.addSteps([
         ],
     },
     {
-        text: `{% trans "This tab shows everything you have read towards your annual reading goal, or allows you to set one. You don't have to set a reading goal if that's not your thing!" %}`,
-        title: "{% trans 'Reading Goal' %}",
-        attachTo: {
-            element: "#tour-reading-goal",
-            on: "right",
-        },
-        buttons: [
-            {
-                action() {
-                    return this.back();
-                },
-                secondary: true,
-                text: "{% trans 'Back' %}",
-            },
-            {
-                action() {
-                    return this.next();
-                },
-                text: "{% trans 'Next' %}",
-            },
-        ],
-    },
-    {
         text: "{% trans 'Here you can see your groups, or create a new one. A group brings together Reeltalk users and allows them to curate lists together.' %}",
         title: "{% trans 'Groups' %}",
         attachTo: {

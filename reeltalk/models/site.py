@@ -72,7 +72,6 @@ class SiteSettings(SiteModel):
         default="If your request is approved, you will receive an email with a "
         "registration link."
     )
-    code_of_conduct = models.TextField(default="Add a code of conduct here.")
     privacy_policy = models.TextField(default="Add a privacy policy here.")
     impressum = models.TextField(default="Add a impressum here.")
     show_impressum = models.BooleanField(default=False)
@@ -99,8 +98,6 @@ class SiteSettings(SiteModel):
     )
 
     # footer
-    support_link = models.CharField(max_length=255, null=True, blank=True)
-    support_title = models.CharField(max_length=100, null=True, blank=True)
     admin_email = models.EmailField(max_length=255, null=True, blank=True)
     footer_item = models.TextField(null=True, blank=True)
 

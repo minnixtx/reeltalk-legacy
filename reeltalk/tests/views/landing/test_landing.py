@@ -64,16 +64,6 @@ class LandingViews(TestCase):
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
 
-    def test_conduct_page(self):
-        """there are so many views, this just makes sure it LOADS"""
-        view = views.conduct
-        request = self.factory.get("")
-        request.user = self.local_user
-        result = view(request)
-        self.assertIsInstance(result, TemplateResponse)
-        validate_html(result.render())
-        self.assertEqual(result.status_code, 200)
-
     def test_privacy_page(self):
         """there are so many views, this just makes sure it LOADS"""
         view = views.privacy

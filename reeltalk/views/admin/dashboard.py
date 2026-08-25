@@ -50,11 +50,6 @@ class Dashboard(View):
 
         site = models.SiteSettings.get()
 
-        data["missing_conduct"] = (
-            not site.code_of_conduct
-            or site.code_of_conduct
-            == site._meta.get_field("code_of_conduct").get_default()
-        )
         data["missing_privacy"] = (
             not site.privacy_policy
             or site.privacy_policy

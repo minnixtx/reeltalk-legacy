@@ -159,7 +159,6 @@ class User(OrderedCollectionPageMixin, AbstractUser):
     )
 
     # options to turn features on and off
-    show_goal = models.BooleanField(default=True)
     show_suggested_users = models.BooleanField(default=True)
     discoverable = fields.BooleanField(default=False)
     show_guided_tour = models.BooleanField(default=True)

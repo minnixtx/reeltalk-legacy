@@ -75,11 +75,6 @@ class UserViews(TestCase):
 
     def test_user_page(self):
         """there are so many views, this just makes sure it LOADS"""
-        # extras that are rendered on the user page
-        models.AnnualGoal.objects.create(
-            user=self.local_user, goal=12, privacy="followers"
-        )
-
         view = views.User.as_view()
         request = self.factory.get("")
         request.user = self.local_user

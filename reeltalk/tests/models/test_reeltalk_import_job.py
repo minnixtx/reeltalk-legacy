@@ -37,7 +37,6 @@ class ReeltalkImport(TestCase):
                 summary="I'm a real bookmouse",
                 manually_approves_followers=False,
                 hide_follows=False,
-                show_goal=True,
                 show_suggested_users=True,
                 discoverable=True,
                 preferred_timezone="America/Los Angeles",
@@ -127,32 +126,10 @@ class ReeltalkImport(TestCase):
 
             self.assertEqual(self.local_user.manually_approves_followers, True)
             self.assertEqual(self.local_user.hide_follows, True)
-            self.assertEqual(self.local_user.show_goal, False)
             self.assertEqual(self.local_user.show_suggested_users, False)
             self.assertEqual(self.local_user.discoverable, False)
             self.assertEqual(self.local_user.preferred_timezone, "Australia/Adelaide")
             self.assertEqual(self.local_user.default_post_privacy, "followers")
-
-    def test_update_goals(self):
-        """Test update the user's goals from import data"""
-
-        models.AnnualGoal.objects.create(
-            user=self.local_user,
-            year=2023,
-            goal=999,
-            privacy="public",
-        )
-
-        goals = [{"goal": 12, "year": 2023, "privacy": "followers"}]
-
-        with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            models.reeltalk_import_job.update_goals(self.local_user, goals)
-
-        self.local_user.refresh_from_db()
-        goal = models.AnnualGoal.objects.get()
-        self.assertEqual(goal.year, 2023)
-        self.assertEqual(goal.goal, 12)
-        self.assertEqual(goal.privacy, "followers")
 
     def test_upsert_saved_lists_existing(self):
         """Test upserting an existing saved list"""

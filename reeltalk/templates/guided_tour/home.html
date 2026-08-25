@@ -76,29 +76,6 @@ homeTour.addSteps([
         ],
     },
     {
-        text: `{% trans "Search book records by scanning an ISBN barcode using your device's camera - great when you're in the bookstore or library!" %}`,
-        title: "{% trans 'Barcode reader' %}",
-        attachTo: {
-            element: "#tour-barcode",
-            on: "bottom",
-        },
-        buttons: [
-            {
-                action() {
-                    return this.back();
-                },
-                secondary: true,
-                text: "{% trans 'Back' %}",
-            },
-            {
-                action() {
-                    return this.next();
-                },
-                text: "{% trans 'Next' %}",
-            },
-        ],
-    },
-    {
         text: "{% trans 'Use the <strong>Lists</strong>, <strong>Discover</strong>, and <strong>Your Books</strong> links to discover reading suggestions and the latest happenings on this server, or to see your catalogued books!' %}",
         title: "{% trans 'Navigation Bar' %}",
         attachTo: {

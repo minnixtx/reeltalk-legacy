@@ -14,7 +14,7 @@ from django.core.files.storage import storages
 
 from reeltalk import settings
 
-from reeltalk.models import AnnualGoal, ReadThrough, ShelfBook, ListItem
+from reeltalk.models import ReadThrough, ShelfBook, ListItem
 from reeltalk.models import Review, Comment, Quotation
 from reeltalk.models import Edition
 from reeltalk.models import UserFollows, User, UserBlocks
@@ -65,7 +65,6 @@ def create_export_json_task(**kwargs):
             # generate JSON
             data = export_user(job.user)
             data["settings"] = export_settings(job.user)
-            data["goals"] = export_goals(job.user)
             data["books"] = export_books(job.user)
             data["saved_lists"] = export_saved_lists(job.user)
             data["follows"] = export_follows(job.user)
@@ -177,7 +176,6 @@ def export_user(user: User):
 def export_settings(user: User):
     """Additional settings - can't be serialized as AP"""
     vals = [
-        "show_goal",
         "preferred_timezone",
         "default_post_privacy",
         "show_suggested_users",
@@ -202,15 +200,6 @@ def export_blocks(user: User):
     blocks = UserBlocks.objects.filter(user_subject=user).distinct()
     blocking = User.objects.filter(userblocks_user_object__in=blocks).distinct()
     return [b.remote_id for b in blocking]
-
-
-def export_goals(user: User):
-    """add user reading goals to export JSON"""
-    reading_goals = AnnualGoal.objects.filter(user=user).distinct()
-    return [
-        {"goal": goal.goal, "year": goal.year, "privacy": goal.privacy}
-        for goal in reading_goals
-    ]
 
 
 def export_books(user: User):

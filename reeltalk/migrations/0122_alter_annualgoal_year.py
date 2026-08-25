@@ -2,6 +2,12 @@
 
 import reeltalk.models.user
 from django.db import migrations, models
+from django.utils import timezone
+
+
+def get_current_year():
+    """inlined from the removed reeltalk.models.annual_goal module"""
+    return timezone.now().year
 
 
 class Migration(migrations.Migration):
@@ -14,8 +20,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="annualgoal",
             name="year",
-            field=models.IntegerField(
-                default=reeltalk.models.annual_goal.get_current_year
-            ),
+            field=models.IntegerField(default=get_current_year),
         ),
     ]

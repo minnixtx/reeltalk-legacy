@@ -29,12 +29,6 @@ def about(request):
 
 
 @require_GET
-def conduct(request):
-    """more information about the instance"""
-    return TemplateResponse(request, "about/conduct.html")
-
-
-@require_GET
 def privacy(request):
     """more information about the instance"""
     return TemplateResponse(request, "about/privacy.html")

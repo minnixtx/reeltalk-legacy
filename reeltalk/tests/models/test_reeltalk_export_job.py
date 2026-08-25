@@ -38,7 +38,6 @@ class ReeltalkExportJob(TestCase):
                 summary="I'm a real bookmouse",
                 manually_approves_followers=False,
                 hide_follows=False,
-                show_goal=False,
                 show_suggested_users=False,
                 discoverable=True,
                 preferred_timezone="America/Los Angeles",
@@ -60,13 +59,6 @@ class ReeltalkExportJob(TestCase):
                 "badgerword",
                 local=True,
                 localname="badger",
-            )
-
-            models.AnnualGoal.objects.create(
-                user=self.local_user,
-                year=timezone.now().year,
-                goal=128937123,
-                privacy="followers",
             )
 
             self.list = models.List.objects.create(
@@ -231,15 +223,9 @@ class ReeltalkExportJob(TestCase):
         self.assertIsNotNone(self.job.export_json["blocks"])
         self.assertEqual(self.job.export_json["blocks"][0], self.badger_user.remote_id)
 
-    def test_export_reading_goals_task(self):
-        """test export_reading_goals_task adds the goals"""
-        self.assertIsNotNone(self.job.export_json["goals"])
-        self.assertEqual(self.job.export_json["goals"][0]["goal"], 128937123)
-
     def test_json_export(self):
         """test json_export job adds settings"""
         self.assertIsNotNone(self.job.export_json["settings"])
-        self.assertFalse(self.job.export_json["settings"]["show_goal"])
         self.assertEqual(
             self.job.export_json["settings"]["preferred_timezone"],
             "America/Los Angeles",

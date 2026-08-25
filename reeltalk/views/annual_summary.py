@@ -81,9 +81,6 @@ class AnnualSummary(View):
         )
         ratings_stats = ratings.aggregate(Avg("rating"))
 
-        # annual goal status
-        goal_status = get_goal_status(user, year)
-
         data = {
             "summary_user": user,
             "year": year,
@@ -106,7 +103,6 @@ class AnnualSummary(View):
                 review.book_id for review in ratings.filter(rating=5)
             ],
             "paginated_years": paginated_years,
-            "goal_status": goal_status,
         }
 
         return TemplateResponse(request, "annual_summary/layout.html", data)
@@ -219,15 +215,3 @@ def get_books_from_shelfbooks(books_ids, viewer):
     return books
 
 
-def get_goal_status(user, year):
-    """return a dict with the year's goal status"""
-
-    try:
-        goal = models.AnnualGoal.objects.get(user=user, year=year)
-    except models.AnnualGoal.DoesNotExist:
-        return None
-
-    if goal.privacy != "public":
-        return None
-
-    return {**goal.progress, **{"goal": goal.goal}}

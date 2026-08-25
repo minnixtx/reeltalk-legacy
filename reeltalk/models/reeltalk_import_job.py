@@ -258,8 +258,6 @@ def start_import_task(**kwargs):
                 update_user_profile(job.user, tar, job.import_data)
             if "include_user_settings" in job.required:
                 update_user_settings(job.user, job.import_data)
-            if "include_goals" in job.required:
-                update_goals(job.user, job.import_data.get("goals", []))
             if "include_saved_lists" in job.required:
                 upsert_saved_lists(job.user, job.import_data.get("saved_lists", []))
             if "include_follows" in job.required:
@@ -612,7 +610,6 @@ def update_user_settings(user, data):
         setattr(user, bw_field, data[ap_field])
 
     bw_fields = [
-        "show_goal",
         "show_suggested_users",
         "default_post_privacy",
         "preferred_timezone",
@@ -623,23 +620,6 @@ def update_user_settings(user, data):
         setattr(user, field, data["settings"][field])
 
     user.save(update_fields=update_fields)
-
-
-def update_goals(user, data):
-    """update the user's goals from import data"""
-
-    for goal in data:
-        # edit the existing goal if there is one
-        existing = models.AnnualGoal.objects.filter(
-            year=goal["year"], user=user
-        ).first()
-        if existing:
-            for k in goal.keys():
-                setattr(existing, k, goal[k])
-            existing.save()
-        else:
-            goal["user"] = user
-            models.AnnualGoal.objects.create(**goal)
 
 
 def upsert_saved_lists(user, values):

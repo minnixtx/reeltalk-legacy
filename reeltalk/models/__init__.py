@@ -20,7 +20,6 @@ from .favorite import Favorite
 from .readthrough import ReadThrough, ProgressUpdate, ProgressMode
 
 from .user import User, KeyPair
-from .annual_goal import AnnualGoal
 from .relationship import UserFollows, UserFollowRequest, UserBlocks
 from .report import Report, ReportAction
 from .federated_server import FederatedServer

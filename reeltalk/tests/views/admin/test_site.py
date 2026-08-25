@@ -61,7 +61,6 @@ class SiteSettingsViews(TestCase):
         form.data["instance_description"] = "blah"
         form.data["registration_closed_text"] = "blah"
         form.data["invite_request_text"] = "blah"
-        form.data["code_of_conduct"] = "blah"
         form.data["privacy_policy"] = "blah"
         form.data["show_impressum"] = False
         form.data["impressum"] = "bleh"

@@ -126,8 +126,6 @@ def init_settings():
     group_editor = Group.objects.filter(name="editor").first()
     if not models.SiteSettings.objects.all().first():
         models.SiteSettings.objects.create(
-            support_link="https://www.patreon.com/reeltalk",
-            support_title="Patreon",
             install_mode=True,
             default_user_auth_group=group_editor,
         )

@@ -8,14 +8,6 @@
     {% if user.is_authenticated %}
     <div class="column is-one-third pr-5">
         {% include "feed/suggested_books.html" %}
-        {% if goal %}
-        <section class="block">
-            <div class="block">
-                <h3 class="title is-4">{% blocktrans with yar=goal.year %}{{ year }} Reading Goal{% endblocktrans %}</h3>
-                {% include 'snippets/goal_progress.html' with goal=goal %}
-            </div>
-        </section>
-        {% endif %}
     </div>
     {% endif %}
 

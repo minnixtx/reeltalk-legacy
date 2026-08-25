@@ -36,12 +36,6 @@
                 </a>
             </li>
             <li>
-                {% url 'conduct' as path %}
-                <a href="{{ path }}" {% if request.path in path %}class="is-active"{% endif %}>
-                    {% trans "Code of Conduct" %}
-                </a>
-            </li>
-            <li>
                 {% url 'privacy' as path %}
                 <a href="{{ path }}" {% if request.path in path %}class="is-active"{% endif %}>
                     {% trans "Privacy Policy" %}

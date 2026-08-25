@@ -7,7 +7,6 @@ from django.db.models import Prefetch, Q, prefetch_related_objects
 from django.http import HttpResponseNotFound, Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
-from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.vary import vary_on_headers
@@ -73,21 +72,17 @@ class Feed(View):
         )
 
         data = {
-            **feed_page_data(request.user),
-            **{
-                "user": request.user,
-                "activities": page,
-                "suggested_users": suggestions,
-                "tab": tab,
-                "streams": STREAMS,
-                "goal_form": forms.GoalForm(),
-                "feed_status_types_options": FeedFilterChoices,
-                "feed_filters_applied": request.user.filters_applied,
-                "path": f"/{tab['key']}",
-                "annual_summary_year": get_annual_summary_year(),
-                "has_tour": True,
-                "has_summary_read_throughs": len(readthroughs),
-            },
+            "user": request.user,
+            "activities": page,
+            "suggested_users": suggestions,
+            "tab": tab,
+            "streams": STREAMS,
+            "feed_status_types_options": FeedFilterChoices,
+            "feed_filters_applied": request.user.filters_applied,
+            "path": f"/{tab['key']}",
+            "annual_summary_year": get_annual_summary_year(),
+            "has_tour": True,
+            "has_summary_read_throughs": len(readthroughs),
         }
         return TemplateResponse(request, "feed/feed.html", data)
 
@@ -121,13 +116,10 @@ class DirectMessage(View):
 
         paginated = Paginator(activities, PAGE_LENGTH)
         data = {
-            **feed_page_data(request.user),
-            **{
-                "user": request.user,
-                "partner": user,
-                "activities": paginated.get_page(request.GET.get("page")),
-                "path": "/direct-messages",
-            },
+            "user": request.user,
+            "partner": user,
+            "activities": paginated.get_page(request.GET.get("page")),
+            "path": "/direct-messages",
         }
         return TemplateResponse(request, "feed/direct_messages.html", data)
 
@@ -207,15 +199,12 @@ class Status(View):
         )
 
         data = {
-            **feed_page_data(request.user),
-            **{
-                "status": status,
-                "children": children,
-                "ancestors": ancestors,
-                "title": status.page_title,
-                "description": status.page_description,
-                "page_image": status.page_image,
-            },
+            "status": status,
+            "children": children,
+            "ancestors": ancestors,
+            "title": status.page_title,
+            "description": status.page_description,
+            "page_image": status.page_image,
         }
         return TemplateResponse(request, "feed/status.html", data)
 
@@ -238,20 +227,6 @@ class Replies(View):
         status.raise_visible_to_user(request.user)
 
         return ActivitypubResponse(status.to_replies(**request.GET))
-
-
-def feed_page_data(user):
-    """info we need for every feed page"""
-    if not user.is_authenticated:
-        return {}
-
-    goal = models.AnnualGoal.objects.filter(
-        user=user, year=timezone.localtime().year
-    ).first()
-    return {
-        "goal": goal,
-        "goal_form": forms.GoalForm(),
-    }
 
 
 def get_suggested_books(user, max_books=5):

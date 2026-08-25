@@ -78,14 +78,6 @@
                 <a href="{{ url }}">{% trans "Reviews and Comments" %}</a>
             </li>
 
-            {% if is_self or user.goal.exists %}
-            {% now 'Y' as year %}
-            {% url 'user-goal' user|username year as url %}
-            <li{% if url in request.path %} class="is-active"{% endif %} id="tour-reading-goal">
-                <a href="{{ url }}">{% trans "Reading Goal" %}</a>
-            </li>
-            {% endif %}
-
             {% if is_self or user|has_groups %}
             {% url 'user-groups' user|username as url %}
             <li{% if url in request.path %} class="is-active"{% endif %} id="tour-groups-tab">

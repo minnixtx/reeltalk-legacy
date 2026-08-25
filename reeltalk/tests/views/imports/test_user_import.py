@@ -59,7 +59,6 @@ class ImportUserViews(TestCase):
             )
 
         form.data["include_user_settings"] = ""
-        form.data["include_goals"] = "on"
 
         request = self.factory.post("", form.data)
         request.user = self.local_user
@@ -67,4 +66,4 @@ class ImportUserViews(TestCase):
         with patch("reeltalk.models.reeltalk_import_job.ReeltalkImportJob.start_job"):
             view(request)
         job = models.ReeltalkImportJob.objects.get()
-        self.assertEqual(job.required, ["include_goals"])
+        self.assertEqual(job.required, [])

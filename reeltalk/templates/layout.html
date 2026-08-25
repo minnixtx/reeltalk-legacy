@@ -49,16 +49,8 @@
                             </span>
                         </button>
                     </div>
-                    <div class="control">
-                        <button class="button" type="button" data-modal-open="barcode-scanner-modal">
-                            <span class="icon icon-barcode" title="{% trans 'Scan Barcode' %}" id="tour-barcode">
-                                <span class="is-sr-only">{% trans "Scan Barcode" %}</span>
-                            </span>
-                        </button>
-                    </div>
                 </div>
             </form>
-            {% include "search/barcode_modal.html" with id="barcode-scanner-modal" %}
 
             <button
                 type="button"
@@ -209,7 +201,6 @@
 <script src="{% static "js/localstorage.js" %}"></script>
 <script src="{% static "js/status_cache.js" %}"></script>
 <script src="{% static "js/xhr_files.js" %}"></script>
-<script src="{% static "js/vendor/quagga.min.js" %}"></script>
 <script src="{% static "js/vendor/shepherd.min.js" %}"></script>
 <script src="{% static "js/guided_tour.js" %}"></script>
 

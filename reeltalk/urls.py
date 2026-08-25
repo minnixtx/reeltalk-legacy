@@ -478,7 +478,6 @@ urlpatterns = [
     # landing pages
     re_path(r"^about/?$", views.about, name="about"),
     re_path(r"^privacy/?$", views.privacy, name="privacy"),
-    re_path(r"^conduct/?$", views.conduct, name="conduct"),
     re_path(r"^impressum/?$", views.impressum, name="impressum"),
     path("", views.Home.as_view(), name="landing"),
     re_path(r"^discover/?$", views.Discover.as_view(), name="discover"),
@@ -713,17 +712,8 @@ urlpatterns = [
         views.rss_feed.RssShelfFeed(),
         name="shelf-rss",
     ),
-    re_path(r"^create-shelf/?$", views.create_shelf, name="shelf-create"),
-    re_path(r"^delete-shelf/(?P<shelf_id>\d+)/?$", views.delete_shelf),
     re_path(r"^shelve/?$", views.shelve),
     re_path(r"^unshelve/?$", views.unshelve),
-    # goals
-    re_path(
-        rf"{LOCAL_USER_PATH}/goal/(?P<year>\d+)/?$",
-        views.Goal.as_view(),
-        name="user-goal",
-    ),
-    re_path(r"^hide-goal/?$", views.hide_goal, name="hide-goal"),
     # preferences
     re_path(r"^preferences/profile/?$", views.EditUser.as_view(), name="prefs-profile"),
     re_path(
@@ -930,8 +920,6 @@ urlpatterns = [
         views.update_author_from_remote,
         name="author-update-remote",
     ),
-    # isbn
-    re_path(r"^isbn/(?P<isbn>[\dxX]+)(.json)?/?$", views.Isbn.as_view()),
     # author
     re_path(
         r"^author/(?P<author_id>\d+)(.json)?/?$", views.Author.as_view(), name="author"
