@@ -1,4 +1,4 @@
-"""puttin' books on shelves"""
+"""puttin' films on shelves"""
 
 import re
 from typing import Optional, Iterable
@@ -16,7 +16,7 @@ from . import fields
 
 
 class Shelf(OrderedCollectionMixin, ReelTalkModel):
-    """a list of books owned by a user"""
+    """a list of films owned by a user"""
 
     TO_READ = "to-read"
     READING = "reading"
@@ -33,11 +33,11 @@ class Shelf(OrderedCollectionMixin, ReelTalkModel):
     )
     editable = models.BooleanField(default=True)
     privacy = fields.PrivacyField()
-    books = models.ManyToManyField(
-        "Edition",
+    films = models.ManyToManyField(
+        "Film",
         symmetrical=False,
-        through="ShelfBook",
-        through_fields=("shelf", "book"),
+        through="ShelfFilm",
+        through_fields=("shelf", "film"),
     )
 
     activity_serializer = activitypub.Shelf
@@ -57,25 +57,25 @@ class Shelf(OrderedCollectionMixin, ReelTalkModel):
 
     @property
     def collection_queryset(self):
-        """list of books for this shelf, overrides OrderedCollectionMixin"""
-        return self.books.order_by("shelfbook")
+        """list of films for this shelf, overrides OrderedCollectionMixin"""
+        return self.films.order_by("shelffilm")
 
     @property
     def deletable(self):
         """can the shelf be safely deleted?"""
-        return self.editable and not self.shelfbook_set.exists()
+        return self.editable and not self.shelffilm_set.exists()
 
     def get_remote_id(self):
         """shelf identifier instead of id"""
         base_path = self.user.remote_id
         identifier = self.identifier or self.get_identifier()
-        return f"{base_path}/books/{identifier}"
+        return f"{base_path}/films/{identifier}"
 
     @property
     def local_path(self):
         """No slugs"""
         identifier = self.identifier or self.get_identifier()
-        return f"{self.user.local_path}/books/{identifier}"
+        return f"{self.user.local_path}/films/{identifier}"
 
     def raise_not_deletable(self, viewer):
         """don't let anyone delete a default shelf"""
@@ -89,11 +89,11 @@ class Shelf(OrderedCollectionMixin, ReelTalkModel):
         unique_together = ("user", "identifier")
 
 
-class ShelfBook(CollectionItemMixin, ReelTalkModel):
-    """many to many join table for books and shelves"""
+class ShelfFilm(CollectionItemMixin, ReelTalkModel):
+    """many to many join table for films and shelves"""
 
-    book = fields.ForeignKey(
-        "Edition", on_delete=models.PROTECT, activitypub_field="book"
+    film = fields.ForeignKey(
+        "Film", on_delete=models.PROTECT, activitypub_field="film"
     )
     shelf = models.ForeignKey("Shelf", on_delete=models.PROTECT)
     shelved_date = models.DateTimeField(default=timezone.now)
@@ -119,29 +119,16 @@ class ShelfBook(CollectionItemMixin, ReelTalkModel):
         super().save(*args, priority=priority, update_fields=update_fields, **kwargs)
 
         if is_update and self.user.local:
-            # remove all caches related to all editions of this book
-            cache.delete_many(
-                [
-                    f"book-on-shelf-{book.id}-{self.shelf_id}"
-                    for book in self.book.parent_work.editions.all()
-                ]
-            )
+            cache.delete(f"film-on-shelf-{self.film.id}-{self.shelf_id}")
 
     def delete(self, *args, **kwargs):
         if self.id and self.user.local:
-            cache.delete_many(
-                [
-                    f"book-on-shelf-{book}-{self.shelf_id}"
-                    for book in self.book.parent_work.editions.values_list(
-                        "id", flat=True
-                    )
-                ]
-            )
+            cache.delete(f"film-on-shelf-{self.film.id}-{self.shelf_id}")
         super().delete(*args, **kwargs)
 
     class Meta:
         """an opinionated constraint!
-        you can't put a book on shelf twice"""
+        you can't put a film on shelf twice"""
 
-        unique_together = ("book", "shelf")
+        unique_together = ("film", "shelf")
         ordering = ("-shelved_date", "-created_date", "-updated_date")

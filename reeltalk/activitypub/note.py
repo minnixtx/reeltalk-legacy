@@ -100,28 +100,24 @@ class GeneratedNote(Note):
 
 @dataclass(init=False)
 class Comment(Note):
-    """like a note but with a book"""
+    """like a note but with a film"""
 
-    inReplyToBook: str
+    inReplyToFilm: str
     readingStatus: str = None
-    progress: int = None
-    progressMode: str = None
     type: str = "Comment"
 
 
 @dataclass(init=False)
 class Quotation(Comment):
-    """a quote and commentary on a book"""
+    """a quote and commentary on a film"""
 
     quote: str
-    position: int = None
-    positionMode: str = None
     type: str = "Quotation"
 
 
 @dataclass(init=False)
 class Review(Comment):
-    """a full book review"""
+    """a full film review"""
 
     name: str = None
     rating: int = None

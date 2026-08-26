@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from typing import List
 
 from .base_activity import ActivityObject
-from .book import Work
 
 
 @dataclass(init=False)
@@ -35,26 +34,17 @@ class Shelf(OrderedCollectionPrivate):
 
 
 @dataclass(init=False)
-class BookList(OrderedCollectionPrivate):
+class FilmList(OrderedCollectionPrivate):
     """structure of an ordered collection activity"""
 
     summary: str = None
     curation: str = "closed"
-    type: str = "BookList"
-
-
-@dataclass(init=False)
-class SuggestionList(OrderedCollectionPrivate):
-    """structure of an ordered collection activity"""
-
-    summary: str = None
-    book: Work = None
-    type: str = "SuggestionList"
+    type: str = "FilmList"
 
 
 @dataclass(init=False)
 class OrderedCollectionPage(ActivityObject):
-    """structure of an ordered collection activity"""
+    """structure of an ordered collection page activity"""
 
     partOf: str
     orderedItems: List
@@ -73,9 +63,9 @@ class CollectionItem(ActivityObject):
 
 @dataclass(init=False)
 class ListItem(CollectionItem):
-    """a book on a list"""
+    """a film on a list"""
 
-    book: str
+    film: str
     notes: str = None
     approved: bool = True
     order: int = None
@@ -83,17 +73,8 @@ class ListItem(CollectionItem):
 
 
 @dataclass(init=False)
-class SuggestionListItem(CollectionItem):
-    """a book on a list"""
-
-    book: str
-    notes: str = None
-    type: str = "SuggestionListItem"
-
-
-@dataclass(init=False)
 class ShelfItem(CollectionItem):
-    """a book on a list"""
+    """a film on a shelf"""
 
-    book: str
+    film: str
     type: str = "ShelfItem"

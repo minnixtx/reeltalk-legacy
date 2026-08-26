@@ -405,8 +405,6 @@ class TagField(ManyToManyField):
         for link_json in value:
             link = activitypub.Link(**link_json)
             tag_type = link.type if link.type != "Mention" else "Person"
-            if tag_type == "Book":
-                tag_type = "Edition"
             if tag_type != self.related_model.activity_serializer.type:
                 # tags can contain multiple types
                 continue

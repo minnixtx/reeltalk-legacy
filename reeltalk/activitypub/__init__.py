@@ -15,12 +15,11 @@ from .note import Note, GeneratedNote, Article, Comment, Quotation
 from .note import Review, Rating
 from .note import Tombstone
 from .ordered_collection import OrderedCollection, OrderedCollectionPage
-from .ordered_collection import CollectionItem, ListItem, ShelfItem, SuggestionListItem
-from .ordered_collection import BookList, SuggestionList, Shelf
+from .ordered_collection import CollectionItem, ListItem, ShelfItem
+from .ordered_collection import FilmList, Shelf
 from .person import Person, PublicKey
 from .response import ActivitypubResponse
-from .book import Edition, Work, Author
-from .series import Series, SeriesBook
+from .film import Film
 from .verbs import Create, Delete, Undo, Update
 from .verbs import Follow, Accept, Reject, Block
 from .verbs import Add, Remove

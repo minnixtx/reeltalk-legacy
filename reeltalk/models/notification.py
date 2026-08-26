@@ -8,8 +8,6 @@ from . import (
     Boost,
     Favorite,
     GroupMemberInvitation,
-    ImportJob,
-    ReeltalkImportJob,
     LinkDomain,
 )
 from . import ListItem, Report, Status, User, UserFollowRequest
@@ -30,9 +28,7 @@ class NotificationType(models.TextChoices):
     FOLLOW = "FOLLOW"
     FOLLOW_REQUEST = "FOLLOW_REQUEST"
 
-    # Imports
-    IMPORT = "IMPORT"
-    USER_IMPORT = "USER_IMPORT"
+    # Exports
     USER_EXPORT = "USER_EXPORT"
 
     # List activity
@@ -73,7 +69,6 @@ class Notification(ReelTalkModel):
         "Group", on_delete=models.CASCADE, null=True, related_name="notifications"
     )
     related_status = models.ForeignKey("Status", on_delete=models.CASCADE, null=True)
-    related_import = models.ForeignKey("ImportJob", on_delete=models.CASCADE, null=True)
     related_user_export = models.ForeignKey(
         "ReeltalkExportJob", on_delete=models.CASCADE, null=True
     )
@@ -106,7 +101,7 @@ class Notification(ReelTalkModel):
         notification = cls.objects.filter(
             user=user,
             related_users=related_user,
-            related_list_items__book_list=list_item.book_list,
+            related_list_items__film_list=list_item.film_list,
             notification_type=NotificationType.ADD,
         ).first()
         if not notification:
@@ -219,34 +214,6 @@ def notify_user_on_unboost(sender, instance, *args, **kwargs):
     )
 
 
-@receiver(models.signals.post_save, sender=ImportJob)
-def notify_user_on_import_complete(
-    sender, instance, *args, update_fields=None, **kwargs
-):
-    """we imported your books! aren't you proud of us"""
-    update_fields = update_fields or []
-    if not instance.complete or "complete" not in update_fields:
-        return
-    Notification.objects.get_or_create(
-        user=instance.user,
-        notification_type=NotificationType.IMPORT,
-        related_import=instance,
-    )
-
-
-@receiver(models.signals.post_save, sender=ReeltalkImportJob)
-def notify_user_on_user_import_complete(
-    sender, instance, *args, update_fields=None, **kwargs
-):
-    """we imported your user details! aren't you proud of us"""
-    update_fields = update_fields or []
-    if not instance.complete or "complete" not in update_fields:
-        return
-    Notification.objects.create(
-        user=instance.user, notification_type=NotificationType.USER_IMPORT
-    )
-
-
 @receiver(models.signals.post_save, sender=ReeltalkExportJob)
 def notify_user_on_user_export_complete(
     sender, instance, *args, update_fields=None, **kwargs
@@ -333,14 +300,14 @@ def notify_user_on_list_item_add(sender, instance, created, *args, **kwargs):
     if not created:
         return
 
-    list_owner = instance.book_list.user
+    list_owner = instance.film_list.user
     # create a notification if someone ELSE added to a local user's list
     if list_owner.local and list_owner != instance.user:
         # keep the related_user singular, group the items
         Notification.notify_list_item(list_owner, instance)
 
-    if instance.book_list.group:
-        for membership in instance.book_list.group.memberships.all():
+    if instance.film_list.group:
+        for membership in instance.film_list.group.memberships.all():
             if membership.user != instance.user:
                 Notification.notify_list_item(membership.user, instance)
 

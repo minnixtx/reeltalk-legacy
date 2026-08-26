@@ -19,13 +19,10 @@ from model_utils import FieldTracker
 from model_utils.managers import InheritanceManager
 
 from reeltalk import activitypub
-from reeltalk.preview_images import generate_edition_preview_image_task
-from reeltalk.settings import ENABLE_PREVIEW_IMAGES
 from reeltalk.utils.db import add_update_fields
 from .activitypub_mixin import ActivitypubMixin, ActivityMixin
 from .activitypub_mixin import OrderedCollectionPageMixin
 from .base_model import ReelTalkModel
-from .readthrough import ProgressMode
 from . import fields
 
 
@@ -38,7 +35,7 @@ class Status(OrderedCollectionPageMixin, ReelTalkModel):
     content = fields.HtmlField(blank=True, null=True)
     raw_content = models.TextField(blank=True, null=True)
     mention_users = fields.TagField("User", related_name="mention_user")
-    mention_books = fields.TagField("Edition", related_name="mention_book")
+    mention_films = fields.TagField("Film", related_name="mention_film")
     mention_hashtags = fields.TagField("Hashtag", related_name="mention_hashtag")
     local = models.BooleanField(default=True)
     content_warning = fields.CharField(
@@ -199,9 +196,9 @@ class Status(OrderedCollectionPageMixin, ReelTalkModel):
     @property
     def page_image(self):
         """image to use as preview in meta tags when only this status is shown"""
-        if self.mention_books.exists():
-            book = self.mention_books.first()
-            return book.preview_image or book.cover
+        if self.mention_films.exists():
+            film = self.mention_films.first()
+            return film.poster
         return self.user.preview_image
 
     def to_replies(self, **kwargs):
@@ -231,26 +228,18 @@ class Status(OrderedCollectionPageMixin, ReelTalkModel):
             if hasattr(activity, "name"):
                 activity.name = self.pure_name
             activity.type = self.pure_type
-            book = getattr(self, "book", None)
-            books = [book] if book else []
-            books += list(self.mention_books.all())
-            if len(books) == 1 and getattr(books[0], "preview_image", None):
-                covers = [
-                    activitypub.Document(
-                        url=fields.get_absolute_url(books[0].preview_image),
-                        name=books[0].alt_text,
-                    )
-                ]
-            else:
-                covers = [
-                    activitypub.Document(
-                        url=fields.get_absolute_url(b.cover),
-                        name=b.alt_text,
-                    )
-                    for b in books
-                    if b and b.cover
-                ]
-            activity.attachment = covers
+            film = getattr(self, "film", None)
+            films = [film] if film else []
+            films += list(self.mention_films.all())
+            posters = [
+                activitypub.Document(
+                    url=fields.get_absolute_url(f.poster),
+                    name=f.alt_text,
+                )
+                for f in films
+                if f and f.poster
+            ]
+            activity.attachment = posters
         return activity
 
     def to_activity(self, pure=False):
@@ -278,30 +267,28 @@ class Status(OrderedCollectionPageMixin, ReelTalkModel):
         )
 
     @classmethod
-    def blocked_book_filter(cls, viewer, privacy_levels=None):
-        """filter out all statuses related to a book this user has blocked"""
+    def blocked_film_filter(cls, viewer, privacy_levels=None):
+        """filter out all statuses related to a film this user has blocked"""
 
         queryset = super().privacy_filter(viewer, privacy_levels=privacy_levels)
 
         if not viewer or not viewer.is_authenticated:
             return queryset
 
-        blocked = viewer.blocked_books.values_list("id", flat=True)
+        blocked = viewer.blocked_films.values_list("id", flat=True)
 
-        book_comments = queryset.filter(comment__book__parent_work__in=blocked)
-        book_quotations = queryset.filter(quotation__book__parent_work__in=blocked)
-        book_reviews = queryset.filter(review__book__parent_work__in=blocked)
-        book_mentions = queryset.filter(mention_books__parent_work__in=blocked)
-        book_statuses = book_comments.union(
-            book_quotations, book_reviews, book_mentions
-        )
+        film_comments = queryset.filter(comment__film__in=blocked)
+        film_quotations = queryset.filter(quotation__film__in=blocked)
+        film_reviews = queryset.filter(review__film__in=blocked)
+        film_mentions = queryset.filter(mention_films__in=blocked)
+        film_statuses = film_comments.union(film_quotations, film_reviews, film_mentions)
 
-        threads = book_statuses.values_list("thread_id", flat=True)
+        threads = film_statuses.values_list("thread_id", flat=True)
         thread_statuses = queryset.exclude(
-            id__in=book_statuses.values_list("id", flat=True)
+            id__in=film_statuses.values_list("id", flat=True)
         ).filter(thread_id__in=threads)
 
-        exclude = book_statuses.union(thread_statuses).values_list("id", flat=True)
+        exclude = film_statuses.union(thread_statuses).values_list("id", flat=True)
 
         return queryset.exclude(id__in=exclude).filter(
             deleted=False, user__is_active=True
@@ -323,13 +310,13 @@ class GeneratedNote(Status):
 
     @property
     def pure_content(self):
-        """indicate the book in question for mastodon (or w/e) users"""
+        """indicate the film in question for mastodon (or w/e) users"""
         message = self.content
-        books = ", ".join(
-            f'<a href="{book.remote_id}"><i>{book.title}</i></a>'
-            for book in self.mention_books.all()
+        films = ", ".join(
+            f'<a href="{film.remote_id}"><i>{film.title}</i></a>'
+            for film in self.mention_films.all()
         )
-        return f"{self.user.display_name} {message} {books}"
+        return f"{self.user.display_name} {message} {films}"
 
     activity_serializer = activitypub.GeneratedNote
     pure_type = "Note"
@@ -340,11 +327,11 @@ ReadingStatusChoices = models.TextChoices(
 )
 
 
-class BookStatus(Status):
+class FilmStatus(Status):
     """Shared fields for comments, quotes, reviews"""
 
-    book = fields.ForeignKey(
-        "Edition", on_delete=models.PROTECT, activitypub_field="inReplyToBook"
+    film = fields.ForeignKey(
+        "Film", on_delete=models.PROTECT, activitypub_field="inReplyToFilm"
     )
     pure_type = "Note"
 
@@ -359,99 +346,58 @@ class BookStatus(Status):
 
     @property
     def page_image(self):
-        return self.book.preview_image or self.book.cover or super().page_image
+        return self.film.poster or super().page_image
 
 
-class Comment(BookStatus):
+class Comment(FilmStatus):
     """like a review but without a rating and transient"""
-
-    # this is it's own field instead of a foreign key to the progress update
-    # so that the update can be deleted without impacting the status
-    progress = models.IntegerField(
-        validators=[MinValueValidator(0)], null=True, blank=True
-    )
-    progress_mode = models.CharField(
-        max_length=3,
-        choices=ProgressMode.choices,
-        default=ProgressMode.PAGE,
-        null=True,
-        blank=True,
-    )
 
     @property
     def pure_content(self):
-        """indicate the book in question for mastodon (or w/e) users"""
-        progress = self.progress or 0
+        """indicate the film in question for mastodon (or w/e) users"""
         citation = (
-            f'comment on <a href="{self.book.remote_id}"><i>{self.book.title}</i></a>'
+            f'comment on <a href="{self.film.remote_id}"><i>{self.film.title}</i></a>'
         )
-        if self.progress_mode == "PG" and progress > 0:
-            citation += f", p. {progress}"
         return f"{self.content}<p>({citation})</p>"
 
     activity_serializer = activitypub.Comment
 
     @property
     def page_title(self):
-        return _("%(display_name)s's comment on %(book_title)s") % {
+        return _("%(display_name)s's comment on %(film_title)s") % {
             "display_name": self.user.display_name,
-            "book_title": self.book.title,
+            "film_title": self.film.title,
         }
 
 
-class Quotation(BookStatus):
+class Quotation(FilmStatus):
     """like a review but without a rating and transient"""
 
     quote = fields.HtmlField()
     raw_quote = models.TextField(blank=True, null=True)
-    position = models.TextField(
-        null=True,
-        blank=True,
-    )
-    endposition = models.TextField(
-        null=True,
-        blank=True,
-    )
-    position_mode = models.CharField(
-        max_length=3,
-        choices=ProgressMode.choices,
-        default=ProgressMode.PAGE,
-        null=True,
-        blank=True,
-    )
-
-    def _format_position(self) -> Optional[str]:
-        """serialize page position"""
-        beg = self.position
-        end = self.endposition
-        if self.position_mode != "PG" or not beg:
-            return None
-        return f"pp. {beg}-{end}" if end else f"p. {beg}"
 
     @property
     def pure_content(self):
-        """indicate the book in question for mastodon (or w/e) users"""
+        """indicate the film in question for mastodon (or w/e) users"""
         quote = re.sub(r"^<p>", '<p>"', self.quote)
         quote = re.sub(r"</p>$", '"</p>', quote)
-        title, href = self.book.title, self.book.remote_id
-        author = f"{name}: " if (name := self.book.author_text) else ""
-        citation = f'— {author}<a href="{href}"><i>{title}</i></a>'
-        if position := self._format_position():
-            citation += f", {position}"
+        title, href = self.film.title, self.film.remote_id
+        director = f"{name}: " if (name := self.film.director_text) else ""
+        citation = f'— {director}<a href="{href}"><i>{title}</i></a>'
         return f"{quote} <p>{citation}</p>{self.content}"
 
     activity_serializer = activitypub.Quotation
 
     @property
     def page_title(self):
-        return _("%(display_name)s's quote from %(book_title)s") % {
+        return _("%(display_name)s's quote from %(film_title)s") % {
             "display_name": self.user.display_name,
-            "book_title": self.book.title,
+            "film_title": self.film.title,
         }
 
 
-class Review(BookStatus):
-    """a book review"""
+class Review(FilmStatus):
+    """a film review"""
 
     name = fields.CharField(max_length=255, null=True, blank=True)
     rating = fields.DecimalField(
@@ -470,23 +416,23 @@ class Review(BookStatus):
         """clarify review names for mastodon serialization"""
         template = get_template("snippets/generated_status/review_pure_name.html")
         return template.render(
-            {"book": self.book, "rating": self.rating, "name": self.name}
+            {"film": self.film, "rating": self.rating, "name": self.name}
         ).strip()
 
     @property
     def pure_content(self):
-        """indicate the book in question for mastodon (or w/e) users"""
+        """indicate the film in question for mastodon (or w/e) users"""
         if self.content:
             return self.content
         else:
             template = get_template("snippets/generated_status/rating_pure_name.html")
-            return template.render({"book": self.book, "rating": self.rating}).strip()
+            return template.render({"film": self.film, "rating": self.rating}).strip()
 
     @property
     def page_title(self):
-        return _("%(display_name)s's review of %(book_title)s") % {
+        return _("%(display_name)s's review of %(film_title)s") % {
             "display_name": self.user.display_name,
-            "book_title": self.book.title,
+            "film_title": self.film.title,
         }
 
     activity_serializer = activitypub.Review
@@ -496,8 +442,7 @@ class Review(BookStatus):
         """clear rating caches"""
         super().save(*args, **kwargs)
 
-        if self.book.parent_work:
-            cache.delete(f"book-rating-{self.book.parent_work.id}")
+        cache.delete(f"film-rating-{self.film.id}")
 
 
 class ReviewRating(Review):
@@ -511,17 +456,17 @@ class ReviewRating(Review):
     @property
     def pure_content(self):
         template = get_template("snippets/generated_status/rating.html")
-        return template.render({"book": self.book, "rating": self.rating}).strip()
+        return template.render({"film": self.film, "rating": self.rating}).strip()
 
     @property
     def page_description(self):
         return ngettext_lazy(
-            "%(display_name)s rated %(book_title)s: %(display_rating).1f star",
-            "%(display_name)s rated %(book_title)s: %(display_rating).1f stars",
+            "%(display_name)s rated %(film_title)s: %(display_rating).1f star",
+            "%(display_name)s rated %(film_title)s: %(display_rating).1f stars",
             "display_rating",
         ) % {
             "display_name": self.user.display_name,
-            "book_title": self.book.title,
+            "film_title": self.film.title,
             "display_rating": self.rating,
         }
 
@@ -564,16 +509,3 @@ class Boost(ActivityMixin, Status):
         self.many_to_many_fields = []
         self.image_fields = []
         self.deserialize_reverse_fields = []
-
-
-@receiver(models.signals.post_save)
-def preview_image(instance, sender, *args, **kwargs):
-    """Updates book previews if the rating has changed"""
-    if not ENABLE_PREVIEW_IMAGES or sender not in (Review, ReviewRating):
-        return
-
-    changed_fields = instance.field_tracker.changed()
-
-    if len(changed_fields) > 0:
-        edition = instance.book
-        generate_edition_preview_image_task.delay(edition.id)

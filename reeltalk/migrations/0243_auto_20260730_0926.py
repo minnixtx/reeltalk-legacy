@@ -2,11 +2,16 @@
 
 import json
 from django.db import migrations
-from reeltalk.connectors import connector_manager
 
 
 def fix_series(apps, schema_editor):
     """fix series from Inventaire borked due to bug"""
+
+    try:
+        from reeltalk.connectors import connector_manager
+    except ImportError:
+        print("Skipping series data fix - connectors package no longer available")
+        return
 
     Connector = apps.get_model("reeltalk", "Connector")
     Work = apps.get_model("reeltalk", "Work")

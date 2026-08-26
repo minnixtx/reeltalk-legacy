@@ -2,7 +2,65 @@
 
 from django.db import migrations
 import reeltalk
-from reeltalk.connectors.abstract_connector import infer_physical_format
+
+
+# Inlined from connectors/format_mappings.py + abstract_connector.infer_physical_format,
+# which no longer exist.
+format_mappings = {
+    "paperback": "Paperback",
+    "soft": "Paperback",
+    "pamphlet": "Paperback",
+    "peperback": "Paperback",
+    "tapa blanda": "Paperback",
+    "turtleback": "Paperback",
+    "pocket": "Paperback",
+    "spiral": "Paperback",
+    "ring": "Paperback",
+    "平装": "Paperback",
+    "简装": "Paperback",
+    "hardcover": "Hardcover",
+    "hardcocer": "Hardcover",
+    "hardover": "Hardcover",
+    "hardback": "Hardcover",
+    "library": "Hardcover",
+    "tapa dura": "Hardcover",
+    "leather": "Hardcover",
+    "clothbound": "Hardcover",
+    "精装": "Hardcover",
+    "ebook": "EBook",
+    "e-book": "EBook",
+    "digital": "EBook",
+    "computer file": "EBook",
+    "epub": "EBook",
+    "online": "EBook",
+    "pdf": "EBook",
+    "elektronische": "EBook",
+    "electronic": "EBook",
+    "audiobook": "AudiobookFormat",
+    "audio": "AudiobookFormat",
+    "cd": "AudiobookFormat",
+    "dvd": "AudiobookFormat",
+    "mp3": "AudiobookFormat",
+    "cassette": "AudiobookFormat",
+    "kindle": "AudiobookFormat",
+    "talking": "AudiobookFormat",
+    "sound": "AudiobookFormat",
+    "comic": "GraphicNovel",
+    "graphic": "GraphicNovel",
+}
+
+
+def infer_physical_format(format_text):
+    """try to figure out what the standardized format is from the free value"""
+    format_text = format_text.lower()
+    if format_text in format_mappings:
+        # try a direct match
+        return format_mappings[format_text]
+    # failing that, try substring
+    matches = [v for k, v in format_mappings.items() if k in format_text]
+    if not matches:
+        return None
+    return matches[0]
 
 
 def infer_format(app_registry, schema_editor):

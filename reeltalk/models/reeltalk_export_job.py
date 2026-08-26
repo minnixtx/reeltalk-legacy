@@ -14,9 +14,8 @@ from django.core.files.storage import storages
 
 from reeltalk import settings
 
-from reeltalk.models import ReadThrough, ShelfBook, ListItem
+from reeltalk.models import Film, ShelfFilm, ListItem
 from reeltalk.models import Review, Comment, Quotation
-from reeltalk.models import Edition
 from reeltalk.models import UserFollows, User, UserBlocks
 from reeltalk.models.job import ParentJob, ParentTask
 from reeltalk.tasks import app, IMPORTS
@@ -65,7 +64,7 @@ def create_export_json_task(**kwargs):
             # generate JSON
             data = export_user(job.user)
             data["settings"] = export_settings(job.user)
-            data["books"] = export_books(job.user)
+            data["films"] = export_films(job.user)
             data["saved_lists"] = export_saved_lists(job.user)
             data["follows"] = export_follows(job.user)
             data["blocks"] = export_blocks(job.user)
@@ -202,116 +201,88 @@ def export_blocks(user: User):
     return [b.remote_id for b in blocking]
 
 
-def export_books(user: User):
-    """add books to export JSON"""
-    editions = get_books_for_user(user)
-    return [export_book(user, edition) for edition in editions]
+def export_films(user: User):
+    """add films to export JSON"""
+    films = get_films_for_user(user)
+    return [export_film(user, film) for film in films]
 
 
-def export_book(user: User, edition: Edition):
-    """add book to export JSON"""
+def export_film(user: User, film: Film):
+    """add film to export JSON"""
     data = {}
-    data["work"] = edition.parent_work.to_activity()
-    data["edition"] = edition.to_activity()
+    data["film"] = film.to_activity()
 
-    if edition.cover:
-        data["edition"]["cover"]["url"] = archive_file_location(
-            edition.cover, directory="images"
+    if film.poster:
+        data["film"]["poster"]["url"] = archive_file_location(
+            film.poster, directory="images"
         )
 
-    # authors
-    data["authors"] = [author.to_activity() for author in edition.authors.all()]
-
-    # Shelves this book is on
-    # Every ShelfItem is this book so we don't other serializing
-    shelf_books = (
-        ShelfBook.objects.select_related("shelf")
-        .filter(user=user, book=edition)
+    # Shelves this film is on
+    # Every ShelfItem is this film so we don't need to serialize the items
+    shelf_films = (
+        ShelfFilm.objects.select_related("shelf")
+        .filter(user=user, film=film)
         .distinct()
     )
-    data["shelves"] = [shelfbook.shelf.to_activity() for shelfbook in shelf_books]
+    data["shelves"] = [shelffilm.shelf.to_activity() for shelffilm in shelf_films]
 
     # Lists and ListItems
     # ListItems include "notes" and "approved" so we need them
-    # even though we know it's this book
-    list_items = ListItem.objects.filter(edition=edition, user=user).distinct()
+    # even though we know it's this film
+    list_items = ListItem.objects.filter(film=film, user=user).distinct()
 
     data["lists"] = []
     for item in list_items:
-        list_info = item.book_list.to_activity()
+        list_info = item.film_list.to_activity()
         list_info["privacy"] = (
-            item.book_list.privacy
+            item.film_list.privacy
         )  # this isn't serialized so we add it
         list_info["list_item"] = item.to_activity()
         data["lists"].append(list_info)
 
     # Statuses
     # Can't use select_subclasses here because
-    # we need to filter on the "book" value,
+    # we need to filter on the "film" value,
     # which is not available on an ordinary Status
     for status in ["comments", "quotations", "reviews"]:
         data[status] = []
 
-    comments = Comment.objects.filter(user=user, book=edition, deleted=False).all()
-    for status in comments:
-        obj = status.to_activity()
-        obj["progress"] = status.progress
-        obj["progress_mode"] = status.progress_mode
-        data["comments"].append(obj)
+    comments = Comment.objects.filter(user=user, film=film, deleted=False).all()
+    data["comments"] = [status.to_activity() for status in comments]
 
-    quotes = Quotation.objects.filter(user=user, book=edition, deleted=False).all()
-    for status in quotes:
-        obj = status.to_activity()
-        obj["position"] = status.position
-        obj["endposition"] = status.endposition
-        obj["position_mode"] = status.position_mode
-        data["quotations"].append(obj)
+    quotes = Quotation.objects.filter(user=user, film=film, deleted=False).all()
+    data["quotations"] = [status.to_activity() for status in quotes]
 
-    reviews = Review.objects.filter(user=user, book=edition, deleted=False).all()
+    reviews = Review.objects.filter(user=user, film=film, deleted=False).all()
     data["reviews"] = [status.to_activity() for status in reviews]
-
-    # readthroughs can't be serialized to activity
-    book_readthroughs = (
-        ReadThrough.objects.filter(user=user, book=edition).distinct().values()
-    )
-    data["readthroughs"] = list(book_readthroughs)
     return data
 
 
-def get_books_for_user(user):
+def get_films_for_user(user):
     """
-    Get all the books and editions related to a user.
-    We use selecting book_id instead of Q objects because it creates
+    Get all the films related to a user.
+    We use selecting film_id instead of Q objects because it creates
     multiple simple queries instead of a complex DB query
     that can time out.
     """
 
-    shelf_ids = ShelfBook.objects.filter(user=user).values_list("book_id", flat=True)
-    readthrough = ReadThrough.objects.filter(user=user).values_list(
-        "book_id", flat=True
-    )
-    reviews = Review.objects.filter(user=user).values_list("book_id", flat=True)
-    lists = ListItem.objects.filter(user=user).values_list("edition_id", flat=True)
+    shelf_ids = ShelfFilm.objects.filter(user=user).values_list("film_id", flat=True)
+    reviews = Review.objects.filter(user=user).values_list("film_id", flat=True)
+    lists = ListItem.objects.filter(user=user).values_list("film_id", flat=True)
     comments = Comment.objects.filter(user=user, deleted=False).values_list(
-        "book_id", flat=True
+        "film_id", flat=True
     )
     quotes = Quotation.objects.filter(user=user, deleted=False).values_list(
-        "book_id", flat=True
+        "film_id", flat=True
     )
 
-    editions = (
-        Edition.objects.select_related("parent_work")
-        .filter(
+    films = (
+        Film.objects.filter(
             id__in=(
-                set(shelf_ids)
-                | set(readthrough)
-                | set(reviews)
-                | set(lists)
-                | set(comments)
-                | set(quotes)
+                set(shelf_ids) | set(reviews) | set(lists) | set(comments) | set(quotes)
             )
         )
         .distinct()
     )
 
-    return editions
+    return films

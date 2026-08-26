@@ -52,25 +52,6 @@ class Link(ActivitypubMixin, ReelTalkModel):
         super().save(*args, update_fields=update_fields, **kwargs)
 
 
-AvailabilityChoices = [
-    ("free", _("Free")),
-    ("purchase", _("Purchasable")),
-    ("loan", _("Available for loan")),
-]
-
-
-class FileLink(Link):
-    """a link to a file"""
-
-    book = models.ForeignKey(
-        "Book", on_delete=models.CASCADE, related_name="file_links", null=True
-    )
-    filetype = fields.CharField(max_length=50, activitypub_field="mediaType")
-    availability = fields.CharField(
-        max_length=100, choices=AvailabilityChoices, default="free"
-    )
-
-
 StatusChoices = [
     ("approved", _("Approved")),
     ("blocked", _("Blocked")),
