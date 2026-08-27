@@ -1,0 +1,71 @@
+{% extends "components/details.html" %}
+
+{% load i18n %}
+
+{% block always-visible %}
+    {% if film.year or film.runtime %}
+    <div class="columns is-mobile">
+        {% if film.year %}
+        <div class="column">
+            <p class="subtitle is-6 mb-0">{% trans "Year" %}</p>
+            <p itemprop="dateCreated">{{ film.year }}</p>
+        </div>
+        {% endif %}
+        {% if film.runtime %}
+        <div class="column">
+            <p class="subtitle is-6 mb-0">{% trans "Runtime" %}</p>
+            <p>{{ film.runtime }} {% trans "min" %}</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if film.genres %}
+    <div class="block">
+        <p class="subtitle is-6 mb-0">{% trans "Genres" %}</p>
+        <div class="tags">
+            {% for genre in film.genres %}
+            <span class="tag">{{ genre }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if film.directors %}
+    <div class="block">
+        <p class="subtitle is-6 mb-0">{% trans "Directors" %}</p>
+        <p itemprop="creator">{{ film.director_text }}</p>
+    </div>
+    {% endif %}
+
+    {% if film.cast %}
+    <div class="block">
+        <p class="subtitle is-6 mb-0">{% trans "Cast" %}</p>
+        <p>{{ film.cast|join:", " }}</p>
+    </div>
+    {% endif %}
+{% endblock %}
+
+{% block sometimes-visible %}
+    {% if film.tmdb_id %}
+    <p class="control">
+        <a href="https://www.themoviedb.org/movie/{{ film.tmdb_id }}" target="_blank" rel="nofollow noopener noreferrer">
+            {% trans "View on TMDB" %}
+        </a>
+    </p>
+    {% endif %}
+
+    {% if film.imdb_id %}
+    <p class="control">
+        <a href="https://www.imdb.com/title/{{ film.imdb_id }}/" target="_blank" rel="nofollow noopener noreferrer">
+            {% trans "View on IMDb" %}
+        </a>
+    </p>
+    {% endif %}
+
+    {% if film.last_edited_by %}
+    <p class="help">
+        {% blocktrans with editor=film.last_edited_by.display_name %}Last edited by {{ editor }}{% endblocktrans %}
+    </p>
+    {% endif %}
+{% endblock %}

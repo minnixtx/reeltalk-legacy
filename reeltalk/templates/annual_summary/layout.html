@@ -4,7 +4,7 @@
 {% load humanize %}
 
 
-{% block title %}{% blocktrans %}{{ year }} in the books{% endblocktrans %}{% endblock %}
+{% block title %}{% blocktrans %}{{ year }} in review{% endblocktrans %}{% endblock %}
 
 {% block head_links %}
     <link rel="stylesheet" href="{% static "css/vendor/dm_serif_display.css" %}">
@@ -39,12 +39,12 @@
 {% endif %}
 
     <h1 class="title is-1 is-serif has-text-centered">
-        📚✨
-        {% blocktrans %}{{ year }} <em>in the books</em>{% endblocktrans %}
-        ✨📚
+        🎬✨
+        {% blocktrans %}{{ year }} <em>in review</em>{% endblocktrans %}
+        ✨🎬
     </h1>
     <p class="subtitle is-3 is-serif has-text-centered mb-5">
-        {% blocktrans %}<em>{{ display_name }}’s</em> year of reading{% endblocktrans %}
+        {% blocktrans %}<em>{{ display_name }}’s</em> year of watching{% endblocktrans %}
     </p>
 
     <details>
@@ -108,85 +108,28 @@
         </div>
     </div>
 
-{% if not books %}
-    <p class="has-text-centered is-size-5">{% blocktrans %}Sadly {{ display_name }} didn’t finish any books in {{ year }}{% endblocktrans %}</p>
+{% if not films %}
+    <p class="has-text-centered is-size-5">{% blocktrans %}Sadly {{ display_name }} didn’t watch any films in {{ year }}{% endblocktrans %}</p>
 {% else %}
 
     <div class="columns is-mobile">
         <div class="column is-8 is-offset-2 has-text-centered">
             <h2 class="title is-3 is-serif">
-                {% blocktrans trimmed count counter=books_total with pages_total=pages_total|intcomma %}
-                    In {{ year }}, {{ display_name }} read {{ books_total }} book<br />for a total of {{ pages_total }} pages!
+                {% blocktrans trimmed count counter=films_total %}
+                    In {{ year }}, {{ display_name }} watched {{ films_total }} film!
                 {% plural %}
-                    In {{ year }}, {{ display_name }} read {{ books_total }} books<br />for a total of {{ pages_total }} pages!
+                    In {{ year }}, {{ display_name }} watched {{ films_total }} films!
                 {% endblocktrans %}
             </h2>
             <p class="subtitle is-5">{% trans "That’s great!" %}</p>
 
-            {% if pages > 0 %} 
+            {% if runtime_hours > 0 %}
                 <p class="title is-4 is-serif">
-                    {% blocktrans with pages=pages_average|intcomma %}That makes an average of {{ pages }} pages per book.{% endblocktrans %}
-                </p>
-            {% endif %}
-
-            {% if no_page_number %}
-                <p class="subtitle is-6">
-                    {% blocktrans trimmed count counter=no_page_number %}
-                    (No page data was available for {{ no_page_number }} book)
-                    {% plural %}
-                    (No page data was available for {{ no_page_number }} books)
-                    {% endblocktrans %}
+                    {% blocktrans with hours=runtime_hours|floatformat:1 %}That makes about {{ hours }} hours of screen time.{% endblocktrans %}
                 </p>
             {% endif %}
         </div>
     </div>
-
-    {% if book_pages_lowest and book_pages_highest %}
-    <div class="columns is-align-items-center mt-5">
-        <div class="column is-2 is-offset-1">
-            <a href="{{ book_pages_lowest.local_path }}">{% include 'snippets/book_cover.html' with book=book_pages_lowest cover_class='is-w-auto-tablet is-h-l-mobile' size='xxlarge' %}</a>
-        </div>
-        <div class="column is-3">
-            {% trans "Their shortest read this year…" %}
-            <p class="title is-4 is-serif is-italic">
-                <a href="{{ book_pages_lowest.local_path }}" class="has-text-success-dark">
-                    {{ book_pages_lowest.title }}
-                </a>
-            </p>
-            {% if book_pages_lowest.authors.exists %}
-            <p class="subtitle is-5 mb-2">{% trans "by" %}
-                {% include 'snippets/authors.html' with book=book_pages_lowest link_class="has-text-success-dark" %}
-            </p>
-            {% endif %}
-            <p class="subtitle is-6">
-                {% with pages=book_pages_lowest.pages %}
-                {% blocktrans %}<strong>{{ pages }}</strong> pages{% endblocktrans%}
-                {% endwith %}
-            </p>
-        </div>
-        <div class="column is-2">
-            <a href="{{ book_pages_highest.local_path }}">{% include 'snippets/book_cover.html' with book=book_pages_highest cover_class='is-w-auto-tablet is-h-l-mobile' size='xxlarge' %}</a>
-        </div>
-        <div class="column is-3">
-            {% trans "…and the longest" %}
-            <p class="title is-4 is-serif is-italic">
-                <a href="{{ book_pages_highest.local_path }}" class="has-text-success-dark">
-                    {{ book_pages_highest.title }}
-                </a>
-            </p>
-            {% if book_pages_highest.authors.exists %}
-            <p class="subtitle is-5 mb-2">{% trans "by" %}
-                {% include 'snippets/authors.html' with book=book_pages_highest link_class="has-text-success-dark" %}
-            </p>
-            {% endif %}
-            <p class="subtitle is-6">
-                {% with pages=book_pages_highest.pages %}
-                {% blocktrans %}<strong>{{ pages }}</strong> pages{% endblocktrans%}
-                {% endwith %}
-            </p>
-        </div>
-    </div>
-    {% endif %}
 
     <div class="columns">
         <div class="column is-one-fifth is-offset-two-fifths">
@@ -208,23 +151,18 @@
     </div>
     <div class="columns is-align-items-center">
         <div class="column is-2 is-offset-4">
-            <a href="{{ book_rating_highest.book.local_path }}">{% include 'snippets/book_cover.html' with book=book_rating_highest.book cover_class='is-w-xl-tablet is-h-l-mobile' size='xxlarge' %}</a>
+            <a href="{{ film_rating_highest.film.local_path }}">{% include 'snippets/film_cover.html' with film=film_rating_highest.film cover_class='is-w-xl-tablet is-h-l-mobile' size='xxlarge' %}</a>
         </div>
-        {% if book_rating_highest %}
+        {% if film_rating_highest %}
         <div class="column is-4">
             {% trans "Their best rated review" %}
             <p class="title is-4 is-serif is-italic">
-                <a href="{{ book_rating_highest.book.local_path }}" class="has-text-success-dark">
-                    {{ book_rating_highest.book.title }}
+                <a href="{{ film_rating_highest.film.local_path }}" class="has-text-success-dark">
+                    {{ film_rating_highest.film.title }}
                 </a>
             </p>
-            {% if book_rating_highest.book.authors.exists %}
-            <p class="subtitle is-5 mb-2">{% trans "by" %}
-                {% include 'snippets/authors.html' with book=book_rating_highest.book link_class="has-text-success-dark" %}
-            </p>
-            {% endif %}
             <p class="subtitle is-6">
-                {% with rating=book_rating_highest.rating|floatformat %}
+                {% with rating=film_rating_highest.rating|floatformat %}
                 {% blocktrans %}Their rating: <strong>{{ rating }}</strong>{% endblocktrans%}
                 {% endwith %}
             </p>
@@ -242,7 +180,7 @@
     <div class="columns">
         <div class="column has-text-centered">
             <h2 class="title is-3 is-serif">
-                {% blocktrans %}All the books {{ display_name }} read in {{ year }}{% endblocktrans %}
+                {% blocktrans %}All the films {{ display_name }} watched in {{ year }}{% endblocktrans %}
             </h2>
         </div>
     </div>
@@ -250,19 +188,19 @@
     <div class="columns">
         <div class="column is-10 is-offset-1">
             <div class="books-grid">
-                {% for book in books %}
-                {% if books_total > 12 and book.id in best_ratings_books_ids %}
-                <a href="{{ book.local_path }}" class="has-text-centered is-big has-text-success-dark">
-                    {% include 'snippets/book_cover.html' with book=book cover_class='is-w-auto' size='xxlarge' %}
+                {% for film in films %}
+                {% if films_total > 12 and film.id in best_ratings_films_ids %}
+                <a href="{{ film.local_path }}" class="has-text-centered is-big has-text-success-dark">
+                    {% include 'snippets/film_cover.html' with film=film cover_class='is-w-auto' size='xxlarge' %}
                     <span class="book-title is-serif is-size-5">
-                        {{ book.title }}
+                        {{ film.title }}
                     </span>
                 </a>
                 {% else %}
-                <a href="{{ book.local_path }}" class="has-text-centered has-text-success-dark">
-                    {% include 'snippets/book_cover.html' with book=book cover_class='is-w-auto' size='xlarge' %}
+                <a href="{{ film.local_path }}" class="has-text-centered has-text-success-dark">
+                    {% include 'snippets/film_cover.html' with film=film cover_class='is-w-auto' size='xlarge' %}
                     <span class="book-title is-serif is-size-6">
-                        {{ book.title }}
+                        {{ film.title }}
                     </span>
                 </a>
                 {% endif %}

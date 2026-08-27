@@ -183,17 +183,16 @@ class RssCommentsOnlyFeed(Feed):
 class RssShelfFeed(Feed):
     """serialize a shelf activity in rss"""
 
-    description_template = "rss/edition.html"
+    description_template = "rss/film.html"
 
     def item_title(self, item):
         """render the item title"""
-        authors = item.authors
-        if item.author_text:
-            authors.display_name = f"{item.author_text}:"
-        else:
-            authors.description = ""
+        user = {
+            "display_name": f"{item.director_text}:" if item.director_text else "",
+            "description": "",
+        }
         template = get_template("rss/title.html")
-        return template.render({"user": authors, "item_title": item.title}).strip()
+        return template.render({"user": user, "item_title": item.title}).strip()
 
     def get_object(self, request, shelf_identifier, username):
         """the shelf that gets serialized"""
@@ -218,7 +217,7 @@ class RssShelfFeed(Feed):
 
     def items(self, obj):
         """the user's activity feed"""
-        return obj.books.order_by("-shelfbook__shelved_date")[:10]
+        return obj.films.order_by("-shelffilm__shelved_date")[:10]
 
     def item_link(self, item):
         """link to the status"""
@@ -226,11 +225,11 @@ class RssShelfFeed(Feed):
 
     def item_pubdate(self, item):
         """publication date of the item"""
-        return item.shelfbook_set.first().shelved_date
+        return item.shelffilm_set.first().shelved_date
 
     def description(self, obj):
         """description of the shelf including the shelf name and user."""
         # if there's a description, lets add it. Not everyone puts a description in.
         if desc := obj.description:
             return _(f"{obj.user.display_name}’s {obj.name} shelf: {desc}")
-        return _(f"Books added to {obj.user.name}’s {obj.name} shelf")
+        return _(f"Films added to {obj.user.name}’s {obj.name} shelf")

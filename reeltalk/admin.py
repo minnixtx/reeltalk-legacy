@@ -5,4 +5,3 @@ from reeltalk import models
 
 admin.site.register(models.User)
 admin.site.register(models.FederatedServer)
-admin.site.register(models.Connector)

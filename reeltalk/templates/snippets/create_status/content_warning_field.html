@@ -26,7 +26,7 @@
                 id="id_content_warning_{{ uuid }}{{ local_uuid }}"
                 placeholder="{% trans 'Spoilers ahead!' %}"
                 value="{% firstof draft.content_warning reply_parent.content_warning '' %}"
-                {% if not draft %}data-cache-draft="id_content_warning_{{ book.id }}_{{ type }}"{% endif %}
+                {% if not draft %}data-cache-draft="id_content_warning_{{ film.id }}_{{ type }}"{% endif %}
             >
         </div>
     </details>

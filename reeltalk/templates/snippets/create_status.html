@@ -8,48 +8,48 @@
         <a
             class="{% if status_type == 'review' or not status_type %}is-active{% endif %}"
             role="tab"
-            href="{{ request.path }}?status_type=review&book={{ book.id }}"
-            id="tab_review_{{ book.id }}"
+            href="{{ request.path }}?status_type=review&film={{ film.id }}"
+            id="tab_review_{{ film.id }}"
             aria-selected="{% if status_type == 'review' or not status_type %}true{% else %}false{% endif %}"
-            aria-controls="review_{{ book.id }}"
-            data-category="tab-option-{{ book.id }}">
+            aria-controls="review_{{ film.id }}"
+            data-category="tab-option-{{ film.id }}">
             {% trans "Review" %}
         </a>
         <a
             class="{% if status_type == 'comment' %}is-active{% endif %}"
             role="tab"
-            href="{{ request.path }}?status_type=comment&book={{ book.id}}"
-            id="tab_comment_{{ book.id }}"
+            href="{{ request.path }}?status_type=comment&film={{ film.id}}"
+            id="tab_comment_{{ film.id }}"
             aria-selected="{% if status_type == 'comment' %}true{% else %}false{% endif %}"
-            aria-controls="comment_{{ book.id}}"
-            data-category="tab-option-{{ book.id }}">
+            aria-controls="comment_{{ film.id}}"
+            data-category="tab-option-{{ film.id }}">
             {% trans "Comment" %}
         </a>
         <a
             class="{% if status_type == 'quote' %}is-active{% endif %}"
             role="tab"
-            href="{{ request.path }}?status_type=quote&book={{ book.id }}"
-            id="tab_quote_{{ book.id }}"
+            href="{{ request.path }}?status_type=quote&film={{ film.id }}"
+            id="tab_quote_{{ film.id }}"
             aria-selected="{% if status_type == 'quote' %}true{% else %}false{% endif %}"
-            aria-controls="quote_{{ book.id }}"
-            data-category="tab-option-{{ book.id }}">
+            aria-controls="quote_{{ film.id }}"
+            data-category="tab-option-{{ film.id }}">
             {% trans "Quote" %}
         </a>
     </div>
 
-    <div class="tab-option-{{ book.id }}" id="review_{{ book.id }}" role="tabpanel" aria-labelledby="tab_review_{{ book.id }}" {% if status_type and status_type != "review" %}hidden{% endif %}>
+    <div class="tab-option-{{ film.id }}" id="review_{{ film.id }}" role="tabpanel" aria-labelledby="tab_review_{{ film.id }}" {% if status_type and status_type != "review" %}hidden{% endif %}>
         {% with 0|uuid as uuid %}
         {% include 'snippets/create_status/status.html' with type="review" %}
         {% endwith %}
     </div>
 
-    <div class="tab-option-{{ book.id }}" id="comment_{{ book.id }}" role="tabpanel" aria-labelledby="tab_comment_{{ book.id }}" {% if status_type != "comment" %}hidden{% endif %}>
+    <div class="tab-option-{{ film.id }}" id="comment_{{ film.id }}" role="tabpanel" aria-labelledby="tab_comment_{{ film.id }}" {% if status_type != "comment" %}hidden{% endif %}>
         {% with 0|uuid as uuid %}
         {% include 'snippets/create_status/status.html' with type="comment" %}
         {% endwith %}
     </div>
 
-    <div class="tab-option-{{ book.id }}" id="quote_{{ book.id }}" role="tabpanel" aria-labelledby="tab_quote_{{ book.id }}" {% if status_type != "quote" %}hidden{% endif %}>
+    <div class="tab-option-{{ film.id }}" id="quote_{{ film.id }}" role="tabpanel" aria-labelledby="tab_quote_{{ film.id }}" {% if status_type != "quote" %}hidden{% endif %}>
         {% with 0|uuid as uuid %}
         {% include 'snippets/create_status/status.html' with type="quotation" %}
         {% endwith %}

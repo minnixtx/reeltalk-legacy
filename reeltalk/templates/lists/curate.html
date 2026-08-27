@@ -18,7 +18,7 @@
 
 {% block panel %}
 <section class="block">
-    <h2 class="title is-4">{% trans "Pending Books" %}</h2>
+    <h2 class="title is-4">{% trans "Pending Films" %}</h2>
 
     {% if not pending.exists %}
         <p><em>{% trans "You're all set!" %}</em></p>
@@ -26,19 +26,24 @@
 
     <div class="columns">
         {% for item in pending %}
-        {% with book=item.edition %}
+        {% with film=item.film %}
             <div class="column">
                 <div class="columns is-mobile">
                     <a
                         class="column is-cover"
-                        href="{{ book.local_path }}"
+                        href="{{ film.local_path }}"
                         aria-hidden="true"
                     >
-                        {% include 'snippets/book_cover.html' with cover_class='is-w-xs-mobile is-w-s is-h-xs-mobile is-h-s' size_mobile='xsmall' size='small' %}
+                        {% include 'snippets/film_cover.html' with film=film cover_class='is-w-xs-mobile is-w-s is-h-xs-mobile is-h-s' size_mobile='xsmall' size='small' %}
                     </a>
 
                     <div class="column ml-3">
-                        {% include 'snippets/book_titleby.html' %}
+                        <p>
+                            <a href="{{ film.local_path }}">{{ film.title }}</a>
+                            {% if film.director_text %}
+                                <span class="has-text-grey">by {{ film.director_text }}</span>
+                            {% endif %}
+                        </p>
                         {% if item.notes %}
                         <div>
                             {% url 'user-feed' item.user|username as user_path %}

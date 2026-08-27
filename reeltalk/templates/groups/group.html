@@ -48,12 +48,12 @@
                             <a href="{{ list.local_path }}">{{ list.name }}</a> <span class="subtitle">{% include 'snippets/privacy-icons.html' with item=list %}</span>
                         </h4>
                     </header>
-                    {% with list_books=list.listitem_set.all|slice:5 %}
-                    {% if list_books %}
+                    {% with list_items=list.listitem_set.all|slice:5 %}
+                    {% if list_items %}
                     <div class="card-image columns is-mobile is-gapless is-clipped">
-                        {% for book in list_books %}
-                        <a class="column is-cover" href="{{ book.book.local_path }}">
-                            {% include 'snippets/book_cover.html' with book=book.book cover_class='is-h-s' size='small' aria='show' %}
+                        {% for item in list_items %}
+                        <a class="column is-cover" href="{{ item.film.local_path }}">
+                            {% include 'snippets/film_cover.html' with film=item.film cover_class='is-h-s' size='small' aria='show' %}
                         </a>
                         {% endfor %}
                     </div>

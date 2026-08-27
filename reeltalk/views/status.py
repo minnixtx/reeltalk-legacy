@@ -8,7 +8,7 @@ from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
-from django.http import HttpResponse, HttpResponseBadRequest, Http404
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.utils import timezone
@@ -19,11 +19,10 @@ from django.views.decorators.http import require_POST
 import mistune
 from reeltalk import forms, models
 from reeltalk.models.report import DELETE_ITEM
-from reeltalk.readwise import sync_readwise_quotation
 from reeltalk.utils import regex, sanitizer
 from reeltalk.views.helpers import get_mergeable_object_or_404
 from .helpers import handle_remote_webfinger, is_api_request
-from .helpers import load_date_in_user_tz_as_utc, redirect_to_referer
+from .helpers import redirect_to_referer
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +40,7 @@ class EditStatus(View):
         status_type = "reply" if status.reply_parent else status.status_type.lower()
         data = {
             "type": status_type,
-            "book": getattr(status, "book", None),
+            "film": getattr(status, "film", None),
             "draft": status,
         }
         return TemplateResponse(request, "compose.html", data)
@@ -53,8 +52,8 @@ class CreateStatus(View):
 
     def get(self, request, status_type):
         """compose view (...not used?)"""
-        book = get_mergeable_object_or_404(models.Edition, id=request.GET.get("book"))
-        data = {"book": book}
+        film = get_mergeable_object_or_404(models.Film, id=request.GET.get("film"))
+        data = {"film": film}
         return TemplateResponse(request, "compose.html", data)
 
     @transaction.atomic
@@ -130,15 +129,6 @@ class CreateStatus(View):
             status.quote = to_markdown(status.quote)
 
         status.save(created=created)
-        if isinstance(status, models.Quotation) and status.user.readwise_api_key:
-            sync_readwise_quotation.delay(status.id)
-
-        # update a readthrough, if needed
-        if bool(request.POST.get("id")):
-            try:
-                edit_readthrough(request)
-            except Http404:
-                pass
 
         if is_api_request(request):
             return HttpResponse()
@@ -213,53 +203,6 @@ class DeleteStatus(View):
             models.Report.record_action(report_id, DELETE_ITEM, request.user)
 
         return redirect_to_referer(request, "/")
-
-
-@login_required
-@require_POST
-def update_progress(request, book_id):
-    """Either it's just a progress update, or it's a comment with a progress update"""
-    if request.POST.get("post-status"):
-        return CreateStatus.as_view()(request, "comment")
-    return edit_readthrough(request)
-
-
-@login_required
-@require_POST
-def edit_readthrough(request):
-    """can't use the form because the dates are too finnicky"""
-    # TODO: remove this, it duplicates the code in the ReadThrough view
-    readthrough = get_object_or_404(models.ReadThrough, id=request.POST.get("id"))
-
-    if start_date := request.POST.get("start_date"):
-        readthrough.start_date = load_date_in_user_tz_as_utc(start_date, request.user)
-
-    if finish_date := request.POST.get("finish_date"):
-        readthrough.finish_date = load_date_in_user_tz_as_utc(finish_date, request.user)
-
-    progress = request.POST.get("progress")
-    try:
-        progress = int(progress)
-        readthrough.progress = progress
-    except (ValueError, TypeError):
-        pass
-
-    progress_mode = request.POST.get("progress_mode")
-    try:
-        progress_mode = models.ProgressMode(progress_mode)
-        readthrough.progress_mode = progress_mode
-    except ValueError:
-        pass
-
-    readthrough.save()
-
-    # record the progress update individually
-    # use default now for date field
-    readthrough.create_update()
-
-    if is_api_request(request):
-        return HttpResponse()
-    return redirect_to_referer(request)
 
 
 def find_mentions(user, content):

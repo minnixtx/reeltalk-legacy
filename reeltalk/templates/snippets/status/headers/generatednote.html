@@ -4,14 +4,9 @@
 {# Three day cache #}
 {% get_current_language as LANGUAGE_CODE %}
 {% cache 259200 generated_note_header LANGUAGE_CODE status.id %}
-{% if status.content == 'wants to read' or status.content == '<p>wants to read</p>' %}
-    {% include 'snippets/status/headers/to_read.html' with book=status.mention_books.first %}
-{% elif status.content == 'finished reading' or status.content == '<p>finished reading</p>' %}
-    {% include 'snippets/status/headers/read.html' with book=status.mention_books.first %}
-{% elif status.content == 'started reading' or status.content == '<p>started reading</p>' %}
-    {% include 'snippets/status/headers/reading.html' with book=status.mention_books.first %}
-{% elif status.content == 'stopped reading' or status.content == '<p>stopped reading</p>' %}
-    {% include 'snippets/status/headers/stopped_reading.html' with book=status.mention_books.first %}
+{# the header resolves the film via load_film, which falls back to mention_films #}
+{% if status.content == 'wants to watch' or status.content == '<p>wants to watch</p>' %}
+    {% include 'snippets/status/headers/to_read.html' %}
 {% else %}
     {{ status.content }}
 {% endif %}

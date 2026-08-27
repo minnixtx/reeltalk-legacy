@@ -17,26 +17,14 @@ class ListForm(CustomForm):
 class ListItemForm(CustomForm):
     class Meta:
         model = models.ListItem
-        fields = ["user", "edition", "book_list", "notes", "raw_notes"]
-
-
-class SuggestionListForm(CustomForm):
-    class Meta:
-        model = models.SuggestionList
-        fields = ["suggests_for"]
-
-
-class SuggestionListItemForm(CustomForm):
-    class Meta:
-        model = models.SuggestionListItem
-        fields = ["user", "work", "book_list", "notes", "raw_notes"]
+        fields = ["user", "film", "film_list", "notes", "raw_notes"]
 
 
 class SortListForm(forms.Form):
     sort_by = ChoiceField(
         choices=(
             ("order", _("List Order")),
-            ("sort_title", _("Book Title")),
+            ("sort_title", _("Film Title")),
             ("rating", _("Rating")),
         ),
         label=_("Sort By"),

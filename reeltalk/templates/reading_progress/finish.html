@@ -2,13 +2,19 @@
 {% load i18n %}
 
 {% block title %}
-{% blocktrans trimmed with book_title=book.title %}
-Finish "{{ book_title }}"
+{% blocktrans trimmed with film_title=film.title %}
+Mark "{{ film_title }}" as watched
 {% endblocktrans %}
 {% endblock %}
 
 {% block content %}
 
-{% include "snippets/reading_modals/finish_reading_modal.html" with book=book active=True static=True %}
+{% if error %}
+<div class="notification is-danger">
+    {% trans "A star rating is required to mark a film as watched." %}
+</div>
+{% endif %}
+
+{% include "snippets/reading_modals/finish_reading_modal.html" with film=film active=True static=True %}
 
 {% endblock %}

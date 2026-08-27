@@ -15,14 +15,14 @@
         {% if shelf.identifier == 'read' %}
 
             {% trans "Watched" as button_text %}
-            {% url 'reading-status' 'finish' book.id as fallback_url %}
+            {% url 'reading-status' 'finish' active_shelf.film.id as fallback_url %}
             {% join "finish_reading" button_uuid as modal_id %}
             {% include 'snippets/shelve_button/modal_button.html' with class=class fallback_url=fallback_url %}
 
         {% elif shelf.identifier == 'to-read' %}
 
             {% trans "Want to watch" as button_text %}
-            {% url 'reading-status' 'want' book.id as fallback_url %}
+            {% url 'reading-status' 'want' active_shelf.film.id as fallback_url %}
             {% join "want_to_read" button_uuid as modal_id %}
             {% include 'snippets/shelve_button/modal_button.html' with class=class fallback_url=fallback_url %}
 
@@ -35,7 +35,7 @@
 <li role="menuitem" class="dropdown-item p-0" data-extra-options>
     <form name="unshelve-{{ uuid }}-{{ shelf.identifier }}" action="/unshelve/" method="post">
         {% csrf_token %}
-        <input type="hidden" name="book" value="{{ active_shelf.book.id }}">
+        <input type="hidden" name="film" value="{{ active_shelf.film.id }}">
         <input type="hidden" name="shelf" value="{{ active_shelf.shelf.id }}">
         <button class="button is-fullwidth is-small{% if dropdown %} is-radiusless{% endif %} is-danger is-light" type="submit">
             {% blocktrans with name=active_shelf.shelf|translate_shelf_name %}Remove from {{ name }}{% endblocktrans %}
@@ -44,7 +44,7 @@
 </li>
 {% endif %}
 <li role="menuitem" class="dropdown-item p-0" data-extra-options>
-    <form name="block-{{ uuid }}-{{ shelf.identifier }}" action="/block-book/{{book.id}}" method="post">
+    <form name="block-{{ uuid }}-{{ shelf.identifier }}" action="{% url 'block-film' active_shelf.film.id %}" method="post">
         {% csrf_token %}
         <button class="button is-fullwidth is-small{% if dropdown %} is-radiusless{% endif %} is-danger is-light" type="submit">
             {% trans 'Block this film' %}

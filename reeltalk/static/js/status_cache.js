@@ -144,7 +144,7 @@ let StatusCache = new (class {
             // Update shelve buttons
             if (form.reading_status) {
                 document
-                    .querySelectorAll("[data-shelve-button-book='" + form.book.value + "']")
+                    .querySelectorAll("[data-shelve-button-film='" + form.film.value + "']")
                     .forEach((button) =>
                         this.cycleShelveButtons(button, form.reading_status.value)
                     );

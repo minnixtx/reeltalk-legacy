@@ -37,19 +37,19 @@ class EmbedList(View):
 
         directional_sort_by = {
             "order": "order",
-            "title": "edition__title",
+            "title": "film__sort_title",
             "rating": "average_rating",
         }[sort_by]
         if direction == "descending":
             directional_sort_by = "-" + directional_sort_by
 
         items = book_list.listitem_set.prefetch_related(
-            "user", "edition", "edition__authors"
+            "user", "film"
         )
         if sort_by == "rating":
             items = items.annotate(
                 average_rating=Avg(
-                    Coalesce("edition__review__rating", 0.0),
+                    Coalesce("film__review__rating", 0.0),
                     output_field=DecimalField(),
                 )
             )

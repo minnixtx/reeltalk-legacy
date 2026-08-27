@@ -9,23 +9,18 @@ register = template.Library()
 
 
 @register.simple_tag(takes_context=False)
-def get_book_superlatives():
-    """get book stats for the about page"""
+def get_film_superlatives():
+    """get film stats for the about page"""
     total_ratings = models.Review.objects.filter(local=True, deleted=False).count()
     data = {}
     data["top_rated"] = (
-        models.Work.objects.annotate(
+        models.Film.objects.annotate(
             rating=Avg(
-                "editions__review__rating",
-                filter=Q(
-                    editions__review__user__local=True, editions__review__deleted=False
-                ),
+                "review__rating",
+                filter=Q(review__user__local=True, review__deleted=False),
             ),
             rating_count=Count(
-                "editions__review",
-                filter=Q(
-                    editions__review__user__local=True, editions__review__deleted=False
-                ),
+                "review", filter=Q(review__user__local=True, review__deleted=False)
             ),
         )
         .annotate(weighted=F("rating") * F("rating_count") / total_ratings)
@@ -35,18 +30,13 @@ def get_book_superlatives():
     )
 
     data["controversial"] = (
-        models.Work.objects.annotate(
+        models.Film.objects.annotate(
             deviation=StdDev(
-                "editions__review__rating",
-                filter=Q(
-                    editions__review__user__local=True, editions__review__deleted=False
-                ),
+                "review__rating",
+                filter=Q(review__user__local=True, review__deleted=False),
             ),
             rating_count=Count(
-                "editions__review",
-                filter=Q(
-                    editions__review__user__local=True, editions__review__deleted=False
-                ),
+                "review", filter=Q(review__user__local=True, review__deleted=False)
             ),
         )
         .annotate(weighted=F("deviation") * F("rating_count") / total_ratings)
@@ -56,9 +46,9 @@ def get_book_superlatives():
     )
 
     data["wanted"] = (
-        models.Work.objects.annotate(
+        models.Film.objects.annotate(
             shelf_count=Count(
-                "editions__shelves", filter=Q(editions__shelves__identifier="to-read")
+                "shelffilm", filter=Q(shelffilm__shelf__identifier="to-read")
             )
         )
         .order_by("-shelf_count")
@@ -68,6 +58,6 @@ def get_book_superlatives():
 
 
 @register.simple_tag(takes_context=False)
-def get_landing_books():
-    """list of books for the landing page"""
-    return models.Work.objects.distinct().order_by("-updated_date")[:20]
+def get_landing_films():
+    """list of films for the landing page"""
+    return models.Film.objects.distinct().order_by("-updated_date")[:20]

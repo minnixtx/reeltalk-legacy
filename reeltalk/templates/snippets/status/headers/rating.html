@@ -1,6 +1,8 @@
 {% load i18n %}{% load utilities %}
+{% load status_display %}
 
-{% blocktrans with book_path=status.book.local_path book=status.book|book_title %}rated <a href="{{ book_path }}">{{ book }}</a>:{% endblocktrans %} {% include 'snippets/stars.html' with rating=status.rating %}
+{% load_film status as film %}
+{% trans "rated" %} <a href="{{ film.local_path }}">{{ film.title }}</a>: {% include 'snippets/stars.html' with rating=status.rating %}
 <span
     itemprop="reviewRating"
     itemscope

@@ -95,7 +95,7 @@ class ActivitypubMixin:
     def find_existing(cls, data):
         """compare data to fields that can be used for deduplication.
         This always includes remote_id, but can also be unique identifiers
-        like an isbn for an edition"""
+        like a tmdb id for a film"""
         filters = []
         # grabs all the data from the model to create django queryset filters
         for field in cls._meta.get_fields():

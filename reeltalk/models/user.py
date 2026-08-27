@@ -13,18 +13,15 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.contrib.postgres.fields import ArrayField as DjangoArrayField
 from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
-from django.dispatch import receiver
 from django.db import models, transaction, IntegrityError
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-from model_utils import FieldTracker
 
 from reeltalk import activitypub
-from reeltalk.connectors import get_data, ConnectorException
+from reeltalk.utils.http import get_data, RemoteDataError
 from reeltalk.models.shelf import Shelf
 from reeltalk.models.status import Status
-from reeltalk.preview_images import generate_user_preview_image_task
-from reeltalk.settings import BASE_URL, ENABLE_PREVIEW_IMAGES, LANGUAGES
+from reeltalk.settings import BASE_URL, LANGUAGES
 from reeltalk.signatures import create_key_pair
 from reeltalk.tasks import app, MISC
 from reeltalk.utils import regex
@@ -163,7 +160,6 @@ class User(OrderedCollectionPageMixin, AbstractUser):
     discoverable = fields.BooleanField(default=False)
     show_guided_tour = models.BooleanField(default=True)
     show_ratings = models.BooleanField(default=True)
-    readwise_api_key = models.CharField(max_length=255, null=True, blank=True)
 
     # feed options
     feed_status_types = DjangoArrayField(
@@ -194,7 +190,6 @@ class User(OrderedCollectionPageMixin, AbstractUser):
 
     name_field = "username"
     property_fields = [("following_link", "following")]
-    field_tracker = FieldTracker(fields=["name", "avatar"])
 
     # two factor authentication
     two_factor_auth = models.BooleanField(default=None, blank=True, null=True)
@@ -630,12 +625,12 @@ def get_or_create_remote_server(
         try:
             nodeinfo_url = data.get("links")[0].get("href")
         except (TypeError, KeyError):
-            raise ConnectorException()
+            raise RemoteDataError()
 
         data = get_data(nodeinfo_url)
         application_type = data.get("software", {}).get("name")
         application_version = data.get("software", {}).get("version")
-    except ConnectorException:
+    except RemoteDataError:
         if server.id:
             return server
         application_type = application_version = None
@@ -659,19 +654,3 @@ def get_remote_reviews(outbox):
         if not activity["type"] == "Review":
             continue
         activitypub.Review(**activity).to_model()
-
-
-@receiver(models.signals.post_save, sender=User)
-def preview_image(instance, *args, **kwargs):
-    """create preview images when user is updated"""
-    if not ENABLE_PREVIEW_IMAGES:
-        return
-
-    # don't call the task for remote users
-    if not instance.local:
-        return
-
-    changed_fields = instance.field_tracker.changed()
-
-    if len(changed_fields) > 0:
-        generate_user_preview_image_task.delay(instance.id)

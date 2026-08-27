@@ -47,18 +47,6 @@
                 </li>
                 {% endif %}
 
-                {% if status.progress %}
-                <li class="ml-1">
-                    <span>
-                        {% if status.progress_mode == 'PG' %}
-                            {% include 'snippets/page_text.html' with page=status.progress total_pages=status.book.pages %}
-                        {% else %}
-                            {{ status.progress }}%
-                        {% endif %}
-                    </span>
-                </li>
-                {% endif %}
-
                 <li>
                 {% include 'snippets/privacy-icons.html' with item=status %}
                 </li>

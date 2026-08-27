@@ -9,7 +9,7 @@ from django.views import View
 
 from reeltalk import forms, models
 from reeltalk.views.list.list import increment_order_in_reverse
-from reeltalk.views.list.list import normalize_book_list_ordering
+from reeltalk.views.list.list import normalize_film_list_ordering
 
 
 @method_decorator(login_required, name="dispatch")
@@ -50,5 +50,5 @@ class Curate(View):
         else:
             deleted_order = suggestion.order
             suggestion.delete(broadcast=False)
-            normalize_book_list_ordering(book_list.id, start=deleted_order)
+            normalize_film_list_ordering(book_list.id, start=deleted_order)
         return redirect("list-curate", book_list.id)

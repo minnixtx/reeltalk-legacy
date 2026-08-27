@@ -20,7 +20,7 @@
 {% if request.user == list.user and pending_count %}
 <div class="block content">
     <p class="notification">
-        <a href="{% url 'list-curate' list.id %}">{{ pending_count }} book{{ pending_count|pluralize }} awaiting your approval</a>
+        <a href="{% url 'list-curate' list.id %}">{{ pending_count }} film{{ pending_count|pluralize }} awaiting your approval</a>
     </p>
 </div>
 {% endif %}
@@ -31,7 +31,7 @@
         <div class="notification is-danger is-light">
             <span class="icon icon-x" aria-hidden="true"></span>
             <span>
-                {% trans "That book is already on this list." %}
+                {% trans "That film is already on this list." %}
             </span>
         </div>
         {% elif add_succeeded %}
@@ -39,9 +39,9 @@
             <span class="icon icon-check" aria-hidden="true"></span>
             <span>
                 {% if list.curation != "open" and request.user != list.user and not list.group|is_member:request.user %}
-                    {% trans "You successfully suggested a book for this list!" %}
+                    {% trans "You successfully suggested a film for this list!" %}
                 {% else %}
-                    {% trans "You successfully added a book to this list!" %}
+                    {% trans "You successfully added a film to this list!" %}
                 {% endif %}
             </span>
         </div>
@@ -62,7 +62,6 @@
     </section>
 
     <section class="column is-one-quarter">
-    {% if list.suggests_for == None %}
         <h2 class="title is-5">
             {% trans "Sort List" %}
         </h2>
@@ -85,16 +84,15 @@
                 </button>
             </div>
         </form>
-    {% endif %}
     {% if request.user.is_authenticated and not list.curation == 'closed' or request.user == list.user %}
         <h2 class="title is-5 mt-6">
-            {% if list.suggests_for or list.curation == 'open' or request.user == list.user or list.group|is_member:request.user %}
-                {% trans "Add Books" %}
+            {% if list.curation == 'open' or request.user == list.user or list.group|is_member:request.user %}
+                {% trans "Add Films" %}
             {% else %}
-                {% trans "Suggest Books" %}
+                {% trans "Suggest Films" %}
             {% endif %}
         </h2>
-        {% include "lists/suggestion_search.html" with query_param="q" search_url=request.path is_suggestion=list.suggests_for %}
+        {% include "lists/suggestion_search.html" with query_param="q" search_url=request.path %}
     {% endif %}
 
         {% block emded_link %}

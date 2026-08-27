@@ -31,13 +31,18 @@
 
 {% with 0|uuid as uuid %}
 <div class="box columns">
-    {% if book %}
+    {% if film %}
     <div class="column is-3 is-cover">
         <div class="block">
-            <a href="{{ book.local_path }}">{% include 'snippets/book_cover.html' with book=book cover_class='is-w-auto-tablet is-h-l-mobile' %}</a>
+            <a href="{{ film.local_path }}">{% include 'snippets/film_cover.html' with film=film cover_class='is-w-auto-tablet is-h-l-mobile' %}</a>
         </div>
 
-        <h3 class="title is-6">{% include 'snippets/book_titleby.html' with book=book %}</h3>
+        <h3 class="title is-6">
+            {{ film.title }}
+            {% if film.director_text %}
+                <span class="has-text-grey">by {{ film.director_text }}</span>
+            {% endif %}
+        </h3>
     </div>
     {% endif %}
     <div class="column">

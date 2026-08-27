@@ -2,7 +2,6 @@
 
 from urllib.parse import urlparse
 
-from django.apps import apps
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -36,13 +35,6 @@ class FederatedServer(ReelTalkModel):
             is_active=False, deactivation_reason="domain_block"
         )
 
-        # check for related connectors
-        if self.application_type == "reeltalk":
-            connector_model = apps.get_model("reeltalk.Connector", require_ready=True)
-            connector_model.objects.filter(
-                identifier=self.server_name, active=True
-            ).update(active=False, deactivation_reason="domain_block")
-
     def unblock(self):
         """unblock a server"""
         self.status = "federated"
@@ -51,15 +43,6 @@ class FederatedServer(ReelTalkModel):
         self.user_set.filter(deactivation_reason="domain_block").update(
             is_active=True, deactivation_reason=None
         )
-
-        # check for related connectors
-        if self.application_type == "reeltalk":
-            connector_model = apps.get_model("reeltalk.Connector", require_ready=True)
-            connector_model.objects.filter(
-                identifier=self.server_name,
-                active=False,
-                deactivation_reason="domain_block",
-            ).update(active=True, deactivation_reason=None)
 
     @classmethod
     def is_blocked(cls, url: str) -> bool:

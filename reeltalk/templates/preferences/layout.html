@@ -39,16 +39,8 @@
         <h2 class="menu-label">{% trans "Data" %}</h2>
         <ul class="menu-list">
             <li>
-                {% url 'import' as url %}
-                <a href="{{ url }}"{% if url in request.path %} class="is-active" aria-selected="true"{% endif %}>{% trans "Import Book List" %}</a>
-            </li>
-            <li>
                 {% url 'prefs-export' as url %}
-                <a href="{{ url }}"{% if url in request.path %} class="is-active" aria-selected="true"{% endif %}>{% trans "Export Book List" %}</a>
-            </li>
-            <li>
-                {% url 'user-import' as url %}
-                <a href="{{ url }}"{% if url in request.path %} class="is-active" aria-selected="true"{% endif %}>{% trans "Import ReelTalk Account" %}</a>
+                <a href="{{ url }}"{% if url in request.path %} class="is-active" aria-selected="true"{% endif %}>{% trans "Export Film List" %}</a>
             </li>
             <li>
                 {% url 'prefs-user-export' as url %}
@@ -62,8 +54,8 @@
                 <a href="{{ url }}"{% if url in request.path %} class="is-active" aria-selected="true"{% endif %}>{% trans "Blocked Users" %}</a>
             </li>
             <li>
-                {% url 'prefs-block-books' as url %}
-                <a href="{{ url }}"{% if url in request.path %} class="is-active" aria-selected="true"{% endif %}>{% trans "Blocked Books" %}</a>
+                {% url 'prefs-block-films' as url %}
+                <a href="{{ url }}"{% if url in request.path %} class="is-active" aria-selected="true"{% endif %}>{% trans "Blocked Films" %}</a>
             </li>
         </ul>
     </nav>

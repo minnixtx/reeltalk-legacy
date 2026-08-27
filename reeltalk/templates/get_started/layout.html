@@ -37,9 +37,9 @@
                     <li {% if request.path in url %}class="is-active"{% endif %}>
                         <a {% if request.path in url %}aria-current="page"{% endif %} href="{{ url }}">{% trans "Create your profile" %}</a>
                     </li>
-                    {% url 'get-started-books' as url %}
+                    {% url 'get-started-films' as url %}
                     <li {% if request.path in url %}class="is-active"{% endif %}>
-                        <a {% if request.path in url %}aria-current="page"{% endif %} href="{{ url }}">{% trans "Add books" %}</a>
+                        <a {% if request.path in url %}aria-current="page"{% endif %} href="{{ url }}">{% trans "Add films" %}</a>
                     </li>
                     {% url 'get-started-users' as url %}
                     <li {% if request.path in url %}class="is-active"{% endif %}>

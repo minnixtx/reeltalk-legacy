@@ -82,11 +82,11 @@ class ActivityStream(RedisStore):
             .select_related(
                 "user",
                 "reply_parent",
-                "comment__book",
-                "review__book",
-                "quotation__book",
+                "comment__film",
+                "review__film",
+                "quotation__film",
             )
-            .prefetch_related("mention_books", "mention_users")
+            .prefetch_related("mention_films", "mention_users")
             .order_by("-published_date")
         )
 
@@ -130,22 +130,22 @@ class ActivityStream(RedisStore):
         if exclude_self:
             audience = audience.exclude(id=status.user.id)
 
-        thread_books = models.Status.objects.filter(
-            # load all the statuses in this thread with an associated book
+        thread_films = models.Status.objects.filter(
+            # load all the statuses in this thread with an associated film
             Q(id=status.id) | Q(thread_id=status.thread_id)
         ).values_list(
-            "comment__book__parent_work",
-            "review__book__parent_work",
-            "quotation__book__parent_work",
-            "mention_books__parent_work",
+            "comment__film",
+            "review__film",
+            "quotation__film",
+            "mention_films__film",
         )
         # flatten the list of sets into a single set of only non-None values
-        thread_book_ids = set(j for i in thread_books for j in i if j)
-        if thread_book_ids:
-            # collect a list of all users that block any of these books
+        thread_film_ids = set(j for i in thread_films for j in i if j)
+        if thread_film_ids:
+            # collect a list of all users that block any of these films
             users_blocking = list(
                 models.User.objects.filter(
-                    blocked_books__in=thread_book_ids
+                    blocked_films__in=thread_film_ids
                 ).values_list("id", flat=True)
             )
 
@@ -202,63 +202,60 @@ class ActivityStream(RedisStore):
         user = models.User.objects.get(id=store.split("-")[0])
         return self.get_statuses_for_user(user)
 
-    def add_book_statuses(self, user, book):
-        """add statuses about a book to a user's feed"""
-        work = book.parent_work
-
+    def add_film_statuses(self, user, film):
+        """add statuses about a film to a user's feed"""
         statuses = models.Status.privacy_filter(
             user,
             privacy_levels=["public"],
         ).exclude(user=user.id)
 
-        book_comments = statuses.filter(Q(comment__book__parent_work=work))
-        book_quotations = statuses.filter(Q(quotation__book__parent_work=work))
-        book_reviews = statuses.filter(Q(review__book__parent_work=work))
-        book_mentions = statuses.filter(Q(mention_books__parent_work=work))
-        book_statuses = book_comments.union(
-            book_quotations, book_reviews, book_mentions
+        film_comments = statuses.filter(Q(comment__film=film))
+        film_quotations = statuses.filter(Q(quotation__film=film))
+        film_reviews = statuses.filter(Q(review__film=film))
+        film_mentions = statuses.filter(Q(mention_films=film))
+        film_statuses = film_comments.union(
+            film_quotations, film_reviews, film_mentions
         )
 
-        self.bulk_add_objects_to_store(book_statuses, self.stream_id(user.id))
+        self.bulk_add_objects_to_store(film_statuses, self.stream_id(user.id))
 
         # Evaluate the union once instead of embedding it as a subquery in the
         # two lookups below: reusing the union queryset inside ``id__in`` /
         # ``thread_id__in`` makes Postgres re-run the whole UNION each time,
-        # which is what makes the book-status tasks slow.
-        book_status_rows = list(book_statuses.values_list("id", "thread_id"))
-        book_status_ids, threads = (
-            zip(*book_status_rows) if book_status_rows else ((), ())
+        # which is what makes the film-status tasks slow.
+        film_status_rows = list(film_statuses.values_list("id", "thread_id"))
+        film_status_ids, threads = (
+            zip(*film_status_rows) if film_status_rows else ((), ())
         )
-        thread_statuses = statuses.exclude(id__in=book_status_ids).filter(
+        thread_statuses = statuses.exclude(id__in=film_status_ids).filter(
             thread_id__in=threads
         )
 
         self.bulk_add_objects_to_store(thread_statuses, self.stream_id(user.id))
 
-    def remove_book_statuses(self, user, book):
-        """remove statuses about a book from a user's feed"""
-        work = book.parent_work
+    def remove_film_statuses(self, user, film):
+        """remove statuses about a film from a user's feed"""
         statuses = models.Status.privacy_filter(
             user,
             privacy_levels=["public"],
         )
 
-        book_comments = statuses.filter(Q(comment__book__parent_work=work))
-        book_quotations = statuses.filter(Q(quotation__book__parent_work=work))
-        book_reviews = statuses.filter(Q(review__book__parent_work=work))
-        book_mentions = statuses.filter(Q(mention_books__parent_work=work))
-        book_statuses = book_comments.union(
-            book_quotations, book_reviews, book_mentions
+        film_comments = statuses.filter(Q(comment__film=film))
+        film_quotations = statuses.filter(Q(quotation__film=film))
+        film_reviews = statuses.filter(Q(review__film=film))
+        film_mentions = statuses.filter(Q(mention_films=film))
+        film_statuses = film_comments.union(
+            film_quotations, film_reviews, film_mentions
         )
 
-        self.bulk_remove_objects_from_store(book_statuses, self.stream_id(user.id))
+        self.bulk_remove_objects_from_store(film_statuses, self.stream_id(user.id))
 
-        # Evaluate the union once; see add_book_statuses for the rationale.
-        book_status_rows = list(book_statuses.values_list("id", "thread_id"))
-        book_status_ids, threads = (
-            zip(*book_status_rows) if book_status_rows else ((), ())
+        # Evaluate the union once; see add_film_statuses for the rationale.
+        film_status_rows = list(film_statuses.values_list("id", "thread_id"))
+        film_status_ids, threads = (
+            zip(*film_status_rows) if film_status_rows else ((), ())
         )
-        thread_statuses = statuses.exclude(id__in=book_status_ids).filter(
+        thread_statuses = statuses.exclude(id__in=film_status_ids).filter(
             thread_id__in=threads
         )
 
@@ -294,10 +291,8 @@ class HomeStream(ActivityStream):
             ),
         )
 
-    def add_book_statuses(self, user, book):
-        """add statuses about a book to a user's feed"""
-        work = book.parent_work
-
+    def add_film_statuses(self, user, film):
+        """add statuses about a film to a user's feed"""
         statuses = models.Status.privacy_filter(
             user,
             privacy_levels=["public", "unlisted", "followers"],
@@ -309,23 +304,23 @@ class HomeStream(ActivityStream):
             ),
         )
 
-        book_comments = statuses.filter(Q(comment__book__parent_work=work))
-        book_quotations = statuses.filter(Q(quotation__book__parent_work=work))
-        book_reviews = statuses.filter(Q(review__book__parent_work=work))
-        book_mentions = statuses.filter(Q(mention_books__parent_work=work))
+        film_comments = statuses.filter(Q(comment__film=film))
+        film_quotations = statuses.filter(Q(quotation__film=film))
+        film_reviews = statuses.filter(Q(review__film=film))
+        film_mentions = statuses.filter(Q(mention_films=film))
 
-        book_statuses = book_comments.union(
-            book_quotations, book_reviews, book_mentions
+        film_statuses = film_comments.union(
+            film_quotations, film_reviews, film_mentions
         )
 
-        self.bulk_add_objects_to_store(book_statuses, self.stream_id(user.id))
+        self.bulk_add_objects_to_store(film_statuses, self.stream_id(user.id))
 
-        # Evaluate the union once; see add_book_statuses for the rationale.
-        book_status_rows = list(book_statuses.values_list("id", "thread_id"))
-        book_status_ids, threads = (
-            zip(*book_status_rows) if book_status_rows else ((), ())
+        # Evaluate the union once; see add_film_statuses for the rationale.
+        film_status_rows = list(film_statuses.values_list("id", "thread_id"))
+        film_status_ids, threads = (
+            zip(*film_status_rows) if film_status_rows else ((), ())
         )
-        thread_statuses = statuses.exclude(id__in=book_status_ids).filter(
+        thread_statuses = statuses.exclude(id__in=film_status_ids).filter(
             thread_id__in=threads
         )
 
@@ -355,47 +350,45 @@ class LocalStream(ActivityStream):
         )
 
 
-class BooksStream(ActivityStream):
-    """books on your shelves"""
+class FilmsStream(ActivityStream):
+    """films on your shelves"""
 
-    key = "books"
+    key = "films"
 
     def _get_audience(self, status, exclude_self=True):
-        """anyone with the mentioned book on their shelves except the poster"""
-        work = (
-            status.book.parent_work
-            if hasattr(status, "book")
-            else status.mention_books.first().parent_work
+        """anyone with the mentioned film on their shelves except the poster"""
+        film = (
+            status.film
+            if hasattr(status, "film")
+            else status.mention_films.first()
         )
 
         audience = super()._get_audience(status, exclude_self=exclude_self)
-        return audience.filter(shelfbook__book__parent_work=work)
+        return audience.filter(shelffilm__film=film)
 
     def get_audience(self, status, exclude_self=True):
-        # only show public statuses on the books feed,
-        # and only statuses that mention books
+        # only show public statuses on the films feed,
+        # and only statuses that mention films
         if status.privacy != "public" or not (
-            status.mention_books.exists() or hasattr(status, "book")
+            status.mention_films.exists() or hasattr(status, "film")
         ):
             return []
 
         return super().get_audience(status, exclude_self=exclude_self)
 
     def get_statuses_for_user(self, user):
-        """any public status that mentions the user's books"""
-        books = user.shelfbook_set.values_list(
-            "book__parent_work__id", flat=True
-        ).distinct()
+        """any public status that mentions the user's films"""
+        films = user.shelffilm_set.values_list("film_id", flat=True).distinct()
         return (
             models.Status.privacy_filter(
                 user,
                 privacy_levels=["public"],
             )
             .filter(
-                Q(comment__book__parent_work__id__in=books)
-                | Q(quotation__book__parent_work__id__in=books)
-                | Q(review__book__parent_work__id__in=books)
-                | Q(mention_books__parent_work__id__in=books)
+                Q(comment__film__id__in=films)
+                | Q(quotation__film__id__in=films)
+                | Q(review__film__id__in=films)
+                | Q(mention_films__id__in=films)
             )
             .exclude(user=user.id)  # ignore your own statuses
             .distinct()
@@ -406,7 +399,7 @@ class BooksStream(ActivityStream):
 streams = {
     "home": HomeStream(),
     "local": LocalStream(),
-    "books": BooksStream(),
+    "films": FilmsStream(),
 }
 
 
@@ -550,74 +543,72 @@ def populate_streams_on_account_create_command(instance_id):
         populate_stream_task.delay(stream, instance_id)
 
 
-@receiver(signals.pre_save, sender=models.ShelfBook)
+@receiver(signals.pre_save, sender=models.ShelfFilm)
 def add_statuses_on_shelve(sender, instance, *args, **kwargs):
-    """update books stream when user shelves a book"""
+    """update films stream when user shelves a film"""
     if not instance.user.local:
         return
-    book = instance.book
+    film = instance.film
 
-    # check if the book is already on the user's shelves
-    editions = book.parent_work.editions.all()
-    if models.ShelfBook.objects.filter(user=instance.user, book__in=editions).exists():
+    # check if the film is already on the user's shelves
+    if models.ShelfFilm.objects.filter(user=instance.user, film=film).exists():
         return
 
-    add_book_statuses_task.delay(instance.user.id, book.id)
+    add_film_statuses_task.delay(instance.user.id, film.id)
 
 
-@receiver(signals.post_delete, sender=models.ShelfBook)
+@receiver(signals.post_delete, sender=models.ShelfFilm)
 def remove_statuses_on_unshelve(sender, instance, *args, **kwargs):
-    """update books stream when user unshelves a book"""
+    """update films stream when user unshelves a film"""
     if not instance.user.local:
         return
 
-    book = instance.book
+    film = instance.film
 
-    # check if the book is actually unshelved, not just moved
-    editions = book.parent_work.editions.all()
-    if models.ShelfBook.objects.filter(user=instance.user, book__in=editions).exists():
+    # check if the film is actually unshelved, not just moved
+    if models.ShelfFilm.objects.filter(user=instance.user, film=film).exists():
         return
 
-    remove_book_statuses_task.delay(instance.user.id, book.id)
+    remove_film_statuses_task.delay(instance.user.id, film.id)
 
 
 # ---- TASKS
 
 
 @app.task(queue=STREAMS)
-def add_book_statuses_task(user_id, book_id):
-    """add statuses related to a book on shelve"""
+def add_film_statuses_task(user_id, film_id):
+    """add statuses related to a film on shelve"""
     user = models.User.objects.get(id=user_id)
-    book = models.Edition.objects.get(id=book_id)
-    BooksStream().add_book_statuses(user, book)
+    film = models.Film.objects.get(id=film_id)
+    FilmsStream().add_film_statuses(user, film)
 
 
 @app.task(queue=STREAMS)
-def remove_book_statuses_task(user_id, book_id):
-    """remove statuses about a book from a user's feeds"""
+def remove_film_statuses_task(user_id, film_id):
+    """remove statuses about a film from a user's feeds"""
     user = models.User.objects.get(id=user_id)
-    book = models.Edition.objects.get(id=book_id)
-    BooksStream().remove_book_statuses(user, book)
+    film = models.Film.objects.get(id=film_id)
+    FilmsStream().remove_film_statuses(user, film)
 
 
 @app.task(queue=STREAMS)
-def add_blocked_book_statuses_task(user_id, book_id):
-    """add statuses related to a formerly blocked book"""
+def add_blocked_film_statuses_task(user_id, film_id):
+    """add statuses related to a formerly blocked film"""
     user = models.User.objects.get(id=user_id)
-    book = models.Edition.objects.get(id=book_id)
-    BooksStream().add_book_statuses(user, book)
-    LocalStream().add_book_statuses(user, book)
-    HomeStream().add_book_statuses(user, book)
+    film = models.Film.objects.get(id=film_id)
+    FilmsStream().add_film_statuses(user, film)
+    LocalStream().add_film_statuses(user, film)
+    HomeStream().add_film_statuses(user, film)
 
 
 @app.task(queue=STREAMS)
-def remove_blocked_book_statuses_task(user_id, book_id):
-    """remove statuses about a book from a user's feeds"""
+def remove_blocked_film_statuses_task(user_id, film_id):
+    """remove statuses about a film from a user's feeds"""
     user = models.User.objects.get(id=user_id)
-    book = models.Edition.objects.get(id=book_id)
-    BooksStream().remove_book_statuses(user, book)
-    LocalStream().remove_book_statuses(user, book)
-    HomeStream().remove_book_statuses(user, book)
+    film = models.Film.objects.get(id=film_id)
+    FilmsStream().remove_film_statuses(user, film)
+    LocalStream().remove_film_statuses(user, film)
+    HomeStream().remove_film_statuses(user, film)
 
 
 @app.task(queue=STREAMS)

@@ -46,15 +46,15 @@ class User(PrivateProfileMixin, View):
                 models.Shelf.privacy_filter(
                     request.user, privacy_levels=["public", "followers"]
                 )
-                .filter(user=user, books__isnull=False)
+                .filter(user=user, films__isnull=False)
                 .distinct()
             )
         else:
-            shelves = user.shelf_set.filter(books__isnull=False).distinct()
+            shelves = user.shelf_set.filter(films__isnull=False).distinct()
 
         blocked = []
         if request.user.is_authenticated:
-            blocked = request.user.blocked_books.values_list("id", flat=True)
+            blocked = request.user.blocked_films.values_list("id", flat=True)
 
         for user_shelf in shelves.all()[:3]:
             shelf_preview.append(
@@ -62,16 +62,16 @@ class User(PrivateProfileMixin, View):
                     "name": user_shelf.name,
                     "identifier": user_shelf.identifier,
                     "local_path": user_shelf.local_path,
-                    "books": user_shelf.books.exclude(parent_work__in=blocked)
-                    .order_by("-shelfbook__shelved_date")
+                    "films": user_shelf.films.exclude(id__in=blocked)
+                    .order_by("-shelffilm__shelved_date")
                     .all()[:3],
-                    "size": user_shelf.books.count(),
+                    "size": user_shelf.films.count(),
                 }
             )
 
         # user's posts
         activities = (
-            models.Status.blocked_book_filter(
+            models.Status.blocked_film_filter(
                 request.user,
             )
             .filter(user=user)
@@ -84,12 +84,12 @@ class User(PrivateProfileMixin, View):
             .select_related(
                 "user",
                 "reply_parent",
-                "review__book",
-                "comment__book",
-                "quotation__book",
+                "review__film",
+                "comment__film",
+                "quotation__film",
             )
             .prefetch_related(
-                "mention_books",
+                "mention_films",
                 "mention_users",
                 "attachments",
             )
@@ -131,12 +131,12 @@ class UserReviewsComments(PrivateProfileMixin, View):
             .select_related(
                 "user",
                 "reply_parent",
-                "review__book",
-                "comment__book",
-                "quotation__book",
+                "review__film",
+                "comment__film",
+                "quotation__film",
             )
             .prefetch_related(
-                "mention_books",
+                "mention_films",
                 "mention_users",
                 "attachments",
             )

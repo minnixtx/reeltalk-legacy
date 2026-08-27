@@ -48,7 +48,7 @@ def get_boosted(boost):
     return (
         models.Status.objects.select_subclasses()
         .select_related("user", "reply_parent")
-        .prefetch_related("mention_books", "mention_users")
+        .prefetch_related("mention_films", "mention_users")
         .get(id=boost.boosted_status.id)
     )
 
@@ -83,6 +83,6 @@ def get_header_template(status):
 
 
 @register.simple_tag(takes_context=False)
-def load_book(status):
-    """how many users that you follow, follow them"""
-    return status.book if hasattr(status, "book") else status.mention_books.first()
+def load_film(status):
+    """load the film a status is about, or the first mentioned film"""
+    return status.film if hasattr(status, "film") else status.mention_films.first()

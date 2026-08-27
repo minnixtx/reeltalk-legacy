@@ -13,7 +13,7 @@
 </span>
 {% elif status.content %}
 <a href="{{ status.local_path }}">
-    {{ status.content | safe | truncatewords_html:10 }}{% if status.mention_books %} <em>{{ status.mention_books.first.title }}</em>{% endif %}
+    {{ status.content | safe | truncatewords_html:10 }}{% if status.mention_films %} <em>{{ status.mention_films.first.title }}</em>{% endif %}
 </a>
 {% elif status.quote %}
 <a href="{{ status.local_path }}">{{ status.quote | safe | truncatewords_html:10 }}</a>

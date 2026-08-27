@@ -2,8 +2,8 @@
 {% load status_display %}
 {% load utilities %}
 {% comment %}
-type: used to differentiate html id fields when multiple types of posting are available for a book (options: comment, quotation, review, direct, reply)
-book: the Edition object related to the status
+type: used to differentiate html id fields when multiple types of posting are available for a film (options: comment, quotation, review, direct, reply)
+film: the Film object related to the status
 reply_parent: if applicable, the Status object that this post is in reply to
 mention: a user who is @ mentioned by default in the post
 draft: an existing Status object that is providing default values for input fields
@@ -15,8 +15,8 @@ draft: an existing Status object that is providing default values for input fiel
         data-droppable-textfield="1"
         data-max-upload="{% max_upload_size %}"
         data-max-upload-human="{% max_upload_size_human %}"
-        {% if not draft %}data-cache-draft="id_content_{{ type }}_{{ book.id }}{{ reply_parent.id }}"{% endif %}
-        id="id_content_{{ type }}_{{ book.id }}{{ reply_parent.id }}{{ uuid }}"
+        {% if not draft %}data-cache-draft="id_content_{{ type }}_{{ film.id }}{{ reply_parent.id }}"{% endif %}
+        id="id_content_{{ type }}_{{ film.id }}{{ reply_parent.id }}{{ uuid }}"
         placeholder="{{ placeholder }}"
         aria-label="{% if reply_parent %}{% trans 'Reply' %}{% else %}{% trans 'Content' %}{% endif %}"
         {% if not optional and type != "quotation" and type != "review" %}required{% endif %}

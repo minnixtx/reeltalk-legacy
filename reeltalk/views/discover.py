@@ -12,11 +12,11 @@ from reeltalk import activitystreams
 
 @method_decorator(login_required, name="dispatch")
 class Discover(View):
-    """preview of recently reviewed books"""
+    """preview of recently reviewed films"""
 
     def get(self, request):
-        """tiled book activity page"""
-        # all activities in the "federated" feed associated with a book
+        """tiled film activity page"""
+        # all activities in the "local" feed associated with a film
         activities = (
             activitystreams.streams["local"]
             .get_activity_stream(request.user)
@@ -24,12 +24,12 @@ class Discover(View):
                 Q(comment__isnull=False)
                 | Q(review__isnull=False)
                 | Q(quotation__isnull=False)
-                | Q(mention_books__isnull=False)
+                | Q(mention_films__isnull=False)
             )
         )
 
         large_activities = Paginator(
-            activities.filter(mention_books__isnull=True)
+            activities.filter(mention_films__isnull=True)
             # exclude statuses with no user-provided content for large panels
             .exclude(
                 Q(Q(content="") | Q(content__isnull=True)) & Q(quotation__isnull=True),
@@ -38,7 +38,7 @@ class Discover(View):
         )
         small_activities = Paginator(
             activities.filter(
-                Q(mention_books__isnull=False)
+                Q(mention_films__isnull=False)
                 | Q(
                     Q(Q(content="") | Q(content__isnull=True))
                     & Q(quotation__isnull=True),

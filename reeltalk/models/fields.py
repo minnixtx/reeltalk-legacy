@@ -19,7 +19,7 @@ from django.utils.encoding import filepath_to_uri
 import mistune
 
 from reeltalk import activitypub
-from reeltalk.connectors import get_image
+from reeltalk.utils.http import get_image
 from reeltalk.utils.sanitizer import clean
 from reeltalk.utils.partial_date import (
     PartialDate,

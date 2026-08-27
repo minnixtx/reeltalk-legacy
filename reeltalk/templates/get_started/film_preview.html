@@ -1,0 +1,17 @@
+{% load i18n %}
+<div class="column is-cover">
+    {% include 'snippets/film_cover.html' with film=film cover_class='is-h-l is-h-m-mobile' size_mobile='medium' size='large' %}
+
+    <div class="select is-small mt-1 mb-3">
+        <select name="{{ film.id }}" aria-label="{% blocktrans with film_title=film.title %}Want to watch {{ film_title }}?{% endblocktrans %}">
+            <option disabled selected value>{% trans 'Add to your films' %}</option>
+            {% for shelf in user_shelves %}
+            {% if shelf.identifier == 'to-read' %}
+            <option value="{{ shelf.id }}">
+                {% trans "Want to Watch" %}
+            </option>
+            {% endif %}
+            {% endfor %}
+        </select>
+    </div>
+</div>

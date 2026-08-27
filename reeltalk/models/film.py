@@ -8,7 +8,7 @@ from typing_extensions import Self
 from django.contrib.postgres.search import SearchVectorField
 from django.contrib.postgres.indexes import GinIndex, BloomIndex
 from django.db import models
-from django.db.models import ManyToManyField, Q
+from django.db.models import ManyToManyField, Prefetch, Q
 from imagekit.models import ImageSpecField
 import pgtrigger
 
@@ -144,6 +144,27 @@ class Film(ObjectMixin, ReelTalkModel):
     def guess_sort_title(self):
         """Get a best-guess sort title for the current film"""
         return re.sub(r"^(the|a|an) ", "", str(self.title).lower())
+
+    @classmethod
+    def viewer_aware_objects(cls, viewer):
+        """filter blocked films and annotate a film query with metadata related to the user"""
+        queryset = cls.objects
+
+        if not viewer or not viewer.is_authenticated:
+            return queryset
+
+        queryset = queryset.exclude(
+            id__in=viewer.blocked_films.values_list("id", flat=True)
+        )
+
+        queryset = queryset.prefetch_related(
+            Prefetch(
+                "shelffilm_set",
+                queryset=viewer.shelffilm_set.all(),
+                to_attr="current_shelves",
+            ),
+        )
+        return queryset
 
     @classmethod
     def find_existing(cls, data):

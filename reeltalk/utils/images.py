@@ -13,7 +13,7 @@ from django.core.files.uploadedfile import (
     TemporaryUploadedFile,
 )
 
-from reeltalk.connectors import get_image
+from reeltalk.utils.http import get_image
 
 logger = logging.getLogger(__name__)
 

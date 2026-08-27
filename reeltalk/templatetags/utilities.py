@@ -1,7 +1,6 @@
 """template filters for really common utilities"""
 
 import os
-import re
 from uuid import uuid4
 from urllib.parse import urlparse
 from django import template
@@ -53,16 +52,16 @@ def get_user_identifier_from_remote_id(remote_id):
         return None
 
 
-@register.filter(name="book_title")
-def get_title(book, too_short=5):
+@register.filter(name="film_title")
+def get_title(film, too_short=5):
     """display the subtitle if the title is short"""
-    if not book:
+    if not film:
         return ""
-    title = book.title
-    if len(title) <= too_short and book.subtitle:
+    title = film.title
+    if len(title) <= too_short and film.subtitle:
         title = _("%(title)s: %(subtitle)s") % {
             "title": title,
-            "subtitle": book.subtitle,
+            "subtitle": film.subtitle,
         }
     return title
 
@@ -88,62 +87,16 @@ def truncatepath(value, arg):
 
 
 @register.simple_tag(takes_context=False)
-def get_book_cover_thumbnail(book, size="medium", ext="jpg"):
-    """Returns a book thumbnail at the specified size and extension,
+def get_film_cover_thumbnail(film, size="medium", ext="jpg"):
+    """Returns a film poster thumbnail at the specified size and extension,
     with fallback if needed"""
     if size == "":
         size = "medium"
     try:
-        cover_thumbnail = getattr(book, f"cover_bw_book_{size}_{ext}")
+        cover_thumbnail = getattr(film, f"poster_bw_film_{size}_{ext}")
         return cover_thumbnail.url
     except OSError:
         return static("images/no_cover.jpg")
-
-
-@register.filter(name="get_isni_bio")
-def get_isni_bio(existing, author):
-    """Returns the isni bio string if an existing author has an isni listed"""
-    auth_isni = re.sub(r"\D", "", str(author.isni))
-    if len(existing) == 0:
-        return ""
-    for value in existing:
-        if hasattr(value, "bio") and auth_isni == re.sub(r"\D", "", str(value.isni)):
-            return mark_safe(_(f"Author of <em>{value.bio}</em>"))
-
-    return ""
-
-
-@register.filter(name="possible_series_hint")
-def possible_series_hint(seriesbook):
-    """Returns the hint string for a possible matching series"""
-    title = seriesbook.book.title
-    path = seriesbook.series.local_path
-    author = (
-        seriesbook.book.authors.first().name
-        if seriesbook.book.authors.first()
-        else None
-    )
-
-    hint = f'Includes <a href="{path}" target="_blank" rel="nofollow noopener noreferrer">"{title}"</a>'
-    if author:
-        hint += f" by {author}"
-
-    return mark_safe(hint)
-
-
-@register.filter(name="get_isni", needs_autoescape=True)
-def get_isni(existing, author, autoescape=True):
-    """Returns the isni ID if an existing author has an ISNI listing"""
-    auth_isni = re.sub(r"\D", "", str(author.isni))
-    if len(existing) == 0:
-        return ""
-    for value in existing:
-        if hasattr(value, "isni") and auth_isni == re.sub(r"\D", "", str(value.isni)):
-            isni = value.isni
-            return mark_safe(
-                f'<input type="text" name="isni-for-{author.id}" value="{isni}" hidden>'
-            )
-    return ""
 
 
 @register.simple_tag(takes_context=False)

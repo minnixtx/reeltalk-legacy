@@ -1,0 +1,70 @@
+{% extends 'search/layout.html' %}
+{% load i18n %}
+{% load humanize %}
+{% load utilities %}
+{% load film_display_tags %}
+
+{% block panel %}
+
+{% if blocked_films_excluded %}
+    <p class="my-4">
+        {% url "prefs-block-films" as bb_path %}
+        {% blocktrans trimmed %}
+        <em>Some <a href="{{ bb_path }}">blocked films</a> have been excluded.</em>
+        {% endblocktrans %}
+    </p>
+{% endif %}
+
+{% if results %}
+<ul class="block">
+{% for result in results %}
+    <li class="pd-4 mb-5 local-film-search-result" id="tour-local-film-search-result">
+        <div class="columns is-mobile is-gapless mb-0">
+            <div class="column is-cover">
+                {% include 'snippets/film_cover.html' with film=result cover_class='is-w-xs is-h-xs' %}
+            </div>
+
+            <div class="column is-10 ml-3">
+                <p>
+                    <strong>
+                        <a href="{{ result.local_path }}">{{ result.title }}</a>
+                        {% if result.director_text %}
+                            <span class="has-text-grey">by {{ result.director_text }}</span>
+                        {% endif %}
+                    </strong>
+                </p>
+                <p>
+                    {% with film_review_count=result|review_count %}
+                    {% blocktrans trimmed count counter=film_review_count with formatted_review_count=film_review_count|intcomma %}
+                    {{ formatted_review_count }} review
+                    {% plural %}
+                    {{ formatted_review_count }} reviews
+                    {% endblocktrans %}
+                    {% endwith %}
+
+                    {% if result.year %}
+                        {% blocktrans %}(released {{ result.year }}){% endblocktrans %}
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </li>
+{% endfor %}
+</ul>
+{% endif %}
+{% endblock %}
+
+{% block search_footer %}
+<p class="block">
+    {% if request.user.is_authenticated %}
+        <a href="{% url 'create-film' %}" id="tour-manually-add-film">
+            {% trans "Manually add film" %}
+        </a>
+    {% else %}
+        <a href="{% url 'login' %}">
+            {% trans "Log in to add films." %}
+        </a>
+    {% endif %}
+</p>
+
+{% endblock %}

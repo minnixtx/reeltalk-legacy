@@ -11,7 +11,7 @@ from django.views import View
 
 from reeltalk import forms, models
 from reeltalk.lists_stream import ListsStream
-from reeltalk.views.list.list import add_book
+from reeltalk.views.list.list import add_film
 from reeltalk.views.mixins import PrivateProfileMixin
 
 logger = logging.getLogger(__name__)
@@ -47,14 +47,14 @@ class Lists(View):
             book_list.group = None
         book_list.save()
 
-        book_id = request.POST.get("book")
-        if book_id:
-            # We want to add a book to the new list directly after its creation
+        film_id = request.POST.get("film")
+        if film_id:
+            # We want to add a film to the new list directly after its creation
             updated_post = request.POST.copy()
-            updated_post["book_list"] = book_list.id
-            updated_post["book"] = book_id
+            updated_post["film_list"] = book_list.id
+            updated_post["film"] = film_id
             request.POST = updated_post
-            return add_book(request)
+            return add_film(request)
 
         return redirect(book_list.local_path)
 

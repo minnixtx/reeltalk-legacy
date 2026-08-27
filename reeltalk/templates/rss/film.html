@@ -1,0 +1,5 @@
+{% load i18n %}
+‘{{ obj.title }}’ {% if obj.director_text %} by {{obj.director_text}} {% endif %}
+<p>{{ obj.description|default:'' }}</p>
+{% if obj.year %}{% trans "Year:" %} {{ obj.year }}<br>{% endif %}
+{% if obj.runtime %}{% trans "Runtime:" %} {{ obj.runtime }} min<br>{% endif %}

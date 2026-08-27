@@ -1,0 +1,62 @@
+{% extends 'layout.html' %}
+{% load i18n %}
+{% load shelf_tags %}
+{% load utilities %}
+{% load film_display_tags %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}{{ film|film_title }}{% endblock %}
+
+{% block opengraph %}
+    {% include 'snippets/opengraph.html' with title=film.title description=film|film_description image=film.poster %}
+{% endblock %}
+
+{% block head_links %}
+    {% include 'snippets/dublincore.html' with film=film %}
+{% endblock %}
+
+{% block content %}
+{% with user_authenticated=request.user.is_authenticated can_edit_film=perms.reeltalk.edit_film %}
+<div class="block" itemscope itemtype="https://schema.org/Movie">
+    <div class="columns is-mobile">
+        {% include "film/sections/title.html" %}
+    </div>
+
+    <div class="columns">
+        <div class="column is-2">
+            {% include "film/sections/cover.html" %}
+            <div class="mb-3" id="tour-shelve-button">
+                {% include 'snippets/shelve_button/shelve_button.html' %}
+            </div>
+
+            {% include "film/sections/lists.html" %}
+        </div>
+
+        <div class="column">
+            <div class="block">
+                {% include "film/sections/description.html" %}
+            </div>
+            <div class="block">
+                {% include "film/sections/metadata.html" with content_count=2 %}
+            </div>
+
+            <hr aria-hidden="true" />
+            <section class="block">
+            {% include "film/sections/reviews.html" %}
+            </section>
+        </div>
+    </div>
+</div>
+
+
+{% endwith %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static "js/tabs.js" %}"></script>
+<script src="{% static "js/autocomplete.js" %}"></script>
+{% if request.user.show_guided_tour %}
+    {% include 'guided_tour/home.html' %}
+{% endif %}
+{% endblock %}

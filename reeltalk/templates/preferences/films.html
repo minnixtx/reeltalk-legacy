@@ -1,0 +1,36 @@
+{% extends 'preferences/layout.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Blocked Films" %}{% endblock %}
+
+{% block header %}
+{% trans "Blocked Films" %}
+{% endblock %}
+
+{% block panel %}
+{% if not request.user.blocked_films.exists %}
+<p><em>{% trans "No films currently blocked." %}</em></p>
+{% else %}
+<table class="table">
+    <thead>
+        <th>{% trans 'Title' %}</th>
+        <th>{% trans 'Directors' %}</th>
+        <th></th>
+    </thead>
+    <tbody>
+        {% for film in request.user.blocked_films.all %}
+        <tr>
+            <td><a href="{{ film.remote_id }}">{{ film.title }}</a></td>
+            <td>{{ film.director_text }}</td>
+            <td>
+                <form name="unblocks" method="post" action="{% url 'unblock-film' film.id %}">
+                    {% csrf_token %}
+                    <button class="button is-small" type="submit">{% trans "Un-block" %}</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

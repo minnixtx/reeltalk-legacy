@@ -5,7 +5,6 @@ import sys
 
 from .film import Film, MergedFilm
 from .link import Link, LinkDomain
-from .connector import Connector
 
 from .shelf import Shelf, ShelfFilm
 from .list import List, ListItem

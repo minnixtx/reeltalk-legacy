@@ -2,48 +2,19 @@
 
 <script nonce="{{request.csp_nonce}}">
 
-    let localResult = document.querySelector(".local-book-search-result");
-    let remoteResult = document.querySelector(".remote-book-search-result");
-    let otherCatalogues = document.querySelector("#tour-load-from-other-catalogues");
-    let manuallyAdd = document.querySelector("#tour-manually-add-book");
+    let localResult = document.querySelector(".local-film-search-result");
+    let manuallyAdd = document.querySelector("#tour-manually-add-film");
     const tour = new Shepherd.Tour({
         exitOnEsc: true,
     });
 
-    if (remoteResult) {
-        tour.addStep(
-        {
-            text: "{% trans 'If the book you are looking for is available on a remote catalogue such as Open Library, click on <strong>Import book</strong>.' %}",
-            title: "{% trans 'Searching' %}",
-            attachTo: {
-                element: "#tour-remote-search-result",
-                on: "top",
-            },
-            buttons: [
-                {
-                    action() {
-                        disableGuidedTour(csrf_token);
-                        return this.complete();
-                    },
-                    secondary: true,
-                    text: "{% trans 'End Tour' %}",
-                    classes: "is-danger guided-tour-cancel-button",
-                },
-                {
-                    action() {
-                        return this.next();
-                    },
-                    text: "{% trans 'Next' %}",
-                },
-            ],
-        });
-    } else if (localResult) {
+    if (localResult) {
     tour.addStep(
         {
-            text: `{% trans "If the book you are looking for is already on this Reeltalk instance, you can click on the title to go to the book's page." %}`,
+            text: `{% trans "If the film you are looking for is already on this Reeltalk instance, you can click on the title to go to the film's page." %}`,
             title: "{% trans 'Searching' %}",
             attachTo: {
-                element: "#tour-local-book-search-result",
+                element: "#tour-local-film-search-result",
                 on: "top",
             },
             buttons: [
@@ -64,38 +35,12 @@
                 },
             ],
         });
-    }
-
-    if (otherCatalogues) {
-        tour.addStep({
-            text: "{% trans 'If the book you are looking for is not listed, try loading more records from other sources like Open Library or Inventaire.' %}",
-            title: "{% trans 'Load more records' %}",
-            attachTo: {
-                element: "#tour-load-from-other-catalogues",
-                on: "right",
-            },
-            buttons: [
-                {
-                    action() {
-                        return this.back();
-                    },
-                    secondary: true,
-                    text: "{% trans 'Back' %}",
-                },
-                {
-                    action() {
-                        return this.next();
-                    },
-                    text: "{% trans 'Next' %}",
-                },
-            ],
-        })
     }
 
     if (manuallyAdd) {
-        tour.addSteps([ 
+        tour.addSteps([
             {
-            text: "{% trans 'If your book is not in the results, try adjusting your search terms.' %}",
+            text: "{% trans 'If your film is not in the results, try adjusting your search terms.' %}",
             title: "{% trans 'Search again' %}",
             attachTo: {
                 element: '#tour-search-page-input',
@@ -118,10 +63,10 @@
                 ],
             },
             {
-            text: `{% trans "If you still can't find your book, you can add a record manually." %}`,
+            text: `{% trans "If you still can't find your film, you can add a record manually." %}`,
             title: "{% trans 'Add a record manually' %}",
             attachTo: {
-                element: "#tour-manually-add-book",
+                element: "#tour-manually-add-film",
                 on: "right",
             },
             scrollTo: true,
@@ -144,7 +89,7 @@
     }
 
     tour.addStep({
-            text: '<p class="notification is-warning is-light mt-3">{% trans "Import, manually add, or view an existing book to continue the tour." %}<p>',
+            text: '<p class="notification is-warning is-light mt-3">{% trans "Manually add, or view an existing film to continue the tour." %}<p>',
             title: "{% trans 'Continue the tour' %}",
             buttons: [
                 {

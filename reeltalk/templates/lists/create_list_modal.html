@@ -12,7 +12,7 @@
 
 {% block modal-body %}
 {% csrf_token %}
-<input type="hidden" name="book" value="{{ book.id }}">
+<input type="hidden" name="film" value="{{ film.id }}">
 
 {% include 'lists/form.html' with curation_group=group %}
 {% endblock %}

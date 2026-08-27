@@ -3,16 +3,16 @@
 {% load utilities %}
 
 {% block modal-title %}
-{% blocktrans trimmed with book_title=book|book_title %}
-Want to Read "<em>{{ book_title }}</em>"
+{% blocktrans trimmed with film_title=film.title %}
+Want to watch "<em>{{ film_title }}</em>"
 {% endblocktrans %}
 {% endblock %}
 
 {% block modal-form-open %}
-<form name="want-to-read-{{ uuid }}" action="{% url 'reading-status' 'want' book.id %}" method="post" {% if not refresh %}class="submit-status"{% endif %}>
+<form name="want-to-read-{{ uuid }}" action="{% url 'reading-status' 'want' film.id %}" method="post" {% if not refresh %}class="submit-status"{% endif %}>
 {% csrf_token %}
 <input type="hidden" name="reading_status" value="to-read">
-<input type="hidden" name="shelf" value="{{ move_from }}"> 
+<input type="hidden" name="shelf" value="{{ move_from }}">
 {% endblock %}
 
 {% block form %}

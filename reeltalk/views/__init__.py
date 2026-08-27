@@ -7,14 +7,6 @@ from .admin.automod import AutoMod, automod_delete, run_automod
 from .admin.automod import schedule_automod_task, unschedule_automod_task
 from .admin.celery_status import CeleryStatus, celery_ping
 from .admin.redis import RedisStatus
-from .admin.connectors import (
-    ConnectorSettings,
-    deactivate_connector,
-    activate_connector,
-    set_connector_priority,
-    create_connector,
-    update_connector,
-)
 from .admin.schedule import ScheduledTasks
 from .admin.dashboard import Dashboard
 from .admin.federation import Federation, FederatedServer
@@ -24,27 +16,13 @@ from .admin.federation_settings import FederationSettings
 from .admin.files_maintenance import (
     FilesMaintenance,
     run_export_deletions,
-    run_missing_covers,
-    run_wrong_cover_paths,
     schedule_export_delete_task,
-    schedule_run_missing_covers_job,
     unschedule_file_maintenance_task,
-    cancel_covers_job,
     set_export_expiry_age,
     cancel_export_delete_job,
 )
 from .admin.email_blocklist import EmailBlocklist
 from .admin.email_config import EmailConfig
-from .admin.imports import (
-    ImportList,
-    disable_imports,
-    enable_imports,
-    set_import_size_limit,
-    set_user_import_completed,
-    set_user_import_limit,
-    enable_user_exports,
-    disable_user_exports,
-)
 from .admin.ip_blocklist import IPBlocklist
 from .admin.invite import ManageInvites, Invite, InviteRequest
 from .admin.invite import ManageInviteRequests, ignore_invite_request
@@ -69,7 +47,7 @@ from .preferences.export import Export, ExportUser, ExportArchive
 from .preferences.move_user import MoveUser, AliasUser, remove_alias, unmove
 from .preferences.delete_user import DeleteUser, DeactivateUser, ReactivateUser
 from .preferences.block import Block, unblock
-from .preferences.books import BlockedBooks, unblock_book
+from .preferences.films import BlockedFilms, unblock_film
 from .preferences.security import (
     UserSecurity,
     logout_session,
@@ -81,24 +59,18 @@ from .preferences.security import (
     Prompt2FA,
 )
 
-# books
-from .books.books import (
-    Book,
-    upload_cover,
+# films
+from .films.films import (
+    Film,
+    upload_poster,
     add_description,
-    resolve_book,
 )
 
-from .books.books import update_book_from_remote
-from .books.edit_book import (
-    EditBook,
-    ConfirmEditBook,
-    CreateBook,
-    create_book_from_data,
+from .films.edit_film import (
+    EditFilm,
+    ConfirmEditFilm,
+    CreateFilm,
 )
-from .books.editions import Editions, switch_edition
-from .books.links import BookFileLinks, AddFileLink, delete_link
-from .books.series import Series, SeriesBook, EditSeries
 
 # landing
 from .landing.about import about, privacy, impressum
@@ -112,48 +84,22 @@ from .landing.password import PasswordResetRequest, PasswordReset, ForcePassword
 from .shelf.shelf import Shelf
 from .shelf.shelf_actions import shelve, unshelve
 
-# csv and user import
-from .imports.import_data import Import, UserImport, user_import_available
-from .imports.import_status import (
-    ImportStatus,
-    UserImportStatus,
-    retry_item,
-    stop_import,
-    stop_user_import,
-)
-from .imports.troubleshoot import ImportTroubleshoot
-from .imports.user_troubleshoot import UserImportTroubleshoot
-from .imports.manually_review import (
-    ImportManualReview,
-    approve_import_item,
-    delete_import_item,
-)
-
 # lists
 from .list.curate import Curate
 from .list.embed import unsafe_embed_list
-from .list.list_item import ListItem, SuggestionListItem
+from .list.list_item import ListItem
 from .list.lists import Lists, SavedLists, UserLists
 from .list.list import (
     List,
     save_list,
     unsave_list,
     delete_list,
-    add_book,
-    remove_book,
-    set_book_position,
-)
-
-# suggestion lists
-from .suggestion_list import SuggestionList, UserSuggestions
-from .suggestion_list import (
-    AddSuggestion,
-    book_remove_suggestion,
-    endorse_suggestion,
+    add_film,
+    remove_film,
+    set_film_position,
 )
 
 # misc views
-from .author import Author, EditAuthor, update_author_from_remote
 from .directory import Directory
 from .discover import Discover
 from .feed import DirectMessage, Feed, Replies, Status
@@ -167,7 +113,7 @@ from .follow import (
     remote_follow_page,
 )
 from .follow import accept_follow_request, delete_follow_request
-from .get_started import GetStartedBooks, GetStartedProfile, GetStartedUsers
+from .get_started import GetStartedFilms, GetStartedProfile, GetStartedUsers
 from .group import (
     Group,
     UserGroups,
@@ -183,7 +129,6 @@ from .inbox import Inbox
 from .interaction import Favorite, Unfavorite, Boost, Unboost
 from .notifications import Notifications
 from .outbox import Outbox
-from .reading import ReadThrough, delete_readthrough, delete_progressupdate
 from .reading import ReadingStatus
 from .report import Report
 from .rss_feed import (
@@ -194,8 +139,7 @@ from .rss_feed import (
 )
 from .search import Search
 from .setup import InstanceConfig, CreateAdmin
-from .status import CreateStatus, EditStatus, DeleteStatus, update_progress
-from .status import edit_readthrough
+from .status import CreateStatus, EditStatus, DeleteStatus
 from .updates import get_notification_count, get_unread_status_string
 from .user import (
     User,

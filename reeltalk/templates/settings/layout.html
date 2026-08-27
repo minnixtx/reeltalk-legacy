@@ -93,10 +93,6 @@
         <h2 class="menu-label">{% trans "System" %}</h2>
         <ul class="menu-list">
             <li>
-                {% url 'settings-imports' as url %}
-                <a href="{{ url }}"{% if url in request.path %} class="is-active" aria-selected="true"{% endif %}>{% trans "Imports" %}</a>
-            </li>
-            <li>
                 {% url 'settings-celery' as url %}
                 <a href="{{ url }}"{% if url in request.path %} class="is-active" aria-selected="true"{% endif %}>{% trans "Celery Status" %}</a>
             </li>
@@ -111,10 +107,6 @@
             <li>
                 {% url 'settings-email-config' as url %}
                 <a href="{{ url }}"{% if url in request.path %} class="is-active" aria-selected="true"{% endif %}>{% trans "Email Configuration" %}</a>
-            </li>
-            <li>
-                {% url 'settings-connectors' as url %}
-                <a href="{{ url }}"{% if url in request.path %} class="is-active" aria-selected="true"{% endif %}>{% trans "Connectors" %}</a>
             </li>
             <li>
                 {% url 'settings-files' as url %}

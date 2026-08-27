@@ -116,10 +116,7 @@ module = "reeltalk.*"
 [[tool.mypy.overrides]]
 ignore_errors = false
 module = [
-    "reeltalk.connectors.*",
     "reeltalk.utils.*",
-    "reeltalk.importers.*",
-    "reeltalk.isbn.*",
     "celerytalk.*",
 ]
 

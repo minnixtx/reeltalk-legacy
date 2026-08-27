@@ -6,7 +6,7 @@ from requests.exceptions import HTTPError
 from django.http import HttpResponseForbidden
 
 from reeltalk.activitypub import resolve_remote_id
-from reeltalk.connectors import get_data
+from reeltalk.utils.http import get_data
 from reeltalk.models import SiteSettings, User
 from reeltalk.signatures import Signature
 from reeltalk.views.helpers import is_api_request

@@ -1,4 +1,4 @@
-"""Filters and tags related to shelving books"""
+"""Filters and tags related to shelving films"""
 
 from django import template
 from django.utils.translation import gettext_lazy as _
@@ -13,19 +13,17 @@ register = template.Library()
 SHELF_NAMES = {
     "all": _("All films"),
     "to-read": _("Want to Watch"),
-    "reading": _("Currently Reading"),
     "read": _("Watched"),
-    "stopped-reading": _("Stopped Reading"),
 }
 
 
-@register.filter(name="is_book_on_shelf")
-def get_is_book_on_shelf(book, shelf):
-    """is a book on a shelf"""
+@register.filter(name="is_film_on_shelf")
+def get_is_film_on_shelf(film, shelf):
+    """is a film on a shelf"""
     return cache.get_or_set(
-        f"book-on-shelf-{book.id}-{shelf.id}",
-        lambda b, s: s.books.filter(id=b.id).exists(),
-        book,
+        f"film-on-shelf-{film.id}-{shelf.id}",
+        lambda f, s: s.films.filter(id=f.id).exists(),
+        film,
         shelf,
         timeout=60 * 60,  # just cache this for an hour
     )
@@ -56,36 +54,19 @@ def get_translated_shelf_name(shelf):
 
 
 @register.simple_tag(takes_context=True)
-def active_shelf(context, book):
-    """check what shelf a user has a book on, if any"""
+def active_shelf(context, film):
+    """check what shelf a user has a film on, if any"""
     user = context["request"].user
     return cache.get_or_set(
-        f"active_shelf-{user.id}-{book.id}",
-        lambda u, b: (
-            models.ShelfBook.objects.filter(
+        f"active_shelf-{user.id}-{film.id}",
+        lambda u, f: (
+            models.ShelfFilm.objects.filter(
                 shelf__user=u,
-                book__parent_work__editions=b,
+                film=f,
             ).first()
             or False
         ),
         user,
-        book,
+        film,
         timeout=60 * 60,
-    ) or {"book": book}
-
-
-@register.simple_tag(takes_context=False)
-def latest_read_through(book, user):
-    """the most recent read activity"""
-    return cache.get_or_set(
-        f"latest_read_through-{user.id}-{book.id}",
-        lambda u, b: (
-            models.ReadThrough.objects.filter(user=u, book=b, is_active=True)
-            .order_by("-start_date")
-            .first()
-            or False
-        ),
-        user,
-        book,
-        timeout=60 * 60,
-    )
+    ) or {"film": film}

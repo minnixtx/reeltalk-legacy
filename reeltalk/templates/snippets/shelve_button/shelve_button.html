@@ -3,28 +3,21 @@
 
 {% if request.user.is_authenticated %}
 
-{% with book.id|uuid as uuid %}
-{% active_shelf book as active_shelf %}
-{% latest_read_through book request.user as readthrough %}
-{% with active_shelf_book=active_shelf.book %}
-<div class="field has-addons mb-0 has-text-weight-normal" data-shelve-button-book="{{ book.id }}">
-    {% if switch_mode and active_shelf_book != book %}
-    <div class="control">
-        {% include 'snippets/switch_edition_button.html' with edition=book %}
-    </div>
-    {% else %}
+{% with film.id|uuid as uuid %}
+{% active_shelf film as active_shelf %}
+{% with active_shelf_film=active_shelf.film %}
+<div class="field has-addons mb-0 has-text-weight-normal" data-shelve-button-film="{{ film.id }}">
     <div class="control">
         {% include 'snippets/shelve_button/shelve_button_options.html' with class="shelf-option is-small" shelves=user_shelves active_shelf=active_shelf button_uuid=uuid %}
     </div>
     {% include 'snippets/shelve_button/shelve_button_dropdown.html' with class="is-small" button_uuid=uuid%}
-    {% endif %}
 </div>
 
 {% join "want_to_read" uuid as modal_id %}
-{% include 'snippets/reading_modals/want_to_read_modal.html' with book=active_shelf_book id=modal_id class="" %}
+{% include 'snippets/reading_modals/want_to_read_modal.html' with film=active_shelf_film id=modal_id class="" %}
 
 {% join "finish_reading" uuid as modal_id %}
-{% include 'snippets/reading_modals/finish_reading_modal.html' with book=active_shelf_book id=modal_id readthrough=readthrough class="" %}
+{% include 'snippets/reading_modals/finish_reading_modal.html' with film=active_shelf_film id=modal_id class="" %}
 
 {% endwith %}
 {% endwith %}

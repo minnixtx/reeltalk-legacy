@@ -1,0 +1,70 @@
+{% spaceless %}
+
+{% load i18n %}
+{% load static %}
+{% load imagekit %}
+{% load utilities %}
+
+{% if film.poster %}
+    <picture class="cover-container {{ cover_class }}">
+        {% if external_path %}
+            <img
+                class="film-cover"
+                src="{{ film.poster }}"
+                itemprop="thumbnailUrl"
+                alt="{{ film.alt_text|default:'' }}"
+                loading="lazy"
+                decoding="async"
+            >
+        {% else %}
+
+            {% if thumbnail_generation_enabled %}
+
+                {% if size_mobile %}
+                    <source
+                        media="(max-width: 768px)"
+                        type="image/webp"
+                        srcset="{% get_film_cover_thumbnail film=film size=size_mobile ext='webp' %}"
+                    />
+                    <source
+                        media="(max-width: 768px)"
+                        type="image/jpg"
+                        srcset="{% get_film_cover_thumbnail film=film size=size_mobile ext='jpg' %}"
+                    />
+                {% endif %}
+
+                <source
+                    type="image/webp"
+                    srcset="{% get_film_cover_thumbnail film=film size=size ext='webp' %}"
+                />
+                <source
+                    type="image/jpg"
+                    srcset="{% get_film_cover_thumbnail film=film size=size ext='jpg' %}"
+                />
+
+            {% endif %}
+
+            <img
+                alt="{{ film.alt_text|default:'' }}"
+                class="film-cover"
+                itemprop="thumbnailUrl"
+                src="{% if img_path is None %}{% get_media_prefix %}{% else %}{{ img_path }}{% endif %}{{ film.poster }}"
+            >
+
+        {% endif %}
+    </picture>
+{% endif %}
+
+{% if not film.poster and film.alt_text %}
+    <figure class="cover-container no-cover {{ cover_class }}">
+        <img
+            class="film-cover"
+            src="{% static "images/no_cover.jpg" %}"
+            alt="{% trans "No cover" %}"
+        >
+        <figcaption class="cover-caption">
+            <p>{{ film.alt_text }}</p>
+        </figcaption>
+    </figure>
+{% endif %}
+{% endspaceless %}

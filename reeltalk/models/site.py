@@ -9,13 +9,10 @@ import uuid
 import django.contrib.auth.models as auth_models
 from django.core.exceptions import PermissionDenied
 from django.db import models, IntegrityError
-from django.dispatch import receiver
 from django.utils import timezone
-from model_utils import FieldTracker
 
-from reeltalk.connectors.abstract_connector import get_data
-from reeltalk.preview_images import generate_site_preview_image_task
-from reeltalk.settings import BASE_URL, ENABLE_PREVIEW_IMAGES, STATIC_FULL_URL
+from reeltalk.utils.http import get_data
+from reeltalk.settings import BASE_URL, STATIC_FULL_URL
 from reeltalk.settings import RELEASE_API
 from reeltalk.tasks import app, MISC
 from reeltalk.utils.db import add_update_fields
@@ -109,8 +106,6 @@ class SiteSettings(SiteModel):
     user_import_time_limit = models.IntegerField(default=48)
     disable_federation = models.BooleanField(default=False)
     export_files_lifetime_hours = models.IntegerField(default=72)
-
-    field_tracker = FieldTracker(fields=["name", "instance_tagline", "logo"])
 
     @classmethod
     def get(cls) -> SiteSettings:
@@ -253,17 +248,6 @@ class PasswordReset(models.Model):
     def link(self) -> str:
         """formats the invite link"""
         return f"{BASE_URL}/password-reset/{self.code}"
-
-
-@receiver(models.signals.post_save, sender=SiteSettings)
-def preview_image(instance: SiteSettings, *args, **kwargs) -> None:
-    """Update image preview for the default site image"""
-    if not ENABLE_PREVIEW_IMAGES:
-        return
-    changed_fields = instance.field_tracker.changed()
-
-    if len(changed_fields) > 0:
-        generate_site_preview_image_task.delay()
 
 
 @app.task(queue=MISC)

@@ -1,4 +1,4 @@
-"""Let users export their book data"""
+"""Let users export their film data"""
 
 from datetime import timedelta
 import csv
@@ -35,20 +35,15 @@ class Export(View):
         return TemplateResponse(request, "preferences/export.html")
 
     def post(self, request):
-        """Download the csv file of a user's book data"""
-        books = models.Edition.viewer_aware_objects(request.user)
-        books_shelves = books.filter(Q(shelves__user=request.user)).distinct()
-        books_readthrough = books.filter(Q(readthrough__user=request.user)).distinct()
-        books_review = books.filter(Q(review__user=request.user)).distinct()
-        books_comment = books.filter(Q(comment__user=request.user)).distinct()
-        books_quotation = books.filter(Q(quotation__user=request.user)).distinct()
+        """Download the csv file of a user's film data"""
+        films = models.Film.viewer_aware_objects(request.user)
+        films_shelves = films.filter(Q(shelffilm__user=request.user)).distinct()
+        films_review = films.filter(Q(review__user=request.user)).distinct()
+        films_comment = films.filter(Q(comment__user=request.user)).distinct()
+        films_quotation = films.filter(Q(quotation__user=request.user)).distinct()
 
-        books = set(
-            list(books_shelves)
-            + list(books_readthrough)
-            + list(books_review)
-            + list(books_comment)
-            + list(books_quotation)
+        films = set(
+            list(films_shelves) + list(films_review) + list(films_comment) + list(films_quotation)
         )
 
         csv_string = io.StringIO()
@@ -56,17 +51,15 @@ class Export(View):
 
         deduplication_fields = [
             f.name
-            for f in models.Edition._meta.get_fields()
+            for f in models.Film._meta.get_fields()
             if getattr(f, "deduplication_field", False)
         ]
         fields = (
-            ["title", "author_text"]
+            ["title", "director_text"]
             + deduplication_fields
             + [
-                "pages",
-                "start_date",
-                "finish_date",
-                "stopped_date",
+                "year",
+                "runtime",
                 "rating",
                 "review_name",
                 "review_cw",
@@ -79,66 +72,48 @@ class Export(View):
         )
         writer.writerow(fields)
 
-        for book in books:
+        for film in films:
             # I think this is more efficient than doing a subquery in the view? but idk
             review_rating = (
                 models.Review.objects.filter(
-                    user=request.user, book=book, rating__isnull=False
+                    user=request.user, film=film, rating__isnull=False
                 )
                 .order_by("-published_date")
                 .first()
             )
 
-            book.rating = review_rating.rating if review_rating else None
-
-            readthrough = (
-                models.ReadThrough.objects.filter(user=request.user, book=book)
-                .order_by("-start_date", "-finish_date")
-                .first()
-            )
-            if readthrough:
-                book.start_date = (
-                    readthrough.start_date.date() if readthrough.start_date else None
-                )
-                book.finish_date = (
-                    readthrough.finish_date.date() if readthrough.finish_date else None
-                )
-                book.stopped_date = (
-                    readthrough.stopped_date.date()
-                    if readthrough.stopped_date
-                    else None
-                )
+            film.rating = review_rating.rating if review_rating else None
 
             review = (
                 models.Review.objects.filter(
-                    user=request.user, book=book, content__isnull=False
+                    user=request.user, film=film, content__isnull=False
                 )
                 .order_by("-published_date")
                 .first()
             )
             if review:
-                book.review_published = (
+                film.review_published = (
                     review.published_date.date() if review.published_date else None
                 )
-                book.review_name = review.name
-                book.review_cw = review.content_warning
-                book.review_content = (
+                film.review_name = review.name
+                film.review_cw = review.content_warning
+                film.review_content = (
                     review.raw_content if review.raw_content else review.content
-                )  # GoodReads imported reviews do not have raw_content, but content.
+                )
 
-            shelfbook = (
-                models.ShelfBook.objects.filter(user=request.user, book=book)
+            shelffilm = (
+                models.ShelfFilm.objects.filter(user=request.user, film=film)
                 .order_by("-shelved_date", "-created_date", "-updated_date")
                 .last()
             )
-            if shelfbook:
-                book.shelf = shelfbook.shelf.identifier
-                book.shelf_name = shelfbook.shelf.name
-                book.shelf_date = (
-                    shelfbook.shelved_date.date() if shelfbook.shelved_date else None
+            if shelffilm:
+                film.shelf = shelffilm.shelf.identifier
+                film.shelf_name = shelffilm.shelf.name
+                film.shelf_date = (
+                    shelffilm.shelved_date.date() if shelffilm.shelved_date else None
                 )
 
-            writer.writerow([getattr(book, field, "") or "" for field in fields])
+            writer.writerow([getattr(film, field, "") or "" for field in fields])
 
         return HttpResponse(
             csv_string.getvalue(),

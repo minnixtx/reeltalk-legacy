@@ -17,7 +17,7 @@ from django.db import IntegrityError, transaction
 from django.utils.http import http_date
 
 from reeltalk import models
-from reeltalk.connectors import ConnectorException, get_data
+from reeltalk.utils.http import RemoteDataError, get_data
 from reeltalk.models import base_model
 from reeltalk.redis_store import r
 from reeltalk.signatures import make_signature
@@ -494,13 +494,13 @@ def get_activitypub_data(url):
             timeout=SEARCH_TIMEOUT,
         )
     except requests.RequestException:
-        raise ConnectorException()
+        raise RemoteDataError()
     if not resp.ok:
         resp.raise_for_status()
     try:
         data = resp.json()
     except ValueError:
-        raise ConnectorException()
+        raise RemoteDataError()
 
     return data
 

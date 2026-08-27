@@ -47,13 +47,6 @@
     {% if not site.user_exports_enabled %}
     <p class="notification is-danger">
         {% trans "New user exports are currently disabled." %}
-        {% if perms.reeltalk.edit_instance_settings %}
-            <br/>
-            {% url 'settings-imports' as url %}
-            {% blocktrans trimmed %}
-                User exports settings can be changed from <a href="{{ url }}">the Imports page</a> in the Admin dashboard.
-            {% endblocktrans %}
-        {% endif%}
     </p>
     {% elif next_available %}
     <p class="notification is-warning">

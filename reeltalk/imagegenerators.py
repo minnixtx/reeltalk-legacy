@@ -4,7 +4,7 @@ from imagekit import ImageSpec, register
 from imagekit.processors import ResizeToFit
 
 
-class BookXSmallWebp(ImageSpec):
+class FilmXSmallWebp(ImageSpec):
     """Handles XSmall size in Webp format"""
 
     processors = [ResizeToFit(80, 80)]
@@ -12,7 +12,7 @@ class BookXSmallWebp(ImageSpec):
     options = {"quality": 95}
 
 
-class BookXSmallJpg(ImageSpec):
+class FilmXSmallJpg(ImageSpec):
     """Handles XSmall size in Jpeg format"""
 
     processors = [ResizeToFit(80, 80)]
@@ -20,7 +20,7 @@ class BookXSmallJpg(ImageSpec):
     options = {"quality": 95}
 
 
-class BookSmallWebp(ImageSpec):
+class FilmSmallWebp(ImageSpec):
     """Handles Small size in Webp format"""
 
     processors = [ResizeToFit(100, 100)]
@@ -28,7 +28,7 @@ class BookSmallWebp(ImageSpec):
     options = {"quality": 95}
 
 
-class BookSmallJpg(ImageSpec):
+class FilmSmallJpg(ImageSpec):
     """Handles Small size in Jpeg format"""
 
     processors = [ResizeToFit(100, 100)]
@@ -36,7 +36,7 @@ class BookSmallJpg(ImageSpec):
     options = {"quality": 95}
 
 
-class BookMediumWebp(ImageSpec):
+class FilmMediumWebp(ImageSpec):
     """Handles Medium size in Webp format"""
 
     processors = [ResizeToFit(150, 150)]
@@ -44,7 +44,7 @@ class BookMediumWebp(ImageSpec):
     options = {"quality": 95}
 
 
-class BookMediumJpg(ImageSpec):
+class FilmMediumJpg(ImageSpec):
     """Handles Medium size in Jpeg format"""
 
     processors = [ResizeToFit(150, 150)]
@@ -52,7 +52,7 @@ class BookMediumJpg(ImageSpec):
     options = {"quality": 95}
 
 
-class BookLargeWebp(ImageSpec):
+class FilmLargeWebp(ImageSpec):
     """Handles Large size in Webp format"""
 
     processors = [ResizeToFit(200, 200)]
@@ -60,7 +60,7 @@ class BookLargeWebp(ImageSpec):
     options = {"quality": 95}
 
 
-class BookLargeJpg(ImageSpec):
+class FilmLargeJpg(ImageSpec):
     """Handles Large size in Jpeg format"""
 
     processors = [ResizeToFit(200, 200)]
@@ -68,7 +68,7 @@ class BookLargeJpg(ImageSpec):
     options = {"quality": 95}
 
 
-class BookXLargeWebp(ImageSpec):
+class FilmXLargeWebp(ImageSpec):
     """Handles XLarge size in Webp format"""
 
     processors = [ResizeToFit(250, 250)]
@@ -76,7 +76,7 @@ class BookXLargeWebp(ImageSpec):
     options = {"quality": 95}
 
 
-class BookXLargeJpg(ImageSpec):
+class FilmXLargeJpg(ImageSpec):
     """Handles XLarge size in Jpeg format"""
 
     processors = [ResizeToFit(250, 250)]
@@ -84,7 +84,7 @@ class BookXLargeJpg(ImageSpec):
     options = {"quality": 95}
 
 
-class BookXxLargeWebp(ImageSpec):
+class FilmXxLargeWebp(ImageSpec):
     """Handles XxLarge size in Webp format"""
 
     processors = [ResizeToFit(500, 500)]
@@ -92,7 +92,7 @@ class BookXxLargeWebp(ImageSpec):
     options = {"quality": 95}
 
 
-class BookXxLargeJpg(ImageSpec):
+class FilmXxLargeJpg(ImageSpec):
     """Handles XxLarge size in Jpeg format"""
 
     processors = [ResizeToFit(500, 500)]
@@ -100,15 +100,15 @@ class BookXxLargeJpg(ImageSpec):
     options = {"quality": 95}
 
 
-register.generator("bw:book:xsmall:webp", BookXSmallWebp)
-register.generator("bw:book:xsmall:jpg", BookXSmallJpg)
-register.generator("bw:book:small:webp", BookSmallWebp)
-register.generator("bw:book:small:jpg", BookSmallJpg)
-register.generator("bw:book:medium:webp", BookMediumWebp)
-register.generator("bw:book:medium:jpg", BookMediumJpg)
-register.generator("bw:book:large:webp", BookLargeWebp)
-register.generator("bw:book:large:jpg", BookLargeJpg)
-register.generator("bw:book:xlarge:webp", BookXLargeWebp)
-register.generator("bw:book:xlarge:jpg", BookXLargeJpg)
-register.generator("bw:book:xxlarge:webp", BookXxLargeWebp)
-register.generator("bw:book:xxlarge:jpg", BookXxLargeJpg)
+register.generator("film:xsmall:webp", FilmXSmallWebp)
+register.generator("film:xsmall:jpg", FilmXSmallJpg)
+register.generator("film:small:webp", FilmSmallWebp)
+register.generator("film:small:jpg", FilmSmallJpg)
+register.generator("film:medium:webp", FilmMediumWebp)
+register.generator("film:medium:jpg", FilmMediumJpg)
+register.generator("film:large:webp", FilmLargeWebp)
+register.generator("film:large:jpg", FilmLargeJpg)
+register.generator("film:xlarge:webp", FilmXLargeWebp)
+register.generator("film:xlarge:jpg", FilmXLargeJpg)
+register.generator("film:xxlarge:webp", FilmXxLargeWebp)
+register.generator("film:xxlarge:jpg", FilmXxLargeJpg)

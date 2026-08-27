@@ -4,7 +4,7 @@
 {% load humanize %}
 
 {% block primary_link %}{% spaceless %}
-{% with related_list=notification.related_list_items.first.book_list %}
+{% with related_list=notification.related_list_items.first.film_list %}
 {% if related_list.curation != "curated" %}
     {{ related_list.local_path }}
 {% else %}
@@ -18,11 +18,11 @@
 {% endblock %}
 
 {% block description %}
-{% with related_list=notification.related_list_items.first.book_list %}
-{% with book_path=notification.related_list_items.first.edition.local_path %}
-{% with book_title=notification.related_list_items.first.edition|book_title %}
-{% with second_book_path=notification.related_list_items.all.1.edition.local_path %}
-{% with second_book_title=notification.related_list_items.all.1.edition|book_title %}
+{% with related_list=notification.related_list_items.first.film_list %}
+{% with book_path=notification.related_list_items.first.film.local_path %}
+{% with book_title=notification.related_list_items.first.film.title %}
+{% with second_book_path=notification.related_list_items.all.1.film.local_path %}
+{% with second_book_title=notification.related_list_items.all.1.film.title %}
 {% with list_name=related_list.name %}
 
 {% url 'list' related_list.id as list_path %}
@@ -65,7 +65,7 @@
         {# This happens if the list item was deleted #}
         {% blocktrans trimmed %}
         <a href="{{ related_user_link }}">{{ related_user }}</a>
-        added a book to one of your lists
+        added a film to one of your lists
         {% endblocktrans %}
     {% elif related_list.curation != "curated" %}
 
@@ -79,7 +79,7 @@
         <a href="{{ related_user_link }}">{{ related_user }}</a>
         added <em><a href="{{ book_path }}">{{ book_title }}</a></em>,
         <em><a href="{{ second_book_path }}">{{ second_book_title }}</a></em>,
-        and {{ display_count }} other books
+        and {{ display_count }} other films
         to your list "<a href="{{ list_path }}">{{ list_name }}</a>"
         {% endblocktrans %}
 
@@ -89,13 +89,13 @@
         <a href="{{ related_user_link }}">{{ related_user }}</a>
         suggested adding <em><a href="{{ book_path }}">{{ book_title }}</a></em>,
         <em><a href="{{ second_book_path }}">{{ second_book_title }}</a></em>,
-        and {{ display_count }} other book
+        and {{ display_count }} other film
         to your list "<a href="{{ list_curate_path }}">{{ list_name }}</a>"
         {% plural %}
         <a href="{{ related_user_link }}">{{ related_user }}</a>
         suggested adding <em><a href="{{ book_path }}">{{ book_title }}</a></em>,
         <em><a href="{{ second_book_path }}">{{ second_book_title }}</a></em>,
-        and {{ display_count }} other books
+        and {{ display_count }} other films
         to your list "<a href="{{ list_curate_path }}">{{ list_name }}</a>"
         {% endblocktrans %}
 

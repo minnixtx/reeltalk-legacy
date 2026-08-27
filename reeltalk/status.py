@@ -6,7 +6,7 @@ from reeltalk import models
 from reeltalk.utils import sanitizer
 
 
-def create_generated_note(user, content, mention_books=None, privacy="public"):
+def create_generated_note(user, content, mention_films=None, privacy="public"):
     """a note created by the app about user activity"""
     # sanitize input html
     content = sanitizer.clean(content)
@@ -18,7 +18,7 @@ def create_generated_note(user, content, mention_books=None, privacy="public"):
         # folks about it because it is not ready
         status.save(broadcast=False)
 
-        if mention_books:
-            status.mention_books.set(mention_books)
+        if mention_films:
+            status.mention_films.set(mention_films)
         status.save(created=True)
     return status

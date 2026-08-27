@@ -31,7 +31,7 @@
                     {% trans "Closed" %}
                 </label>
                 <p class="help mb-2" id="id_curation_closed_help">
-                    {% trans "Only you can add and remove books to this list" %}
+                    {% trans "Only you can add and remove films to this list" %}
                 </p>
             </div>
 
@@ -48,7 +48,7 @@
                     {% trans "Curated" %}
                 </label>
                 <p class="help mb-2" id="id_curation_curated_help">
-                    {% trans "Anyone can suggest books, subject to your approval" %}
+                    {% trans "Anyone can suggest films, subject to your approval" %}
                 </p>
             </div>
 
@@ -62,10 +62,10 @@
                     {% if list.curation == 'open' %} checked{% endif %}
                 >
                 <label for="id_curation_open">
-                    {% trans "Open" context "curation type" %}
+                    {% trans "Open" %}
                 </label>
                 <p class="help mb-2" id="id_curation_open_help">
-                    {% trans "Anyone can add books to this list" %}
+                    {% trans "Anyone can add films to this list" %}
                 </p>
             </div>
 

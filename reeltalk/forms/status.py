@@ -7,7 +7,7 @@ from .custom_form import CustomForm
 class RatingForm(CustomForm):
     class Meta:
         model = models.ReviewRating
-        fields = ["user", "book", "rating", "privacy"]
+        fields = ["user", "film", "rating", "privacy"]
 
 
 class ReviewForm(CustomForm):
@@ -15,7 +15,7 @@ class ReviewForm(CustomForm):
         model = models.Review
         fields = [
             "user",
-            "book",
+            "film",
             "name",
             "content",
             "rating",
@@ -30,13 +30,11 @@ class CommentForm(CustomForm):
         model = models.Comment
         fields = [
             "user",
-            "book",
+            "film",
             "content",
             "content_warning",
             "sensitive",
             "privacy",
-            "progress",
-            "progress_mode",
             "reading_status",
         ]
 
@@ -46,15 +44,12 @@ class QuotationForm(CustomForm):
         model = models.Quotation
         fields = [
             "user",
-            "book",
+            "film",
             "quote",
             "content",
             "content_warning",
             "sensitive",
             "privacy",
-            "position",
-            "endposition",
-            "position_mode",
         ]
 
 

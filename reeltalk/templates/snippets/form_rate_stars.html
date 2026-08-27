@@ -10,7 +10,7 @@
     {% for i in '12345'|make_list %}
     <div class="star-container">
         <div class="inputs-container">
-            <label for="{{ type|slugify }}_book{{ book.id }}_star_{{ forloop.counter0 }}_half">
+            <label for="{{ type|slugify }}_film{{ film.id }}_star_{{ forloop.counter0 }}_half">
                 <span class="is-sr-only">
                     {% blocktranslate trimmed count rating=forloop.counter0 %}
                         {{ rating }}.5 stars
@@ -20,14 +20,14 @@
                 </span>
             </label>
             <input
-                id="{{ type|slugify }}_book{{ book.id }}_star_{{ forloop.counter0 }}_half"
+                id="{{ type|slugify }}_film{{ film.id }}_star_{{ forloop.counter0 }}_half"
                 class="half"
                 type="radio"
                 name="rating"
                 value="{{ forloop.counter0 }}.5"
                 {% if default_rating > 0 and default_rating > forloop.counter0 %}checked{% endif %}
             />
-            <label for="{{ type|slugify }}_book{{ book.id }}_star_{{ forloop.counter }}">
+            <label for="{{ type|slugify }}_film{{ film.id }}_star_{{ forloop.counter }}">
                 <span class="is-sr-only">
                     {% blocktranslate trimmed count rating=forloop.counter %}
                         {{ rating }} star
@@ -37,7 +37,7 @@
                 </span>
             </label>
             <input
-                id="{{ type|slugify }}_book{{ book.id }}_star_{{ forloop.counter }}"
+                id="{{ type|slugify }}_film{{ film.id }}_star_{{ forloop.counter }}"
                 class="full"
                 type="radio"
                 name="rating"

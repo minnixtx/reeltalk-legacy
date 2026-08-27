@@ -17,7 +17,7 @@ from django.http import Http404
 from django.utils import translation
 
 from reeltalk import activitypub, models, settings
-from reeltalk.connectors import ConnectorException, get_data
+from reeltalk.utils.http import RemoteDataError, get_data
 from reeltalk.status import create_generated_note
 from reeltalk.utils import regex, sanitizer
 from reeltalk.utils.validate import validate_url_domain
@@ -100,7 +100,7 @@ def handle_remote_webfinger(query, unknown_only=False, refresh=False):
         url = f"https://{domain}/.well-known/webfinger?resource=acct:{query}"
         try:
             data = get_data(url)
-        except (ConnectorException, HTTPError):
+        except HTTPError:
             return None
 
         for link in data.get("links"):
@@ -136,7 +136,7 @@ def subscribe_remote_webfinger(query):
 
     try:
         data = get_data(url)
-    except (ConnectorException, HTTPError):
+    except HTTPError:
         return WebFingerError("user_not_found")
 
     for link in data.get("links"):
@@ -146,29 +146,23 @@ def subscribe_remote_webfinger(query):
     return template
 
 
-def get_edition(book_id):
-    """look up a book in the db and return an edition"""
-    book = models.Book.objects.select_subclasses().get(id=book_id)
-    if isinstance(book, models.Work):
-        book = book.default_edition
-    return book
+def get_film(film_id):
+    """look up a film in the db"""
+    return models.Film.objects.get(id=film_id)
 
 
-def handle_reading_status(user, shelf, book, privacy):
-    """post about a user reading a book"""
+def handle_reading_status(user, shelf, film, privacy):
+    """post about a user's watch status for a film"""
     # tell the world about this cool thing that happened
     try:
         message = {
-            "to-read": "wants to read",
-            "reading": "started reading",
-            "read": "finished reading",
-            "stopped-reading": "stopped reading",
+            "to-read": "wants to watch",
         }[shelf.identifier]
     except KeyError:
         # it's a non-standard shelf, don't worry about it
         return
 
-    create_generated_note(user, message, mention_books=[book], privacy=privacy)
+    create_generated_note(user, message, mention_films=[film], privacy=privacy)
 
 
 def load_date_in_user_tz_as_utc(date_str: str, user: models.User) -> datetime:

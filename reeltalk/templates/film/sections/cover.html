@@ -1,0 +1,48 @@
+{% load i18n %}
+{% load static %}
+{% load utilities %}
+
+{% if not film.poster %}
+    {% if user_authenticated %}
+        <button
+            type="button"
+            class="cover-container no-cover is-h-m-mobile"
+            data-modal-open="add_poster_{{ film.id }}"
+        >
+            <img
+                class="film-cover"
+                src="{% static "images/no_cover.jpg" %}"
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                decoding="async"
+            >
+            <span class="cover-caption">
+                <span>{{ film.alt_text }}</span>
+                <span>{% trans "Click to add poster" %}</span>
+            </span>
+            <span class="button-invisible-overlay has-text-centered">
+                {% trans "Click to add poster" %}
+            </span>
+        </button>
+        {% join "add_poster" film.id as modal_id %}
+        {% include 'film/cover_add_modal.html' with id=modal_id %}
+        {% if request.GET.poster_error %}
+        <p class="help is-danger">{% trans "Failed to load poster" %}</p>
+        {% endif %}
+    {% else %}
+        {% include 'snippets/film_cover.html' with film=film cover_class='is-h-m-mobile' %}
+    {% endif %}
+{% endif %}
+
+{% if film.poster %}
+    <button type="button" data-modal-open="poster_show_modal" class="cover-container is-h-m-mobile is-relative">
+    {% include 'snippets/film_cover.html' with size='xxlarge' size_mobile='medium' film=film cover_class='is-h-m-mobile' %}
+        <span class="button-invisible-overlay has-text-centered">
+            {% trans "Click to enlarge" %}
+        </span>
+    </button>
+    {% include 'film/cover_show_modal.html' with film=film id="poster_show_modal" %}
+{% endif %}
+
+{% include 'snippets/rate_action.html' with user=request.user film=film %}

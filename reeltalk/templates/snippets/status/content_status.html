@@ -1,4 +1,4 @@
-{% load book_display_tags %}
+{% load film_display_tags %}
 {% load rating_tags %}
 {% load markdown %}
 {% load i18n %}
@@ -7,21 +7,21 @@
 
 {% with status_type=status.status_type %}
     <div class="columns is-gapless">
-        {% if not hide_book %}
-            {% with book=status.book|default:status.mention_books.first %}
-                {% if book %}
+        {% if not hide_film %}
+            {% with film=status.film|default:status.mention_films.first %}
+                {% if film %}
                     <div class="column is-cover">
                         <div class="columns is-mobile is-gapless">
                             <div class="column is-cover">
-                                <a href="{{ book.local_path }}">{% include 'snippets/book_cover.html' with book=book cover_class='is-w-s-mobile is-h-l-tablet' size_mobile='medium' size='large' %}</a>
+                                <a href="{{ film.local_path }}">{% include 'snippets/film_cover.html' with film=film cover_class='is-w-s-mobile is-h-l-tablet' size_mobile='medium' size='large' %}</a>
 
-                                {% include 'snippets/stars.html' with rating=book|rating:request.user %}
+                                {% include 'snippets/stars.html' with rating=film|rating:request.user %}
 
-                                {% include 'snippets/shelve_button/shelve_button.html' with book=book %}
+                                {% include 'snippets/shelve_button/shelve_button.html' with film=film %}
                             </div>
 
                             <div class="column ml-3-mobile is-hidden-tablet">
-                                <p>{{ book|book_description|to_markdown|default:""|safe|truncatewords_html:15 }}</p>
+                                <p>{{ film|film_description|to_markdown|default:""|safe|truncatewords_html:15 }}</p>
                             </div>
                         </div>
                     </div>
@@ -87,14 +87,12 @@
                         <blockquote dir="auto" class="content mb-2 preserve-whitespace">{{ status.quote|safe }}</blockquote>
 
                         <p>
-                            &mdash; {% include 'snippets/book_titleby.html' with book=status.book %}
-                            {% if status.position %}
-                                {% if status.position_mode == 'PG' %}
-                                    {% blocktrans with page=status.position|intcomma %}(Page {{ page }}{% endblocktrans%}{% if status.endposition and status.endposition != status.position %} - {% blocktrans with endpage=status.endposition|intcomma %}{{ endpage }}{% endblocktrans %}{% endif%})
-                                {% else %}
-                                    {% blocktrans with percent=status.position %}({{ percent }}%{% endblocktrans %}{% if status.endposition and status.endposition != status.position %}{% blocktrans with endpercent=status.endposition|intcomma %} - {{ endpercent }}%{% endblocktrans %}{% endif %})
+                            &mdash;
+                            {% with quote_film=status.film|default:status.mention_films.first %}
+                                {% if quote_film %}
+                                    <a href="{{ quote_film.local_path }}">{{ quote_film.title }}</a>
                                 {% endif %}
-                            {% endif %}
+                            {% endwith %}
                         </p>
                     </div>
                 {% endif %}

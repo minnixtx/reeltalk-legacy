@@ -5,24 +5,24 @@
 
 {% comment %}
 ----- Variables
-book: the Edition object this status is related to. Required unless the status is a reply
+film: the Film object this status is related to. Required unless the status is a reply
 draft: the content of an existing Status object to be edited (used in delete and redraft)
 uuid: a unique identifier used to make html "id" attributes unique and clarify javascript controls
 {% endcomment %}
 
 {% block pre_content_additions %}
     <div class="field">
-        <label class="label" for="id_name_{{ book.id }}">{% trans "Title:" %}</label>
+        <label class="label" for="id_name_{{ film.id }}">{% trans "Title:" %}</label>
         <div class="control">
             <input
                 type="text"
                 name="name"
                 maxlength="255"
                 class="input"
-                id="id_name_{{ book.id }}"
-                placeholder="{% blocktrans with book_title=book.title %}Your review of '{{ book_title }}'{% endblocktrans %}"
+                id="id_name_{{ film.id }}"
+                placeholder="{% blocktrans with film_title=film.title %}Your review of '{{ film_title }}'{% endblocktrans %}"
                 value="{% firstof draft.name ''%}"
-                {% if not draft %}data-cache-draft="id_name_{{ book.id }}_{{ type }}"{% endif %}
+                {% if not draft %}data-cache-draft="id_name_{{ film.id }}_{{ type }}"{% endif %}
             >
         </div>
     </div>
@@ -30,7 +30,7 @@ uuid: a unique identifier used to make html "id" attributes unique and clarify j
     <fieldset class="mb-1">
         <legend class="is-sr-only">{% trans "Rating" %}</legend>
 
-        {% include 'snippets/form_rate_stars.html' with book=book type=type|default:'summary' default_rating=draft.rating %}
+        {% include 'snippets/form_rate_stars.html' with film=film type=type|default:'summary' default_rating=draft.rating %}
     </fieldset>
 {% endblock %}
 

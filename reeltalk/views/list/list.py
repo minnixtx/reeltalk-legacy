@@ -1,4 +1,4 @@
-"""book list views"""
+"""film list views"""
 
 from typing import Optional
 
@@ -20,7 +20,7 @@ from django.views.decorators.vary import vary_on_headers
 from reeltalk import book_search, forms, models
 from reeltalk.activitypub import ActivitypubResponse
 from reeltalk.settings import PAGE_LENGTH
-from reeltalk.utils.block_books import blocked_book_filter
+from reeltalk.utils.block_films import blocked_film_filter
 from reeltalk.views.helpers import (
     convert_to_markdown,
     is_api_request,
@@ -30,36 +30,36 @@ from reeltalk.views.helpers import (
 
 
 class List(View):
-    """book list page"""
+    """film list page"""
 
     @vary_on_headers("Accept")
     def get(self, request, list_id, **kwargs):
-        """display a book list"""
+        """display a film list"""
         add_failed = kwargs.get("add_failed", False)
         add_succeeded = kwargs.get("add_succeeded", False)
 
-        book_list = get_object_or_404(models.List, id=list_id)
-        book_list.raise_visible_to_user(request.user)
+        film_list = get_object_or_404(models.List, id=list_id)
+        film_list.raise_visible_to_user(request.user)
 
         if is_api_request(request):
-            return ActivitypubResponse(book_list.to_activity(**request.GET))
+            return ActivitypubResponse(film_list.to_activity(**request.GET))
 
-        if redirect_option := maybe_redirect_local_path(request, book_list):
+        if redirect_option := maybe_redirect_local_path(request, film_list):
             return redirect_option
 
-        items = book_list.listitem_set.filter(approved=True).prefetch_related(
-            "user", "edition", "edition__authors"
+        items = film_list.listitem_set.filter(approved=True).prefetch_related(
+            "user", "film"
         )
 
-        items = blocked_book_filter(items, "Edition", request.user)
+        items = blocked_film_filter(items, request.user)
         items = sort_list(request, items)
 
         paginated = Paginator(items, PAGE_LENGTH)
 
         page = paginated.get_page(request.GET.get("page"))
 
-        embed_key = str(book_list.embed_key.hex)
-        embed_url = reverse("embed-list", args=[book_list.id, embed_key])
+        embed_key = str(film_list.embed_key.hex)
+        embed_url = reverse("embed-list", args=[film_list.id, embed_key])
         embed_url = request.build_absolute_uri(embed_url)
 
         if request.GET:
@@ -67,25 +67,25 @@ class List(View):
 
         query = request.GET.get("q", "")
         data = {
-            "list": book_list,
+            "list": film_list,
             "items": page,
             "page_range": paginated.get_elided_page_range(
                 page.number, on_each_side=2, on_ends=1
             ),
-            "pending_count": book_list.listitem_set.filter(approved=False).count(),
-            "list_form": forms.ListForm(instance=book_list),
+            "pending_count": film_list.listitem_set.filter(approved=False).count(),
+            "list_form": forms.ListForm(instance=film_list),
             "query": query,
             "sort_form": forms.SortListForm(request.GET),
             "embed_url": embed_url,
             "add_failed": add_failed,
             "add_succeeded": add_succeeded,
-            "add_book_url": reverse("list-add-book"),
-            "remove_book_url": reverse("list-remove-book", args=[list_id]),
+            "add_film_url": reverse("list-add-film"),
+            "remove_film_url": reverse("list-remove-film", args=[list_id]),
         }
 
         if request.user.is_authenticated:
-            data["suggested_books"] = get_list_suggestions(
-                book_list,
+            data["suggested_films"] = get_list_suggestions(
+                film_list,
                 request.user,
                 query=query,
             )
@@ -94,53 +94,52 @@ class List(View):
     @method_decorator(login_required, name="dispatch")
     def post(self, request, list_id):
         """edit a list"""
-        book_list = get_object_or_404(models.List, id=list_id)
+        film_list = get_object_or_404(models.List, id=list_id)
 
-        form = forms.ListForm(request.POST, instance=book_list)
+        form = forms.ListForm(request.POST, instance=film_list)
         if not form.is_valid():
             # this shouldn't happen
             raise Exception(form.errors)  # pylint: disable=broad-exception-raised
-        book_list = form.save(request)
-        if not book_list.curation == "group":
-            book_list.group = None
-            book_list.save(broadcast=False)
+        film_list = form.save(request)
+        if not film_list.curation == "group":
+            film_list.group = None
+            film_list.save(broadcast=False)
 
-        return redirect_to_referer(request, book_list.local_path)
+        return redirect_to_referer(request, film_list.local_path)
 
 
 def get_list_suggestions(
-    book_list, user, query=None, num_suggestions=6, ignore_book=None
+    film_list, user, query=None, num_suggestions=6, ignore_film=None
 ):
-    """What books might a user want to add to a list"""
+    """What films might a user want to add to a list"""
     if query:
-        # search for books
+        # search for films
         return book_search.search(
             query,
             filters=[
-                ~Q(parent_work__editions__in=book_list.editions.all()),
-                ~Q(parent_work=ignore_book),
-                ~Q(parent_work__in=user.blocked_books.values_list("id", flat=True)),
+                ~Q(id__in=film_list.films.all()),
+                ~Q(id=ignore_film.id if ignore_film else None),
+                ~Q(id__in=user.blocked_films.values_list("id", flat=True)),
             ],
         )
-    # just suggest whatever books are nearby
+    # just suggest whatever films are nearby
     suggestions = (
-        user.shelfbook_set.filter(~Q(book__in=book_list.editions.all()))
-        .exclude(book__parent_work=ignore_book)
-        .exclude(book__parent_work__in=user.blocked_books.values_list("id", flat=True))
+        user.shelffilm_set.filter(~Q(film__in=film_list.films.all()))
+        .exclude(film=ignore_film)
+        .exclude(film__in=user.blocked_films.values_list("id", flat=True))
         .distinct()[:num_suggestions]
     )
-    suggestions = [s.book for s in suggestions[:num_suggestions]]
+    suggestions = [s.film for s in suggestions[:num_suggestions]]
     if len(suggestions) < num_suggestions:
-        others = [
-            s.default_edition
-            for s in models.Work.objects.filter(
-                ~Q(editions__in=book_list.editions.all()),
-                ~Q(id=ignore_book.id if ignore_book else None),
+        others = list(
+            models.Film.objects.filter(
+                ~Q(id__in=film_list.films.all()),
+                ~Q(id=ignore_film.id if ignore_film else None),
             )
-            .exclude(id__in=user.blocked_books.values_list("id", flat=True))
+            .exclude(id__in=user.blocked_films.values_list("id", flat=True))
             .distinct()
             .order_by("-updated_date")[:num_suggestions]
-        ]
+        )
         # get 'num_suggestions' unique items
         suggestions = list(set(suggestions + others))[:num_suggestions]
     return suggestions
@@ -160,7 +159,7 @@ def sort_list(request, items):
 
     directional_sort_by = {
         "order": "order",
-        "sort_title": "edition__sort_title",
+        "sort_title": "film__sort_title",
         "rating": "average_rating",
     }[sort_by]
     if direction == "descending":
@@ -169,7 +168,7 @@ def sort_list(request, items):
     if sort_by == "rating":
         items = items.annotate(
             average_rating=Avg(
-                Coalesce("edition__review__rating", 0.0),
+                Coalesce("film__review__rating", 0.0),
                 output_field=DecimalField(),
             )
         )
@@ -180,8 +179,8 @@ def sort_list(request, items):
 @login_required
 def save_list(request, list_id):
     """save a list"""
-    book_list = get_object_or_404(models.List, id=list_id)
-    request.user.saved_lists.add(book_list)
+    film_list = get_object_or_404(models.List, id=list_id)
+    request.user.saved_lists.add(film_list)
     return redirect_to_referer(request, "list", list_id)
 
 
@@ -189,8 +188,8 @@ def save_list(request, list_id):
 @login_required
 def unsave_list(request, list_id):
     """unsave a list"""
-    book_list = get_object_or_404(models.List, id=list_id)
-    request.user.saved_lists.remove(book_list)
+    film_list = get_object_or_404(models.List, id=list_id)
+    request.user.saved_lists.remove(film_list)
     return redirect_to_referer(request, "list", list_id)
 
 
@@ -198,51 +197,51 @@ def unsave_list(request, list_id):
 @login_required
 def delete_list(request, list_id):
     """delete a list"""
-    book_list = get_object_or_404(models.List, id=list_id)
+    film_list = get_object_or_404(models.List, id=list_id)
 
     # only the owner or a moderator can delete a list
-    book_list.raise_not_deletable(request.user)
+    film_list.raise_not_deletable(request.user)
 
-    book_list.delete()
+    film_list.delete()
     return redirect("/list")
 
 
 @require_POST
 @login_required
 @transaction.atomic
-def add_book(request):
-    """put a book on a list"""
-    book_list = get_object_or_404(models.List, id=request.POST.get("book_list"))
+def add_film(request):
+    """put a film on a list"""
+    film_list = get_object_or_404(models.List, id=request.POST.get("film_list"))
     # make sure the user is allowed to submit to this list
-    book_list.raise_visible_to_user(request.user)
-    if request.user != book_list.user and book_list.curation == "closed":
+    film_list.raise_visible_to_user(request.user)
+    if request.user != film_list.user and film_list.curation == "closed":
         raise PermissionDenied()
 
     is_group_member = models.GroupMember.objects.filter(
-        group=book_list.group, user=request.user
+        group=film_list.group, user=request.user
     ).exists()
 
     form = forms.ListItemForm(request.POST)
     if not form.is_valid():
-        return List().get(request, book_list.id, add_failed=True)
+        return List().get(request, film_list.id, add_failed=True)
 
     item = form.save(request, commit=False)
 
-    if book_list.curation == "curated":
+    if film_list.curation == "curated":
         # make a pending entry at the end of the list
-        order_max = (book_list.listitem_set.aggregate(Max("order"))["order__max"]) or 0
-        item.approved = is_group_member or request.user == book_list.user
+        order_max = (film_list.listitem_set.aggregate(Max("order"))["order__max"]) or 0
+        item.approved = is_group_member or request.user == film_list.user
     else:
-        # add the book at the latest order of approved books, before pending books
+        # add the film at the latest order of approved films, before pending films
         order_max = (
             (
-                book_list.listitem_set.filter(approved=True).aggregate(Max("order"))[
+                film_list.listitem_set.filter(approved=True).aggregate(Max("order"))[
                     "order__max"
                 ]
             )
             or 0
         )
-        increment_order_in_reverse(book_list.id, order_max + 1)
+        increment_order_in_reverse(film_list.id, order_max + 1)
     item.order = order_max + 1
 
     if item.notes:
@@ -251,15 +250,15 @@ def add_book(request):
 
     item.save()
 
-    return List().get(request, book_list.id, add_succeeded=True)
+    return List().get(request, film_list.id, add_succeeded=True)
 
 
 @require_POST
 @login_required
-def remove_book(request, list_id):
-    """remove a book from a list"""
+def remove_film(request, list_id):
+    """remove a film from a list"""
 
-    book_list = get_object_or_404(models.List, id=list_id)
+    film_list = get_object_or_404(models.List, id=list_id)
     item = get_object_or_404(models.ListItem, id=request.POST.get("item"))
 
     item.raise_not_deletable(request.user)
@@ -267,14 +266,14 @@ def remove_book(request, list_id):
     with transaction.atomic():
         deleted_order = item.order
         item.delete()
-        normalize_book_list_ordering(book_list.id, start=deleted_order)
+        normalize_film_list_ordering(film_list.id, start=deleted_order)
 
     return redirect_to_referer(request, "list", list_id)
 
 
 @require_POST
 @login_required
-def set_book_position(request, list_item_id):
+def set_film_position(request, list_item_id):
     """
     Action for when the list user manually specifies a list position, takes
     special care with the unique ordering per list.
@@ -288,11 +287,11 @@ def set_book_position(request, list_item_id):
     if int_position < 1:
         return HttpResponseBadRequest("position cannot be less than 1")
 
-    book_list = list_item.book_list
+    film_list = list_item.film_list
 
-    # the max position to which a book may be set is the highest order for
-    # books which are approved
-    order_max = book_list.listitem_set.filter(approved=True).aggregate(Max("order"))[
+    # the max position to which a film may be set is the highest order for
+    # films which are approved
+    order_max = film_list.listitem_set.filter(approved=True).aggregate(Max("order"))[
         "order__max"
     ]
 
@@ -307,16 +306,16 @@ def set_book_position(request, list_item_id):
         if original_order > int_position:
             list_item.order = -1
             list_item.save()
-            increment_order_in_reverse(book_list.id, int_position, original_order)
+            increment_order_in_reverse(film_list.id, int_position, original_order)
         else:
             list_item.order = -1
             list_item.save()
-            decrement_order(book_list.id, original_order, int_position)
+            decrement_order(film_list.id, original_order, int_position)
 
         list_item.order = int_position
         list_item.save()
 
-    return redirect_to_referer(request, book_list.local_path)
+    return redirect_to_referer(request, film_list.local_path)
 
 
 @transaction.atomic
@@ -353,13 +352,13 @@ def decrement_order(book_list_id, start, end):
 
 
 @transaction.atomic
-def normalize_book_list_ordering(book_list_id, start=0, add_offset=0):
-    """gives each book in a list the proper sequential order number"""
+def normalize_film_list_ordering(film_list_id, start=0, add_offset=0):
+    """gives each film in a list the proper sequential order number"""
     try:
-        book_list = models.List.objects.get(id=book_list_id)
+        film_list = models.List.objects.get(id=film_list_id)
     except models.List.DoesNotExist:
         return
-    items = book_list.listitem_set.filter(order__gt=start).order_by("order")
+    items = film_list.listitem_set.filter(order__gt=start).order_by("order")
     for i, item in enumerate(items, start):
         effective_order = i + add_offset
         if item.order != effective_order:

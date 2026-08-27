@@ -34,12 +34,12 @@ class Hashtag(View):
             .select_related(
                 "user",
                 "reply_parent",
-                "review__book",
-                "comment__book",
-                "quotation__book",
+                "review__film",
+                "comment__film",
+                "quotation__film",
             )
             .prefetch_related(
-                "mention_books",
+                "mention_films",
                 "mention_users",
                 "attachments",
             )

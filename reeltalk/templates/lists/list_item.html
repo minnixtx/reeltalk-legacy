@@ -1,30 +1,33 @@
 {% load i18n %}
 {% load rating_tags %}
-{% load book_display_tags %}
+{% load film_display_tags %}
 {% load markdown %}
 {% load group_tags %}
 {% load utilities %}
 <div class="card is-stretchable">
     <div class="card-content">
-        {% with book=item.edition %}
+        {% with film=item.film %}
         <div class="columns is-mobile">
             <div class="column is-narrow is-cover">
-                <a href="{{ item.edition.local_path }}" aria-hidden="true">
-                    {% include 'snippets/book_cover.html' with cover_class='is-w-auto is-h-m-mobile is-h-m-tablet is-align-items-flex-start' size='medium' %}
+                <a href="{{ film.local_path }}" aria-hidden="true">
+                    {% include 'snippets/film_cover.html' with film=film cover_class='is-w-auto is-h-m-mobile is-h-m-tablet is-align-items-flex-start' size='medium' %}
                 </a>
             </div>
 
             <div class="column">
                 <p>
-                    {% include 'snippets/book_titleby.html' %}
+                    <a href="{{ film.local_path }}">{{ film.title }}</a>
+                    {% if film.director_text %}
+                        <span class="help">({{ film.director_text }})</span>
+                    {% endif %}
                 </p>
                 <p>
-                    {% include 'snippets/stars.html' with rating=item.edition|rating:request.user %}
+                    {% include 'snippets/stars.html' with rating=film|rating:request.user %}
                 </p>
                 <div>
-                    {{ book|book_description|to_markdown|default:""|safe|truncatewords_html:20 }}
+                    {{ film|film_description|to_markdown|default:""|safe|truncatewords_html:20 }}
                 </div>
-                {% include 'snippets/shelve_button/shelve_button.html' with book=book %}
+                {% include 'snippets/shelve_button/shelve_button.html' with film=film %}
             </div>
         </div>
         {% endwith %}
@@ -39,16 +42,11 @@
                 {% endblocktrans %}
             </p>
         </div>
-        {% if list.suggests_for %}
-        <div class="card-footer-item">
-            {% include "book/suggestion_list/endorsement_button.html" with work=list.suggests_for %}
-        </div>
-        {% endif %}
         {% if list.user == request.user or list.group|is_member:request.user %}
         <form
             name="set-position-{{ item.id }}"
             method="post"
-            action="{% url 'list-set-book-position' item.id %}"
+            action="{% url 'list-set-film-position' item.id %}"
             class="card-footer-item"
         >
             {% csrf_token %}
@@ -68,9 +66,9 @@
 
         {% if item.user == request.user or list.curation == 'open' and item.user == request.user or list.group|is_member:request.user %}
         <form
-            name="remove-book-{{ item.id }}"
+            name="remove-film-{{ item.id }}"
             method="post"
-            action="{{ remove_book_url }}"
+            action="{{ remove_film_url }}"
             class="card-footer-item"
         >
             {% csrf_token %}

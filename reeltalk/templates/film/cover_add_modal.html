@@ -1,0 +1,37 @@
+{% extends 'components/modal.html' %}
+{% load i18n %}
+
+{% block modal-title %}
+{% trans "Add poster" %}
+{% endblock %}
+
+{% block modal-form-open %}
+<form name="add-poster" method="POST" action="{% url 'upload-poster' film.id %}" enctype="multipart/form-data">
+{% endblock %}
+
+{% block modal-body %}
+<section class="modal-card-body columns">
+    {% csrf_token %}
+    <div class="column">
+        <label class="label" for="id_poster">
+            {% trans "Upload poster:" %}
+        </label>
+        <input type="file" name="poster" accept="image/*" enctype="multipart/form-data" id="id_poster">
+    </div>
+    <div class="column">
+        <label class="label" for="id_poster_url">
+            {% trans "Load poster from URL:" %}
+        </label>
+        <input class="input" name="poster-url" id="id_poster_url">
+    </div>
+</section>
+{% endblock %}
+
+{% block modal-footer %}
+<div class="buttons is-right is-flex-grow-1">
+    <button class="button is-primary" type="submit">{% trans "Add" %}</button>
+    <button type="button" class="button" data-modal-close>{% trans "Cancel" %}</button>
+</div>
+{% endblock %}
+
+{% block modal-form-close %}</form>{% endblock %}

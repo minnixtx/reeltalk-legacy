@@ -22,7 +22,7 @@ from .preferences.edit_user import save_user_form
 class GetStartedProfile(View):
     """tell us about yourself"""
 
-    next_view = "get-started-books"
+    next_view = "get-started-films"
 
     def get(self, request):
         """basic profile info"""
@@ -38,54 +38,54 @@ class GetStartedProfile(View):
             request.POST, request.FILES, instance=request.user
         )
         if not form.is_valid():
-            data = {"form": form, "next": "get-started-books"}
+            data = {"form": form, "next": "get-started-films"}
             return TemplateResponse(request, "get_started/profile.html", data)
         save_user_form(request, form)
         return redirect(self.next_view)
 
 
 @method_decorator(login_required, name="dispatch")
-class GetStartedBooks(View):
-    """name a book, any book, we gotta start somewhere"""
+class GetStartedFilms(View):
+    """name a film, any film, we gotta start somewhere"""
 
     next_view = "get-started-users"
 
     def get(self, request):
-        """info about a book"""
+        """info about a film"""
         query = request.GET.get("query")
-        book_results = popular_books = []
+        film_results = popular_films = []
         if query:
-            book_results = book_search.search(query)[:5]
-        if len(book_results) < 5:
-            popular_books = (
-                models.Edition.objects.exclude(
+            film_results = book_search.search(query)[:5]
+        if len(film_results) < 5:
+            popular_films = (
+                models.Film.objects.exclude(
                     Q(  # exclude if it's already in search results
-                        parent_work__in=[b.parent_work for b in book_results]
+                        id__in=[f.id for f in film_results]
                     )
                 )
-                .annotate(Count("shelfbook"))
-                .order_by("-shelfbook__count")[: 5 - len(book_results)]
+                .annotate(Count("shelffilm"))
+                .order_by("-shelffilm__count")[: 5 - len(film_results)]
             )
 
         data = {
-            "book_results": book_results,
-            "popular_books": popular_books,
+            "film_results": film_results,
+            "popular_films": popular_films,
             "next": self.next_view,
         }
-        return TemplateResponse(request, "get_started/books.html", data)
+        return TemplateResponse(request, "get_started/films.html", data)
 
     def post(self, request):
-        """shelve some books"""
+        """shelve some films"""
         shelve_actions = [
             (k, v)
             for k, v in request.POST.items()
             if re.match(r"\d+", k) and re.match(r"\d+", v)
         ]
-        for book_id, shelf_id in shelve_actions:
-            book = get_mergeable_object_or_404(models.Edition, id=book_id)
+        for film_id, shelf_id in shelve_actions:
+            film = get_mergeable_object_or_404(models.Film, id=film_id)
             shelf = get_object_or_404(models.Shelf, id=shelf_id)
 
-            models.ShelfBook.objects.create(book=book, shelf=shelf, user=request.user)
+            models.ShelfFilm.objects.create(film=film, shelf=shelf, user=request.user)
         return redirect(self.next_view)
 
 

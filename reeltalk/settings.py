@@ -258,13 +258,13 @@ MAX_STREAM_LENGTH = env.int("MAX_STREAM_LENGTH", 200)
 
 STREAMS = [
     {"key": "home", "name": _("Home Timeline"), "shortname": _("Home")},
-    {"key": "books", "name": _("Films Timeline"), "shortname": _("Films")},
+    {"key": "films", "name": _("Films Timeline"), "shortname": _("Films")},
 ]
 
 # Search configuration
-# total time in seconds that the instance will spend searching connectors
+# total time in seconds that the instance will spend searching
 SEARCH_TIMEOUT = env.int("SEARCH_TIMEOUT", 8)
-# timeout for a query to an individual connector
+# timeout for a query to a remote source
 QUERY_TIMEOUT = env.int("INTERACTIVE_QUERY_TIMEOUT", env.int("QUERY_TIMEOUT", 5))
 
 CACHE_KEY_PREFIX = "django_cache"

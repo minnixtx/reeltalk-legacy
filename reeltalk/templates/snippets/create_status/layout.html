@@ -4,10 +4,10 @@
 
 {% comment %}
 ----- Variables
-book: the Edition object this status is related to. Required unless the status is a reply
+film: the Film object this status is related to. Required unless the status is a reply
 draft: the content of an existing Status object to be edited (used in delete and redraft)
 uuid: a unique identifier used to make html "id" attributes unique and clarify javascript controls
-type: used for uniquely identifying the html elements when multiple types of posts are available for a book, and usually the endpoint name that the form posts to
+type: used for uniquely identifying the html elements when multiple types of posts are available for a film, and usually the endpoint name that the form posts to
 reply_parent: the Status object this post will be in reply to, if applicable
 {% endcomment %}
 
@@ -22,14 +22,14 @@ reply_parent: the Status object this post will be in reply to, if applicable
     action="{% url 'create-status' type %}"
     {% endif %}
     method="post"
-    id="form_{{ type }}_{{ book.id }}{{ reply_parent.id }}"
+    id="form_{{ type }}_{{ film.id }}{{ reply_parent.id }}"
 >
 {% endblock %}
 
     {% csrf_token %}
 
     {% block initial_fields %}
-    <input type="hidden" name="book" value="{{ book.id }}">
+    <input type="hidden" name="film" value="{{ film.id }}">
     <input type="hidden" name="user" value="{{ request.user.id }}">
     <input type="hidden" name="reply_parent" value="{% firstof draft.reply_parent.id reply_parent.id %}">
     {% if draft %}
@@ -40,7 +40,7 @@ reply_parent: the Status object this post will be in reply to, if applicable
     {# fields that go between the content warnings and the content field (ie, quote) #}
     {% block pre_content_additions %}{% endblock %}
 
-    <label class="label" for="id_content_{{ type }}_{{ book.id }}{{ reply_parent.id }}{{ uuid }}">
+    <label class="label" for="id_content_{{ type }}_{{ film.id }}{{ reply_parent.id }}{{ uuid }}">
         {% block content_label %}
             {% trans "Comment:" %}
         {% endblock %}

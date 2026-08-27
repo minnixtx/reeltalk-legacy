@@ -26,7 +26,7 @@ status_types = [
 STATUS_TYPES_STRING = "|".join(status_types)
 STATUS_PATH = rf"{USER_PATH}/({STATUS_TYPES_STRING})/(?P<status_id>\d+)"
 
-BOOK_PATH = r"^book/(?P<book_id>\d+)"
+FILM_PATH = r"^film/(?P<film_id>\d+)"
 
 STREAMS = "|".join(s["key"] for s in settings.STREAMS)
 
@@ -148,36 +148,6 @@ urlpatterns = [
         name="settings-announcements-delete",
     ),
     re_path(
-        r"^settings/connectors/?$",
-        views.ConnectorSettings.as_view(),
-        name="settings-connectors",
-    ),
-    re_path(
-        r"^settings/connectors/(?P<connector_id>\d+)/deactivate?$",
-        views.deactivate_connector,
-        name="settings-deactivate-connector",
-    ),
-    re_path(
-        r"^settings/connectors/(?P<connector_id>\d+)/activate?$",
-        views.activate_connector,
-        name="settings-activate-connector",
-    ),
-    re_path(
-        r"^settings/connectors/(?P<connector_id>\d+)/priority?$",
-        views.set_connector_priority,
-        name="settings-connector-priority",
-    ),
-    re_path(
-        r"^settings/connectors/create?$",
-        views.create_connector,
-        name="settings-create-connector",
-    ),
-    re_path(
-        r"^settings/connectors/(?P<connector_id>\d+)/update?$",
-        views.update_connector,
-        name="settings-update-connector",
-    ),
-    re_path(
         r"^settings/files/?$", views.FilesMaintenance.as_view(), name="settings-files"
     ),
     re_path(
@@ -199,26 +169,6 @@ urlpatterns = [
         r"^settings/delete-exports/run/?$",
         views.run_export_deletions,
         name="settings-delete-exports-run",
-    ),
-    re_path(
-        r"^settings/missing-covers/schedule/?$",
-        views.schedule_run_missing_covers_job,
-        name="find-covers-task-schedule",
-    ),
-    re_path(
-        r"^settings/missing-covers/run/?$",
-        views.run_missing_covers,
-        name="find-covers-task-run",
-    ),
-    re_path(
-        r"^settings/wrong-cover-paths/run/?$",
-        views.run_wrong_cover_paths,
-        name="wrong-cover-paths-run",
-    ),
-    re_path(
-        r"^settings/file-maintenance/cancel-covers/(?P<job_id>\d+)/?$",
-        views.cancel_covers_job,
-        name="cancel-covers-job",
     ),
     re_path(
         r"^settings/delete-exports/cancel/(?P<job_id>\d+)/?$",
@@ -414,51 +364,6 @@ urlpatterns = [
         name="report-link",
     ),
     re_path(
-        r"^settings/imports/(?P<status>(complete|active))?/?$",
-        views.ImportList.as_view(),
-        name="settings-imports",
-    ),
-    re_path(
-        r"^settings/imports/(?P<import_id>\d+)/complete/?$",
-        views.ImportList.as_view(),
-        name="settings-imports-complete",
-    ),
-    re_path(
-        r"^settings/user-imports/(?P<import_id>\d+)/complete/?$",
-        views.set_user_import_completed,
-        name="settings-user-import-complete",
-    ),
-    re_path(
-        r"^settings/imports/disable/?$",
-        views.disable_imports,
-        name="settings-imports-disable",
-    ),
-    re_path(
-        r"^settings/user-exports/enable/?$",
-        views.enable_user_exports,
-        name="settings-user-exports-enable",
-    ),
-    re_path(
-        r"^settings/user-exports/disable/?$",
-        views.disable_user_exports,
-        name="settings-user-exports-disable",
-    ),
-    re_path(
-        r"^settings/imports/enable/?$",
-        views.enable_imports,
-        name="settings-imports-enable",
-    ),
-    re_path(
-        r"^settings/imports/set-limit/?$",
-        views.set_import_size_limit,
-        name="settings-imports-set-limit",
-    ),
-    re_path(
-        r"^settings/user-imports/set-limit/?$",
-        views.set_user_import_limit,
-        name="settings-user-imports-set-limit",
-    ),
-    re_path(
         r"^settings/celery/?$", views.CeleryStatus.as_view(), name="settings-celery"
     ),
     re_path(
@@ -504,9 +409,9 @@ urlpatterns = [
         name="get-started-profile",
     ),
     re_path(
-        r"^get-started/books/?$",
-        views.GetStartedBooks.as_view(),
-        name="get-started-books",
+        r"^get-started/films/?$",
+        views.GetStartedFilms.as_view(),
+        name="get-started-films",
     ),
     re_path(
         r"^get-started/users/?$",
@@ -526,64 +431,6 @@ urlpatterns = [
     # search
     re_path(r"^search.json/?$", views.Search.as_view(), name="search"),
     re_path(r"^search/?$", views.Search.as_view(), name="search"),
-    # imports
-    re_path(r"^import/?$", views.Import.as_view(), name="import"),
-    re_path(r"^user-import/?$", views.UserImport.as_view(), name="user-import"),
-    re_path(
-        r"^user-import/(?P<job_id>\d+)/?$",
-        views.UserImportStatus.as_view(),
-        name="user-import-status",
-    ),
-    re_path(
-        r"^import/(?P<job_id>\d+)/?$",
-        views.ImportStatus.as_view(),
-        name="import-status",
-    ),
-    re_path(
-        r"^import/(?P<job_id>\d+)/stop/?$",
-        views.stop_import,
-        name="import-stop",
-    ),
-    re_path(
-        r"^user-import/(?P<job_id>\d+)/stop/?$",
-        views.stop_user_import,
-        name="user-import-stop",
-    ),
-    re_path(
-        r"^import/(?P<job_id>\d+)/retry/(?P<item_id>\d+)/?$",
-        views.retry_item,
-        name="import-item-retry",
-    ),
-    re_path(
-        r"^import/(?P<job_id>\d+)/failed/?$",
-        views.ImportTroubleshoot.as_view(),
-        name="import-troubleshoot",
-    ),
-    re_path(
-        r"^user-import/(?P<job_id>\d+)/failed/?$",
-        views.UserImportTroubleshoot.as_view(),
-        name="user-import-troubleshoot",
-    ),
-    re_path(
-        r"^import/(?P<job_id>\d+)/review/?$",
-        views.ImportManualReview.as_view(),
-        name="import-review",
-    ),
-    re_path(
-        r"^import/(?P<job_id>\d+)/review/?$",
-        views.ImportManualReview.as_view(),
-        name="import-review",
-    ),
-    re_path(
-        r"^import/(?P<job_id>\d+)/review/(?P<item_id>\d+)/approve/?$",
-        views.approve_import_item,
-        name="import-approve",
-    ),
-    re_path(
-        r"^import/(?P<job_id>\d+)/review/(?P<item_id>\d+)/delete/?$",
-        views.delete_import_item,
-        name="import-delete",
-    ),
     # users
     re_path(rf"{USER_PATH}\.json$", views.User.as_view()),
     re_path(rf"{USER_PATH}/?$", views.User.as_view(), name="user-feed"),
@@ -646,11 +493,6 @@ urlpatterns = [
         name="reject-group-invitation",
     ),
     # lists
-    re_path(
-        rf"{USER_PATH}/suggestions/?$",
-        views.UserSuggestions.as_view(),
-        name="user-suggestions",
-    ),
     re_path(rf"{USER_PATH}/lists/?$", views.UserLists.as_view(), name="user-lists"),
     re_path(r"^list/?$", views.Lists.as_view(), name="lists"),
     re_path(r"^list/saved/?$", views.SavedLists.as_view(), name="saved-lists"),
@@ -659,26 +501,21 @@ urlpatterns = [
         rf"^list/(?P<list_id>\d+){regex.SLUG}/?$", views.List.as_view(), name="list"
     ),
     re_path(
-        r"^suggestionlist/(?P<list_id>\d+)/item/(?P<list_item>\d+)/?$",
-        views.SuggestionListItem.as_view(),
-        name="suggestion-list-item",
-    ),
-    re_path(
         r"^list/(?P<list_id>\d+)/item/(?P<list_item>\d+)/?$",
         views.ListItem.as_view(),
         name="list-item",
     ),
     re_path(r"^list/delete/(?P<list_id>\d+)/?$", views.delete_list, name="delete-list"),
-    re_path(r"^list/add-book/?$", views.add_book, name="list-add-book"),
+    re_path(r"^list/add-film/?$", views.add_film, name="list-add-film"),
     re_path(
         r"^list/(?P<list_id>\d+)/remove/?$",
-        views.remove_book,
-        name="list-remove-book",
+        views.remove_film,
+        name="list-remove-film",
     ),
     re_path(
         r"^list-item/(?P<list_item_id>\d+)/set-position$",
-        views.set_book_position,
-        name="list-set-book-position",
+        views.set_film_position,
+        name="list-set-film-position",
     ),
     re_path(
         r"^list/(?P<list_id>\d+)/curate/?$", views.Curate.as_view(), name="list-curate"
@@ -690,25 +527,25 @@ urlpatterns = [
         views.unsafe_embed_list,
         name="embed-list",
     ),
-    # User books
-    re_path(rf"{USER_PATH}/books/?$", views.Shelf.as_view(), name="user-shelves"),
+    # User films
+    re_path(rf"{USER_PATH}/films/?$", views.Shelf.as_view(), name="user-shelves"),
     re_path(
-        rf"^{USER_PATH}/(shelf|books)/(?P<shelf_identifier>[\w-]+)(.json)?/?$",
+        rf"^{USER_PATH}/(shelf|films)/(?P<shelf_identifier>[\w-]+)(.json)?/?$",
         views.Shelf.as_view(),
         name="shelf",
     ),
     re_path(
-        rf"^{USER_PATH}/(shelf|books)/(?P<shelf_identifier>[\w-]+)/rss/?$",
+        rf"^{USER_PATH}/(shelf|films)/(?P<shelf_identifier>[\w-]+)/rss/?$",
         views.rss_feed.RssShelfFeed(),
         name="shelf-rss",
     ),
     re_path(
-        rf"^{LOCAL_USER_PATH}/(books|shelf)/(?P<shelf_identifier>[\w-]+)(.json)?/?$",
+        rf"^{LOCAL_USER_PATH}/(films|shelf)/(?P<shelf_identifier>[\w-]+)(.json)?/?$",
         views.Shelf.as_view(),
         name="shelf",
     ),
     re_path(
-        rf"^{LOCAL_USER_PATH}/(books|shelf)/(?P<shelf_identifier>[\w-]+)/rss/?$",
+        rf"^{LOCAL_USER_PATH}/(films|shelf)/(?P<shelf_identifier>[\w-]+)/rss/?$",
         views.rss_feed.RssShelfFeed(),
         name="shelf-rss",
     ),
@@ -793,12 +630,22 @@ urlpatterns = [
     re_path(r"^preferences/block/?$", views.Block.as_view(), name="prefs-block"),
     re_path(r"^block/(?P<user_id>\d+)/?$", views.Block.as_view()),
     re_path(r"^unblock/(?P<user_id>\d+)/?$", views.unblock),
-    # block books
+    # block films
     re_path(
-        r"^preferences/books/?$", views.BlockedBooks.as_view(), name="prefs-block-books"
+        r"^preferences/films/?$",
+        views.BlockedFilms.as_view(),
+        name="prefs-block-films",
     ),
-    re_path(r"^block-book/(?P<book_id>\d+)/?$", views.BlockedBooks.as_view()),
-    re_path(r"^unblock-book/(?P<book_id>\d+)/?$", views.unblock_book),
+    re_path(
+        r"^block-film/(?P<film_id>\d+)/?$",
+        views.BlockedFilms.as_view(),
+        name="block-film",
+    ),
+    re_path(
+        r"^unblock-film/(?P<film_id>\d+)/?$",
+        views.unblock_film,
+        name="unblock-film",
+    ),
     # statuses
     re_path(rf"{STATUS_PATH}(.json)?/?$", views.Status.as_view(), name="status"),
     re_path(rf"{STATUS_PATH}{regex.SLUG}/?$", views.Status.as_view(), name="status"),
@@ -838,138 +685,39 @@ urlpatterns = [
     ),
     re_path(r"^boost/(?P<status_id>\d+)/?$", views.Boost.as_view()),
     re_path(r"^unboost/(?P<status_id>\d+)/?$", views.Unboost.as_view()),
-    # books
-    re_path(rf"{BOOK_PATH}(.json)?/?$", views.Book.as_view(), name="book"),
-    re_path(rf"{BOOK_PATH}{regex.SLUG}/?$", views.Book.as_view(), name="book"),
+    # films
+    re_path(rf"{FILM_PATH}(.json)?/?$", views.Film.as_view(), name="film"),
+    re_path(rf"{FILM_PATH}{regex.SLUG}/?$", views.Film.as_view(), name="film"),
     re_path(
-        rf"{BOOK_PATH}/(?P<user_statuses>review|comment|quote)/?$",
-        views.Book.as_view(),
-        name="book-user-statuses",
+        rf"{FILM_PATH}/(?P<user_statuses>review|comment|quote)/?$",
+        views.Film.as_view(),
+        name="film-user-statuses",
     ),
-    re_path(rf"{BOOK_PATH}/edit/?$", views.EditBook.as_view(), name="edit-book"),
+    re_path(rf"{FILM_PATH}/edit/?$", views.EditFilm.as_view(), name="edit-film"),
     re_path(
-        rf"{BOOK_PATH}/confirm/?$",
-        views.ConfirmEditBook.as_view(),
-        name="edit-book-confirm",
+        rf"{FILM_PATH}/confirm/?$",
+        views.ConfirmEditFilm.as_view(),
+        name="edit-film-confirm",
     ),
+    re_path(r"^create-film/?$", views.CreateFilm.as_view(), name="create-film"),
     re_path(
-        r"^create-book/data/?$", views.create_book_from_data, name="create-book-data"
-    ),
-    re_path(r"^create-book/?$", views.CreateBook.as_view(), name="create-book"),
-    re_path(
-        r"^create-book/confirm/?$",
-        views.ConfirmEditBook.as_view(),
-        name="create-book-confirm",
-    ),
-    re_path(rf"{BOOK_PATH}/editions(.json)?/?$", views.Editions.as_view()),
-    re_path(
-        r"^upload-cover/(?P<book_id>\d+)/?$", views.upload_cover, name="upload-cover"
+        r"^create-film/confirm/?$",
+        views.ConfirmEditFilm.as_view(),
+        name="create-film-confirm",
     ),
     re_path(
-        r"^add-description/(?P<book_id>\d+)/?$",
+        r"^upload-poster/(?P<film_id>\d+)/?$",
+        views.upload_poster,
+        name="upload-poster",
+    ),
+    re_path(
+        r"^add-description/(?P<film_id>\d+)/?$",
         views.add_description,
         name="add-description",
     ),
-    re_path(
-        rf"{BOOK_PATH}/filelink/?$", views.BookFileLinks.as_view(), name="file-link"
-    ),
-    re_path(
-        rf"{BOOK_PATH}/filelink/(?P<link_id>\d+)/?$",
-        views.BookFileLinks.as_view(),
-        name="file-link",
-    ),
-    re_path(
-        rf"{BOOK_PATH}/filelink/(?P<link_id>\d+)/delete/?$",
-        views.delete_link,
-        name="file-link-delete",
-    ),
-    re_path(
-        rf"{BOOK_PATH}/filelink/add/?$",
-        views.AddFileLink.as_view(),
-        name="file-link-add",
-    ),
-    re_path(r"^resolve-book/?$", views.resolve_book, name="resolve-book"),
-    re_path(r"^switch-edition/?$", views.switch_edition, name="switch-edition"),
-    re_path(
-        rf"{BOOK_PATH}/update/(?P<connector_identifier>[\w\.]+)/?$",
-        views.update_book_from_remote,
-        name="book-update-remote",
-    ),
-    re_path(
-        rf"{BOOK_PATH}/suggestions(.json)?/?$",
-        views.SuggestionList.as_view(),
-        name="suggestion-list",
-    ),
-    re_path(
-        rf"{BOOK_PATH}/suggestions/add/?$",
-        views.AddSuggestion.as_view(),
-        name="book-add-suggestion",
-    ),
-    re_path(
-        r"^suggestion/(?P<list_id>\d+)/remove/?$",
-        views.book_remove_suggestion,
-        name="book-remove-suggestion",
-    ),
-    re_path(
-        rf"{BOOK_PATH}/suggestions/endorse/(?P<item_id>\d+)/?$",
-        views.endorse_suggestion,
-        name="suggestion-endorse",
-    ),
-    re_path(
-        r"^author/(?P<author_id>\d+)/update/(?P<connector_identifier>[\w\.]+)/?$",
-        views.update_author_from_remote,
-        name="author-update-remote",
-    ),
-    # author
-    re_path(
-        r"^author/(?P<author_id>\d+)(.json)?/?$", views.Author.as_view(), name="author"
-    ),
-    re_path(
-        rf"^author/(?P<author_id>\d+){regex.SLUG}/?$",
-        views.Author.as_view(),
-        name="author",
-    ),
-    re_path(
-        r"^author/(?P<author_id>\d+)/edit/?$",
-        views.EditAuthor.as_view(),
-        name="edit-author",
-    ),
-    # series
-    re_path(
-        rf"^series/(?P<series_id>\d+)(.json)?{regex.SLUG}/?$",
-        views.Series.as_view(),
-        name="series",
-    ),
-    re_path(
-        r"^series/(?P<series_id>\d+)(.json)/?$", views.Series.as_view()
-    ),  # activitypub
-    re_path(
-        r"^series/(?P<series_id>\d+)/edit/?$",
-        views.EditSeries.as_view(),
-        name="edit-series",
-    ),
-    re_path(
-        r"^seriesbook/(?P<seriesbook_id>\d+)(.json)?/?$",
-        views.SeriesBook.as_view(),
-        name="seriesbook",
-    ),
-    # reading progress
-    re_path(r"^edit-readthrough/?$", views.edit_readthrough, name="edit-readthrough"),
-    re_path(r"^delete-readthrough/?$", views.delete_readthrough),
-    re_path(
-        r"^create-readthrough/?$",
-        views.ReadThrough.as_view(),
-        name="create-readthrough",
-    ),
-    re_path(r"^delete-progressupdate/?$", views.delete_progressupdate),
     # shelve actions
     re_path(
-        r"^reading-status/update/(?P<book_id>\d+)/?$",
-        views.update_progress,
-        name="reading-status-update",
-    ),
-    re_path(
-        r"^reading-status/(?P<status>want|start|finish|stop)/(?P<book_id>\d+)/?$",
+        r"^reading-status/(?P<status>want|finish)/(?P<film_id>\d+)/?$",
         views.ReadingStatus.as_view(),
         name="reading-status",
     ),
@@ -988,11 +736,11 @@ urlpatterns = [
     ),
     # annual summary
     re_path(
-        r"^my-year-in-the-books/(?P<year>\d+)/?$",
+        r"^my-year-in-review/(?P<year>\d+)/?$",
         views.personal_annual_summary,
     ),
     re_path(
-        rf"{LOCAL_USER_PATH}/(?P<year>\d+)-in-the-books/?$",
+        rf"{LOCAL_USER_PATH}/(?P<year>\d+)-in-review/?$",
         views.AnnualSummary.as_view(),
         name="annual-summary",
     ),

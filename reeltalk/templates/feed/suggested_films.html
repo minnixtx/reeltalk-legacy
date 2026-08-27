@@ -1,0 +1,78 @@
+{% load i18n %}
+{% load feed_page_tags %}
+
+{% suggested_films as suggested_films %}
+<section id="tour-suggested-films" class="block">
+    <h2 class="title is-4">{% trans "Your Films" %}</h2>
+    {% if not suggested_films %}
+
+    <div class="content">
+        <p>{% trans "There are no films here right now! Try searching for a film to get started" %}</p>
+    </div>
+
+    {% else %}
+    {% with active_film=request.GET.film %}
+    <div class="tab-group">
+        <div class="bw-tabs is-small is-toggle has-aside-text" role="tablist">
+        {% for shelf in suggested_films %}
+        {% if shelf.films %}
+        {% with shelf_counter=forloop.counter %}
+            {% for film in shelf.films %}
+            <a
+                class="{% if active_film == film.id|stringformat:'d' %}is-active{% elif not active_film and shelf_counter == 1 and forloop.first %}is-active{% endif %}"
+                href="{{ request.path }}?film={{ film.id }}"
+                id="tab_film_{{ film.id }}"
+                role="tab"
+                aria-label="{{ film.title }}"
+                aria-selected="{% if active_film == film.id|stringformat:'d' %}true{% elif not active_film and shelf_counter == 1 and forloop.first %}true{% else %}false{% endif %}"
+                aria-controls="film_{{ film.id }}">
+                {% if forloop.first %}
+                    <span class="aside-text">
+                        {% include "snippets/translated_shelf_name.html" with shelf=shelf %}
+                    </span>
+                {% endif %}
+                {% include 'snippets/film_cover.html' with film=film cover_class='is-h-m' %}
+            </a>
+            {% endfor %}
+        {% endwith %}
+        {% endif %}
+        {% endfor %}
+        </div>
+        {% for shelf in suggested_films %}
+        {% with shelf_counter=forloop.counter %}
+        {% for film in shelf.films %}
+        <div
+            class="suggested-tabs"
+            role="tabpanel"
+            id="film_{{ film.id }}"
+            {% if active_film and active_film == film.id|stringformat:'d' %}{% elif not active_film and shelf_counter == 1 and forloop.first %}{% else %} hidden{% endif %}
+            aria-labelledby="tab_film_{{ film.id }}">
+
+            <div class="is-flex">
+                <div class="title is-6">
+                    <div>
+                        <p class="mb-2">
+                            <a href="{{ film.local_path }}">{{ film.title }}</a>
+                            {% if film.director_text %}
+                                <span class="has-text-grey">by {{ film.director_text }}</span>
+                            {% endif %}
+                        </p>
+                        {% include 'snippets/shelve_button/shelve_button.html' with film=film %}
+                    </div>
+                </div>
+                <div class="card-header-icon is-hidden-tablet">
+                    {% trans "Close" as button_text %}
+                    {% include 'snippets/toggle/toggle_button.html' with label=button_text controls_text="film" controls_uid=film.id class="delete" nonbutton=True pressed=True %}
+                </div>
+            </div>
+            <div>
+                {% include 'snippets/create_status.html' with film=film %}
+            </div>
+        </div>
+        {% endfor %}
+        {% endwith %}
+        {% endfor %}
+    </div>
+    {% endwith %}
+    {% endif %}
+</section>

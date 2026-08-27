@@ -3,23 +3,13 @@
 {% load utilities %}
 {% load status_display %}
 
-{% load_book status as book %}
-{% if book.authors.exists %}
-
-{% with author=book.authors.first %}
-{% blocktrans trimmed with book_path=book.local_path book=book|book_title author_name=author.name author_path=author.local_path %}
-finished reading <a href="{{ book_path }}">{{ book }}</a> by <a href="{{ author_path }}">{{ author_name }}</a>
-{% endblocktrans %}
+{% load_film status as film %}
+{% if film.directors %}
+{% with director=film.directors.0 %}
+{% trans "finished watching" %} <a href="{{ film.local_path }}">{{ film.title }}</a> {% trans "by" %} <a href="{% url 'search' %}?q={{ director|urlencode }}&type=film">{{ director }}</a>
 {% endwith %}
-
 {% else %}
-
-{% blocktrans trimmed with book_path=book.local_path book=book|book_title %}
-finished reading <a href="{{ book_path }}">{{ book }}</a>
-{% endblocktrans %}
-
+{% trans "finished watching" %} <a href="{{ film.local_path }}">{{ film.title }}</a>
 {% endif %}
-
-{% include 'snippets/book_series.html' with book=book %}
 
 {% endspaceless %}

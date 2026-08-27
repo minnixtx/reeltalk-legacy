@@ -1,42 +1,50 @@
-{% extends 'snippets/reading_modals/layout.html' %}
+{% extends 'components/modal.html' %}
 {% load i18n %}
 {% load utilities %}
 
 {% block modal-title %}
-{% blocktrans trimmed with book_title=book|book_title %}
-Finish "<em>{{ book_title }}</em>"
+{% blocktrans trimmed with film_title=film.title %}
+Mark "<em>{{ film_title }}</em>" as watched
 {% endblocktrans %}
 {% endblock %}
 
 {% block modal-form-open %}
-<form name="finish-reading-{{ uuid }}" action="{% url 'reading-status' 'finish' book.id %}" method="post" {% if not refresh %}class="submit-status"{% endif %}>
+<form name="finish-reading-{{ uuid }}" action="{% url 'reading-status' 'finish' film.id %}" method="post" {% if not refresh %}class="submit-status"{% endif %}>
 {% csrf_token %}
-<input type="hidden" name="id" value="{{ readthrough.id }}">
+<input type="hidden" name="user" value="{{ request.user.id }}">
+<input type="hidden" name="film" value="{{ film.id }}">
 <input type="hidden" name="reading_status" value="read">
 <input type="hidden" name="shelf" value="{{ move_from }}">
 {% endblock %}
 
-{% block reading-dates %}
-<div class="columns">
-    <div class="column">
-        <div class="field">
-            <label class="label" for="finish_id_start_date_{{ uuid }}">
-                {% trans "Started reading" %}
-            </label>
-            <input type="date" name="start_date" class="input box-sized-input" id="finish_id_start_date_{{ uuid }}" value="{{ readthrough.start_date | date:"Y-m-d" }}">
-        </div>
-    </div>
-    <div class="column">
-        <div class="field">
-            <label class="label" for="id_finish_date_{{ uuid }}">
-                {% trans "Finished reading" %}
-            </label>
-            <input type="date" name="finish_date" class="input box-sized-input" id="id_finish_date_{{ uuid }}" value="{% now "Y-m-d" %}">
-        </div>
+{% block modal-body %}
+<fieldset class="mb-3">
+    <legend class="label">{% trans "Rating:" %}</legend>
+    {% include 'snippets/form_rate_stars.html' with film=film type='finish_modal' default_rating=0 %}
+</fieldset>
+
+{% with 0|uuid as local_uuid %}
+{% trans "What did you think of the film?" as finish_placeholder %}
+<label class="label" for="id_content_finish_{{ film.id }}{{ local_uuid }}">
+    {% trans "Review:" %}
+    <span class="help mt-0 has-text-weight-normal">{% trans "(Optional)" %}</span>
+</label>
+<div class="field">
+    {% include 'snippets/create_status/content_field.html' with type='finish_modal' optional=True uuid=local_uuid placeholder=finish_placeholder %}
+</div>
+
+<div class="field has-addons is-justify-content-end mt-3">
+    <div class="control">
+        {% include 'snippets/privacy_select.html' with class="is-small" %}
     </div>
 </div>
+{% endwith %}
 {% endblock %}
 
-{% block form %}
-{% include "snippets/reading_modals/form.html" with optional=True type="finish_modal" %}
+{% block modal-footer %}
+<button class="button is-primary" type="submit">
+    <span>{% trans "Mark as watched" %}</span>
+</button>
 {% endblock %}
+
+{% block modal-form-close %}</form>{% endblock %}

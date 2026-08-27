@@ -1,4 +1,4 @@
-"""end-of-year read books stats"""
+"""end-of-year watched films stats"""
 
 from datetime import date
 from uuid import uuid4
@@ -41,43 +41,41 @@ class AnnualSummary(View):
         )
 
         # get data
-        read_book_ids_in_year = (
-            user.readthrough_set.filter(
-                finish_date__year__gte=year,
-                finish_date__year__lt=int(year) + 1,
+        watched_film_ids_in_year = (
+            user.shelffilm_set.filter(
+                shelf__identifier="read",
+                shelved_date__year__gte=year,
+                shelved_date__year__lt=int(year) + 1,
             )
-            .order_by("finish_date")
-            .values_list("book__id", flat=True)
+            .order_by("shelved_date")
+            .values_list("film_id", flat=True)
         )
 
-        if len(read_book_ids_in_year) == 0:
+        if len(watched_film_ids_in_year) == 0:
             data = {
                 "summary_user": user,
                 "year": year,
                 "year_key": year_key,
-                "book_total": 0,
-                "books": [],
+                "films_total": 0,
+                "films": [],
                 "paginated_years": paginated_years,
             }
             return TemplateResponse(request, "annual_summary/layout.html", data)
 
-        read_books_in_year = get_books_from_shelfbooks(
-            read_book_ids_in_year, request.user
+        watched_films_in_year = get_films_from_shelffilms(
+            watched_film_ids_in_year, request.user
         )
 
-        # pages stats queries
-        page_stats = read_books_in_year.aggregate(Sum("pages"), Avg("pages"))
-        book_list_by_pages = read_books_in_year.filter(pages__gte=0).order_by("pages")
-
-        # books with no pages
-        no_page_list = read_books_in_year.filter(pages__exact=None).count()
+        # runtime stats queries (in minutes)
+        runtime_stats = watched_films_in_year.aggregate(Sum("runtime"))
+        total_runtime_minutes = runtime_stats["runtime__sum"] or 0
 
         # rating stats queries
         ratings = (
             models.Review.objects.filter(user=user)
             .exclude(deleted=True)
             .exclude(rating=None)
-            .filter(book_id__in=read_book_ids_in_year)
+            .filter(film_id__in=watched_film_ids_in_year)
         )
         ratings_stats = ratings.aggregate(Avg("rating"))
 
@@ -85,22 +83,16 @@ class AnnualSummary(View):
             "summary_user": user,
             "year": year,
             "year_key": year_key,
-            "books_total": len(read_books_in_year),
-            "books": read_books_in_year,
-            "pages_total": page_stats["pages__sum"] or 0,
-            "pages_average": round(
-                page_stats["pages__avg"] if page_stats["pages__avg"] else 0
-            ),
-            "book_pages_lowest": book_list_by_pages.first(),
-            "book_pages_highest": book_list_by_pages.last(),
-            "no_page_number": no_page_list,
+            "films_total": len(watched_films_in_year),
+            "films": watched_films_in_year,
+            "runtime_hours": round(total_runtime_minutes / 60, 1),
             "ratings_total": ratings.count(),
             "rating_average": round(
                 ratings_stats["rating__avg"] if ratings_stats["rating__avg"] else 0, 2
             ),
-            "book_rating_highest": ratings.order_by("-rating").first(),
-            "best_ratings_books_ids": [
-                review.book_id for review in ratings.filter(rating=5)
+            "film_rating_highest": ratings.order_by("-rating").first(),
+            "best_ratings_films_ids": [
+                review.film_id for review in ratings.filter(rating=5)
             ],
             "paginated_years": paginated_years,
         }
@@ -187,9 +179,9 @@ def privacy_verification(request, user, year, year_key):
 def is_year_available(user, year):
     """return boolean"""
 
-    earliest_year = user.readthrough_set.filter(finish_date__isnull=False).aggregate(
-        Min("finish_date")
-    )["finish_date__min"]
+    earliest_year = user.shelffilm_set.filter(shelf__identifier="read").aggregate(
+        Min("shelved_date")
+    )["shelved_date__min"]
     if not earliest_year:
         return True
     earliest_year = earliest_year.year
@@ -203,15 +195,13 @@ def is_year_available(user, year):
     return False
 
 
-def get_books_from_shelfbooks(books_ids, viewer):
-    """return an ordered QuerySet of books from a list"""
+def get_films_from_shelffilms(films_ids, viewer):
+    """return an ordered QuerySet of films from a list"""
 
-    ordered = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(books_ids)])
-    books = models.Edition.objects.filter(id__in=books_ids).order_by(ordered)
+    ordered = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(films_ids)])
+    films = models.Film.objects.filter(id__in=films_ids).order_by(ordered)
 
-    if hasattr(viewer, "blocked_books"):
-        books = books.exclude(parent_work__in=viewer.blocked_books.all())
+    if hasattr(viewer, "blocked_films"):
+        films = films.exclude(id__in=viewer.blocked_films.all())
 
-    return books
-
-
+    return films

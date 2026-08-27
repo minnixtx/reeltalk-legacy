@@ -10,17 +10,17 @@ register = template.Library()
 
 
 @register.filter(name="opengraph_title")
-def get_opengraph_title(book_list: models.List) -> str:
+def get_opengraph_title(film_list: models.List) -> str:
     """Construct title for Open Graph"""
-    return _("Book List: %(name)s") % {"name": book_list.name}
+    return _("Film List: %(name)s") % {"name": film_list.name}
 
 
 @register.filter(name="opengraph_description")
-def get_opengraph_description(book_list: models.List) -> str:
+def get_opengraph_description(film_list: models.List) -> str:
     """Construct description for Open Graph"""
-    num_books = book_list.editions.all().count()
-    num_books_str = ngettext(
-        "%(num)d book - by %(user)s", "%(num)d books - by %(user)s", num_books
-    ) % {"num": num_books, "user": book_list.user}
+    num_films = film_list.films.all().count()
+    num_films_str = ngettext(
+        "%(num)d film - by %(user)s", "%(num)d films - by %(user)s", num_films
+    ) % {"num": num_films, "user": film_list.user}
 
-    return f"{book_list.description} {num_books_str}"
+    return f"{film_list.description} {num_films_str}"

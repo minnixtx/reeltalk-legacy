@@ -141,16 +141,6 @@ def get_annotated_users(viewer, *args, **kwargs):
             ),
             distinct=True,
         ),
-        # shared_books=Count(
-        #     "shelfbook",
-        #     filter=Q(
-        #         ~Q(id=viewer.id),
-        #         shelfbook__book__parent_work__in=[
-        #             s.book.parent_work for s in viewer.shelfbook_set.all()
-        #         ],
-        #     ),
-        #     distinct=True,
-        # ),
     )
 
 
@@ -192,20 +182,6 @@ def update_suggestions_on_unfollow(sender, instance, **kwargs):
     """update rankings, but don't re-suggest because it was probably intentional"""
     if instance.user_object.discoverable:
         rerank_user_task.delay(instance.user_object.id, update_only=False)
-
-
-# @receiver(signals.post_save, sender=models.ShelfBook)
-# @receiver(signals.post_delete, sender=models.ShelfBook)
-#
-# def update_rank_on_shelving(sender, instance, *args, **kwargs):
-#     """when a user shelves or unshelves a book, re-compute their rank"""
-#     # if it's a local user, re-calculate who is rec'ed to them
-#     if instance.user.local:
-#         rerank_suggestions_task.delay(instance.user.id)
-#
-#     # if the user is discoverable, update their rankings
-#     if instance.user.discoverable:
-#         rerank_user_task.delay(instance.user.id)
 
 
 @receiver(signals.post_save, sender=models.User)

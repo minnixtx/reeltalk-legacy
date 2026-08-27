@@ -98,7 +98,7 @@ def get_stats():
             last_active_date__gte=now - timedelta(days=31)
         ).count(),
         "statuses": status_queryset.count(),
-        "works": models.Work.objects.count(),
+        "films": models.Film.objects.count(),
         "reports": models.Report.objects.filter(resolved=False).count(),
         "pending_domains": models.LinkDomain.objects.filter(status="pending").count(),
         "invite_requests": models.InviteRequest.objects.filter(
@@ -161,8 +161,8 @@ def get_charts(request):
         },
     )
 
-    works_chart = Chart(
-        queryset=models.Work.objects,
+    films_chart = Chart(
+        queryset=models.Film.objects,
         queries={
             "total": lambda q, s, e: q.filter(
                 created_date__gt=s,
@@ -177,7 +177,7 @@ def get_charts(request):
         "user_stats": user_chart.get_chart(start, end, interval),
         "status_stats": status_chart.get_chart(start, end, interval),
         "register_stats": register_chart.get_chart(start, end, interval),
-        "works_stats": works_chart.get_chart(start, end, interval),
+        "films_stats": films_chart.get_chart(start, end, interval),
     }
 
 

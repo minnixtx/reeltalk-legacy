@@ -5,9 +5,8 @@
     action="{% url item.edit_path_name list.id item.id %}"
 >
     {% csrf_token %}
-    <input type="hidden" name="edition" value="{{ item.edition.id }}">
-    <input type="hidden" name="work" value="{{ item.work.id }}">
-    <input type="hidden" name="book_list" value="{{ list.id }}">
+    <input type="hidden" name="film" value="{{ item.film.id }}">
+    <input type="hidden" name="film_list" value="{{ list.id }}">
     <input type="hidden" name="user" value="{{ request.user.id }}">
     {% include "lists/item_notes_field.html" with form_id=item.id %}
     <div class="field">

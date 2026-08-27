@@ -1,0 +1,41 @@
+{% load i18n %}
+
+<div class="column">
+    <h1 class="title" itemprop="name" dir="auto">
+        {{ film.title }}
+    </h1>
+
+    {% if film.subtitle %}
+    <p class="subtitle title is-5">
+        <meta
+            itemprop="alternativeHeadline"
+            content="{{ film.subtitle | escape }}"
+        >
+        <span class="has-text-weight-bold" dir="auto">
+            {{ film.subtitle }}
+        </span>
+    </p>
+    {% endif %}
+
+    {% if film.directors %}
+    <div class="subtitle" dir="auto">
+        {% with director=film.directors|first %}
+        <span itemprop="creator" itemscope itemtype="https://schema.org/Person">
+            {% trans "Directed by" %}
+            <a href="{% url 'search' %}?q={{ director }}&type=film" dir="auto">
+                <span itemprop="name">{{ director }}</span>
+            </a>
+        </span>
+        {% endwith %}
+    </div>
+    {% endif %}
+</div>
+
+{% if user_authenticated and can_edit_film %}
+<div class="column is-narrow">
+    <a href="{% url 'edit-film' film.id %}">
+        <span class="icon icon-pencil" title="{% trans "Edit Film" %}" aria-hidden="true"></span>
+        <span class="is-sr-only--mobile">{% trans "Edit Film" %}</span>
+    </a>
+</div>
+{% endif %}

@@ -1,6 +1,6 @@
 # ReelTalk — Progress Tracker
 
-**Last updated:** 2026-08-25
+**Last updated:** 2026-08-26
 **Audience:** any new session picking up this project. Read this first, then `PLAN.md` (the historical Phase 1 execution plan) if you need the original reasoning.
 
 ---
@@ -24,12 +24,16 @@
 | CSRF trusted-origins fix | ✅ Done, pushed (2026-08-24) |
 | Local instance | ✅ Running and **initialized**: DB migrated, `initdb` seeded, admin account created via the `/setup` wizard (2 users exist), `install_mode=false`. Reachable at **http://192.168.1.138:3030** |
 | Phase 2 — milestone 1 (UI rebrand books→films + binary film shelf model) | ✅ Done, committed, pushed, verified live (full test suite green: 1332 passed) |
-| Phase 2 — remainder (film domain model, TMDB importer/connector, artwork, public deploy) | ⬜ Not started — to be **designed with the owner** before implementation |
+| Phase 2 — milestone 2 (film domain model + AP rework) | 🚧 **Commit 1** (`08af0c971`) done: Film model + AP wire types + migration 0247, book models deleted. **Commit 2** (app layer: views/templates/URLs `/book/`→`/film/`, wording pass, removals) **done and committed locally** 2026-08-26 — *not pushed* (push needs owner approval). **Commit 3 (test rework) + live verification = next session** (§5) |
+| Phase 2 — remainder after m2 (TMDB importer/connector, artwork, Crowdin, public deploy) | ⬜ Not started |
 
 ## 3. Commit history (`main`)
 
 ```
-(this commit) Rework shelves into a binary film model; rebrand UI from books to films   ← Phase 2 milestone 1 (commit 2/2)
+(this commit) <commit 2 message: app-layer rework /book/→/film/, wording pass, removals>   ← Phase 2 milestone 2 (commit 2/3)
+08af0c971 Replace book domain with flat Film model and federation wire types             ← Phase 2 milestone 2 (commit 1/3)
+4203dc65f Mark Phase 2 milestone 1 as pushed in progress tracker
+582f8138a Rework shelves into a binary film model; rebrand UI from books to films        ← Phase 2 milestone 1 (commit 2/2)
 c799e9734 Remove barcode reader, code of conduct, reading goals, Patreon footer          ← Phase 2 milestone 1 (commit 1/2)
 9c9363298 Add progress tracker for new sessions
 fea8546f7 Allow CSRF_TRUSTED_ORIGINS override for non-DOMAIN access origins
@@ -93,19 +97,47 @@ What was done, in two commits:
 
 **Intentionally kept (federation safety / deferred):** `handle_reading_status` still maps all 4 legacy shelf identifiers for inbound remote activity; `Shelf` model constants unchanged; ISBN/book-search machinery and book connectors untouched — all of that gets reworked when the film domain model lands.
 
+### Phase 2 — milestone 2 (executed 2026-08-25/26)
+
+Owner design decisions for this milestone (see §8 #13–20): flat `Film` model, people as plain name fields, new `"Film"` AP wire type, data-migrate the local instance. During execution the owner added three more: **binary watch state only** (Want to Watch / Watched — no started/finished analogs), **silent watched** (marking a film watched posts *no* auto-generated note; sharing happens via reviews), and **watched requires a rating** (star rating out of 5 required, written review optional). Letterboxd is the loose design template for future design alignment (§8 #20).
+
+**Commit 1/3 (`08af0c971`) — model + federation layer:**
+- New flat `Film` model: title/sort_title/subtitle/description/year/runtime(int, minutes)/genres[]/directors[]/"cast"[] ArrayFields/poster (origin tmdb_id/imdb_id); `director_text` property. No shelves property (M2M reverse is `shelf_set`).
+- **Book domain deleted:** Book/Edition/Work/Author/SeriesBook/ImportJob/ReadThrough/ProgressUpdate/FileLink/FindMissingCoversJob/SuggestionList(S) models + migrations 0247 (data: books→films, statuses/shelves/lists re-pointed) and 0248 (Connector + readwise removal).
+- **Status MTI rework:** Comment/Review/Quotation are MTI children of Status via concrete `FilmStatus` base — each has its own `film` FK; `ReviewRating(Review)` for rating-only entries; PK is `status_ptr_id`.
+- **New `"Film"` AP wire type** in `reeltalk/activitypub/`; book/author/note wire types removed.
+- Historical migration fix: squashed 0006 imported the deleted `reeltalk.models.connector` (broke all migration loading) — the `ConnectorFiles` enum values were inlined as a literal list so the constraint stays byte-identical for fresh DBs.
+
+**Commit 2/3 (this commit) — app layer:**
+- **URLs:** `/book/<id>` → `/film/<id>` throughout; reading-status routes now `want|finish` only (`/reading-status/want/<film_id>/`, `/reading-status/finish/<film_id>/`); list item routes renamed (`list-add-film`, `list-remove-film`, `list-set-film-position`); block/unblock film routes named (`block-film`, `unblock-film`).
+- **Binary watch state finished:** `ReadingStatusChoices` = to-read/read (migration 0249 AlterField on comment/quotation/review); `Shelf.READ_STATUS_IDENTIFIERS` = (to-read, read) — READING/STOPPED_READING constants kept only because migration 0146 imports them at runtime; status headers reduced to `wants to watch` + `finished watching` (+ review/comment/quotation/rating); `handle_reading_status` map now only `{"to-read": "wants to watch"}`.
+- **Finish flow (owner decisions):** POST finish validates a rating (float 0.5–5, checked *before* any DB writes due to transaction commit semantics) → shelves film to read → delegates to `CreateStatus.as_view()` as `"review"` (content present) or `"rating"` (rating-only). No "Post to feed" checkbox — watched is silent; want flow posts a comment or a "wants to watch" GeneratedNote.
+- **Removals:** Connector + Readwise (views/routes/forms/templates/`readwise_api_key`), user book-list import (`import`, `user-import`, `import-status` routes, `settings/imports/*` templates, IMPORT/USER_IMPORT notification types + item templates), suggestion lists (`user-suggestions` route + template, SuggestionList models gone in 0247), cover-maintenance admin (FindMissingCoversJob views/routes/template section — model deleted in 0247), custom-shelf-era reading modals/headers.
+- **Template pass:** all film pages rewritten on the Film model (`film/*`, `search/film.html`, `shelf/*`, `lists/*` incl. new `suggestion_search.html`, `get_started/films.html`, `feed/suggested_films.html`, notifications items, discover cards renamed to `large-film`/`small-film`, about/landing superlatives via `get_film_superlatives`/`get_landing_films`, guided-tour fragments re-anchored to the new `tour-*-film*` element ids).
+- **Verified in container:** `makemigrations --check` clean, `manage.py check` no issues, `collectstatic` OK, and a full parse of all 340 templates through Django's engine (catches syntax errors + missing includes). **Test suite NOT yet re-run — the tests are still book-based; that is commit 3.**
+
 ## 5. What still needs to be done
 
-### Immediate / local
-- **Nothing blocking.** The instance is initialized and clickable at http://192.168.1.138:3030 (login page). The owner was actively using it when work paused.
+### Immediate / local — NEXT SESSION PLAN (milestone 2, commit 3 + verification)
+
+**Commit 3 — test rework to green.** The suite is still book-based and will fail en masse until reworked. CI-faithful flow (§7): temp source tar → `compile_themes && collectstatic --no-input && pytest -n 3`. Expect to: delete tests for removed features (connectors, imports, readwise, suggestion lists, cover jobs, book AP types), rewrite the rest against `Film`/`ReviewRating`/binary shelves. Pre-migration baseline was 1332 passed / 1 skipped / 1 xfailed; the new green baseline will be lower and should be recorded here when reached.
+
+**Live verification (after commit 3, before push):**
+1. `docker compose up -d --build` then `docker compose restart nginx` (§7 quirk #1). The web entrypoint auto-runs migrations: live DB is at **0246**; it will apply **0247 (books→films data migration), 0248, 0249**. Watch the logs — 0247 is a big data migration.
+2. `initdb` already ran pre-migration; if any seed step references removed models, re-run `manage.py initdb --limit permission` for `edit_film` and SQL-delete stale `edit_book` perms (the permission codenames changed with the model swap).
+3. Click-through at http://192.168.1.138:3030: login → feed → film page (`/film/<id>/`) → shelve Want to Watch → finish flow (rating required; rating-only vs written review) → lists (add/suggest/remove/reposition) → search → blocked films prefs → admin files-maintenance page renders.
+4. Owner review gate, then push (owner approval required at that moment; `fork` remote only).
+
+**Known small gaps found during the sweep (non-blocking, fix opportunistically):**
+- `user.shared_books` is referenced in `directory/user_card.html` + `groups/suggested_users.html` but no longer exists on User — those "N films on your shelves" stats silently don't render. Implementing a `shared_films` annotate in the directory/group views is a small follow-up.
+- Guided-tour search steps were re-anchored to the new `tour-*-film*` ids, but the tour copy still describes the old flow; polish with the owner if the tour matters for alpha.
+
 - If the host's LAN IP changes again: update `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` in the live `.env`, then `docker compose up -d && docker compose restart nginx` (see §7 quirks).
 
 ### Phase 2 — remainder (DESIGN WITH THE OWNER FIRST; no solo design decisions)
-Milestone 1 (UI rebrand + binary shelf model, §4) is done. What remains, from PLAN.md §12 plus the owner's 13-item list:
-- **Build the TMDB import path** — the UI already says "Import Films" and describes a TMDB export; the actual importer + TMDB connector must be built to make it real (owner decision: rename now, build later).
-- Replace the Work/Edition/Author book hierarchy with a film domain model (titles, years, cast, ratings). The `book` FK on the status model (`reeltalk/models/status.py`, ~line 32) is the swap point. This milestone also owns the **deep book-page wording** deferred by the focused string pass.
-- **TMDB** as the primary film metadata source, replacing the book connectors (OpenLibrary/Finna/Inventaire/Libris/BookWyrm). The ISBN/book-search machinery kept in milestone 1 gets reworked or dropped here.
+Milestones 1 and 2 (model + app layer) are done pending commit 3/verification. What remains, from PLAN.md §12 plus the owner's 13-item list:
+- **Build the TMDB import path** — the UI already says "Import Films" and describes a TMDB export; the actual importer + TMDB connector must be built to make it real (owner decision: rename now, build later). This is the next milestone after commit 3 lands.
 - Custom ReelTalk artwork replacing BookWyrm's placeholder/wyrm imagery.
-- Rework the book-coupled federation pieces: `reeltalk/activitypub/book.py` and `note.py`.
 - Re-point `locale/**` at a ReelTalk Crowdin project (still contains BookWyrm strings).
 - Public instance deployment of the alpha (operator's own TLS proxy in front of :3030).
 
@@ -162,7 +194,7 @@ docker compose run --rm -v "$TMP:/src:z" -w /src web sh -c \
   "python manage.py check && python manage.py compile_themes && python manage.py collectstatic --no-input && pytest -n 3"
 ```
 - Skipping `compile_themes` + `collectstatic` causes ~237 spurious failures (manifest_strict ValueError on theme CSS).
-- **Green baseline:** 1332 passed / 1 skipped / 1 xfailed (~3 min with `-n 3`) — as of Phase 2 milestone 1 (2026-08-25; ~25 tests removed with the barcode/conduct/goal/custom-shelf features).
+- **Green baseline:** 1332 passed / 1 skipped / 1 xfailed (~3 min with `-n 3`) — as of Phase 2 milestone 1 (2026-08-25; ~25 tests removed with the barcode/conduct/goal/custom-shelf features). ⚠️ **STALE as of milestone 2 commit 2 (2026-08-26):** the test suite is still book-based and will fail en masse until commit 3 reworks it. Don't treat a red run as a regression signal until then; record the new green baseline here when reached.
 
 ### After changing app code
 `docker compose up -d --build` (rebuilds the web image), then `docker compose restart nginx` (quirk #1), then wait for web healthy.
@@ -181,3 +213,11 @@ docker compose run --rm -v "$TMP:/src:z" -w /src web sh -c \
 10. **Clean up existing users' shelves in the local DB** (2026-08-25): migration 0246 renames default shelves to the film names and drops `reading`/`stopped-reading` shelves rather than leaving legacy data behind.
 11. **TMDB import: rename now, build later** (2026-08-25): the UI is rebranded to "Import Films" / TMDB export immediately; the actual importer and TMDB connector are built in a later milestone once the film catalog exists.
 12. **Focused string pass for Phase 2 milestone 1** (2026-08-25): books→films wording was applied to the pages named in the owner's list plus visible chrome only; deep book-page wording is deferred to the domain-model milestone.
+13. **Flat single `Film` model** (2026-08-25): one object per title. The Work/Edition split, edition picker, ISBN dedup, and edition ranking are all dropped; statuses, shelves, and lists anchor directly to Film.
+14. **People as plain fields** (2026-08-25): directors/cast are name lists on Film — no Person model, no person pages; the Author model is dropped with it.
+15. **New `"Film"` AP wire type** (2026-08-25): clean break from the Book/Edition/Author wire types; film objects federate between ReelTalk instances only.
+16. **Data-migrate the local instance to Film** (2026-08-25): existing book rows convert to films and statuses/shelves/lists re-point; URLs move `/book/<id>` → `/film/<id>`.
+17. **Binary watch state, no in-progress analogs** (2026-08-26): "there's only two statuses when it comes to films" — seen or not-yet-seen-but-wished. No started/finished-reading equivalents; the Currently Watching / Stopped Watching shelf presets and their status headers are removed.
+18. **Silent watched** (2026-08-26): marking a film watched posts **no** auto-generated note ("Post to feed" checkbox removed from the finish modal). Sharing a watched film happens via reviews/ratings, which the finish flow creates.
+19. **Watched requires a rating** (2026-08-26): a film cannot be added to Watched without a star rating (out of 5); the written review is optional. Rating-only entries are stored as `ReviewRating`.
+20. **Letterboxd as loose design template** (2026-08-26): the owner models ReelTalk's UX loosely on Letterboxd; use it as the reference when aligning on future design decisions together.

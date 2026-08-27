@@ -5,13 +5,12 @@
 
 {% block dropdown-trigger %}
 <span>{% trans "Move film" %}</span>
-<span class="icon icon-arrow-down" aria-hidden="true"></span>
+<span class="icon icon-arrow-down"></span>
 {% endblock %}
 
 {% block dropdown-list %}
-{% with book.id|uuid as uuid %}
-{% active_shelf book as active_shelf %}
-{% latest_read_through book request.user as readthrough %}
+{% with film.id|uuid as uuid %}
+{% active_shelf film as active_shelf %}
 
 {% for shelf in user_shelves %}
 {% if shelf.identifier == 'to-read' or shelf.identifier == 'read' %}
@@ -21,14 +20,14 @@
 {% if shelf.identifier == 'read' %}
 
 {% trans "Watched" as button_text %}
-{% url 'reading-status' 'finish' book.id as fallback_url %}
+{% url 'reading-status' 'finish' film.id as fallback_url %}
 {% join "finish_reading" uuid as modal_id %}
 {% include 'snippets/shelve_button/modal_button.html' with class=button_class fallback_url=fallback_url %}
 
 {% elif shelf.identifier == 'to-read' %}
 
 {% trans "Want to Watch" as button_text %}
-{% url 'reading-status' 'want' book.id as fallback_url %}
+{% url 'reading-status' 'want' film.id as fallback_url %}
 {% join "want_to_read" uuid as modal_id %}
 {% include 'snippets/shelve_button/modal_button.html' with class=button_class fallback_url=fallback_url %}
 
@@ -40,12 +39,12 @@
 
 {% if shelf.identifier == 'all' %}
 {% for user_shelf in user_shelves %}
-{% if user_shelf in book.shelves.all %}
+{% if user_shelf in film.shelf_set.all %}
 <li class="navbar-divider m-0" role="separator" ></li>
 <li role="menuitem" class="dropdown-item p-0">
-    <form name="shelve-{{ user_shelf.identifier }}-{{ book.id }}-{{ uuid }}" action="/unshelve/" method="post">
+    <form name="shelve-{{ user_shelf.identifier }}-{{ film.id }}-{{ uuid }}" action="/unshelve/" method="post">
         {% csrf_token %}
-        <input type="hidden" name="book" value="{{ book.id }}">
+        <input type="hidden" name="film" value="{{ film.id }}">
         <input type="hidden" name="shelf" value="{{ user_shelf.id }}">
         <button class="button is-fullwidth is-small is-radiusless is-danger is-light" type="submit">
             {% blocktrans with name=user_shelf|translate_shelf_name %}Remove from {{ name }}{% endblocktrans %}
@@ -57,9 +56,9 @@
 {% else %}
 <li class="navbar-divider" role="separator" ></li>
 <li role="menuitem" class="dropdown-item p-0">
-    <form name="un-shelve-{{ shelf.identifier }}-{{ book.id }}-{{ uuid }}" action="/unshelve/" method="post">
+    <form name="un-shelve-{{ shelf.identifier }}-{{ film.id }}-{{ uuid }}" action="/unshelve/" method="post">
         {% csrf_token %}
-        <input type="hidden" name="book" value="{{ book.id }}">
+        <input type="hidden" name="film" value="{{ film.id }}">
         <input type="hidden" name="shelf" value="{{ shelf.id }}">
         <button class="button is-fullwidth is-small is-radiusless is-danger is-light" type="submit">
             {% blocktrans with name=shelf|translate_shelf_name %}Remove from {{ name }}{% endblocktrans %}
@@ -69,10 +68,10 @@
 {% endif %}
 
 {% join "want_to_read" uuid as modal_id %}
-{% include 'snippets/reading_modals/want_to_read_modal.html' with book=active_shelf.book id=modal_id move_from=current.id refresh=True class="" %}
+{% include 'snippets/reading_modals/want_to_read_modal.html' with film=active_shelf.film id=modal_id move_from=current.id refresh=True class="" %}
 
 {% join "finish_reading" uuid as modal_id %}
-{% include 'snippets/reading_modals/finish_reading_modal.html' with book=active_shelf.book id=modal_id move_from=current.id readthrough=readthrough refresh=True class="" %}
+{% include 'snippets/reading_modals/finish_reading_modal.html' with film=active_shelf.film id=modal_id move_from=current.id refresh=True class="" %}
 
 {% endwith %}
 {% endblock %}

@@ -13,8 +13,8 @@ from reeltalk.views.helpers import redirect_to_referer, get_mergeable_object_or_
 @require_POST
 @transaction.atomic
 def shelve(request):
-    """put a book on a user's shelf"""
-    book = get_mergeable_object_or_404(models.Edition, id=request.POST.get("book"))
+    """put a film on a user's shelf"""
+    film = get_mergeable_object_or_404(models.Film, id=request.POST.get("film"))
     desired_shelf = get_object_or_404(
         request.user.shelf_set, identifier=request.POST.get("shelf")
     )
@@ -22,47 +22,47 @@ def shelve(request):
     # first we need to remove from the specified shelf
     change_from_current_identifier = request.POST.get("change-shelf-from")
     if change_from_current_identifier:
-        # find the shelfbook obj and delete it
+        # find the shelffilm obj and delete it
         get_object_or_404(
-            models.ShelfBook,
-            book=book,
+            models.ShelfFilm,
+            film=film,
             user=request.user,
             shelf__identifier=change_from_current_identifier,
         ).delete()
 
-    # A book can be on multiple shelves, but only on one read status shelf at a time
+    # A film can be on multiple shelves, but only on one read status shelf at a time
     if desired_shelf.identifier in models.Shelf.READ_STATUS_IDENTIFIERS:
         # figure out where state shelf it's currently on (if any)
-        current_read_status_shelfbook = (
-            models.ShelfBook.objects.select_related("shelf")
+        current_read_status_shelffilm = (
+            models.ShelfFilm.objects.select_related("shelf")
             .filter(
                 shelf__identifier__in=models.Shelf.READ_STATUS_IDENTIFIERS,
                 user=request.user,
-                book=book,
+                film=film,
             )
             .first()
         )
-        if current_read_status_shelfbook is not None:
+        if current_read_status_shelffilm is not None:
             # If it is not already on the shelf
             if (
-                current_read_status_shelfbook.shelf.identifier
+                current_read_status_shelffilm.shelf.identifier
                 != desired_shelf.identifier
             ):
-                current_read_status_shelfbook.delete()
+                current_read_status_shelffilm.delete()
             else:
                 return redirect_to_referer(request)
 
-        # create the new shelf-book entry
-        models.ShelfBook.objects.create(
-            book=book, shelf=desired_shelf, user=request.user
+        # create the new shelf-film entry
+        models.ShelfFilm.objects.create(
+            film=film, shelf=desired_shelf, user=request.user
         )
     else:
         # we're putting it on a custom shelf
         try:
-            models.ShelfBook.objects.create(
-                book=book, shelf=desired_shelf, user=request.user
+            models.ShelfFilm.objects.create(
+                film=film, shelf=desired_shelf, user=request.user
             )
-        # The book is already on this shelf.
+        # The film is already on this shelf.
         # Might be good to alert, or reject the action?
         except IntegrityError:
             pass
@@ -72,13 +72,13 @@ def shelve(request):
 
 @login_required
 @require_POST
-def unshelve(request, book_id=False):
-    """remove a book from a user's shelf"""
-    identity = book_id if book_id else request.POST.get("book")
-    book = get_mergeable_object_or_404(models.Edition, id=identity)
-    shelf_book = get_object_or_404(
-        models.ShelfBook, book=book, shelf__id=request.POST["shelf"]
+def unshelve(request, film_id=False):
+    """remove a film from a user's shelf"""
+    identity = film_id if film_id else request.POST.get("film")
+    film = get_mergeable_object_or_404(models.Film, id=identity)
+    shelf_film = get_object_or_404(
+        models.ShelfFilm, film=film, shelf__id=request.POST["shelf"]
     )
-    shelf_book.raise_not_deletable(request.user)
-    shelf_book.delete()
+    shelf_film.raise_not_deletable(request.user)
+    shelf_film.delete()
     return redirect_to_referer(request)

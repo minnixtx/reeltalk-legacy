@@ -1,0 +1,162 @@
+{% load i18n %}
+{% load static %}
+
+{% if form.non_field_errors %}
+<div class="block">
+    <p class="notification is-danger">{{ form.non_field_errors }}</p>
+</div>
+{% endif %}
+
+{% csrf_token %}
+
+<input type="hidden" name="last_edited_by" value="{{ request.user.id }}">
+
+<div class="columns">
+    <div class="column is-half">
+        <section class="block">
+            <h2 class="title is-4">
+                {% trans "Metadata" %}
+            </h2>
+            <div class="box">
+                <div class="field">
+                    <label class="label" for="id_title">
+                        {% trans "Title:" %}
+                    </label>
+                    {{ form.title }}
+
+                    {% include 'snippets/form_errors.html' with errors_list=form.title.errors id="desc_title" %}
+                </div>
+
+                <div class="field">
+                    <label class="label" for="id_sort_title">
+                        {% trans "Sort Title:" %}
+                    </label>
+                    {{ form.sort_title }}
+                    <span class="help" id="desc_sort_title_help">
+                        {% trans "Title without articles, used for sorting." %}
+                    </span>
+
+                    {% include 'snippets/form_errors.html' with errors_list=form.sort_title.errors id="desc_sort_title" %}
+                </div>
+
+                <div class="field">
+                    <label class="label" for="id_subtitle">
+                        {% trans "Subtitle:" %}
+                    </label>
+                    {{ form.subtitle }}
+
+                    {% include 'snippets/form_errors.html' with errors_list=form.subtitle.errors id="desc_subtitle" %}
+                </div>
+
+                <div class="field">
+                    <label class="label" for="id_description">
+                        {% trans "Description:" %}
+                    </label>
+                    {{ form.description }}
+
+                    {% include 'snippets/form_errors.html' with errors_list=form.description.errors id="desc_description" %}
+                </div>
+
+                <div class="columns">
+                    <div class="column is-half">
+                        <div class="field">
+                            <label class="label" for="id_year">
+                                {% trans "Year:" %}
+                            </label>
+                            {{ form.year }}
+
+                            {% include 'snippets/form_errors.html' with errors_list=form.year.errors id="desc_year" %}
+                        </div>
+                    </div>
+                    <div class="column is-half">
+                        <div class="field">
+                            <label class="label" for="id_runtime">
+                                {% trans "Runtime (minutes):" %}
+                            </label>
+                            {{ form.runtime }}
+
+                            {% include 'snippets/form_errors.html' with errors_list=form.runtime.errors id="desc_runtime" %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="block">
+            <h2 class="title is-4">
+                {% trans "Credits" %}
+            </h2>
+            <div class="box">
+                <div class="field">
+                    <label class="label" for="id_genres">
+                        {% trans "Genres:" %}
+                    </label>
+                    {{ form.genres }}
+                    <span class="help" id="desc_genres_help">
+                        {% trans "Separate multiple values with commas." %}
+                    </span>
+
+                    {% include 'snippets/form_errors.html' with errors_list=form.genres.errors id="desc_genres" %}
+                </div>
+
+                <div class="field">
+                    <label class="label" for="id_directors">
+                        {% trans "Directors:" %}
+                    </label>
+                    {{ form.directors }}
+                    <span class="help" id="desc_directors_help">
+                        {% trans "Separate multiple values with commas." %}
+                    </span>
+
+                    {% include 'snippets/form_errors.html' with errors_list=form.directors.errors id="desc_directors" %}
+                </div>
+
+                <div class="field">
+                    <label class="label" for="id_cast">
+                        {% trans "Cast:" %}
+                    </label>
+                    {{ form.cast }}
+                    <span class="help" id="desc_cast_help">
+                        {% trans "Separate multiple values with commas." %}
+                    </span>
+
+                    {% include 'snippets/form_errors.html' with errors_list=form.cast.errors id="desc_cast" %}
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="column is-half">
+        <section class="block">
+            <h2 class="title is-4">
+                {% trans "Poster" %}
+            </h2>
+            <div class="box">
+                <div class="columns">
+                    {% if film.poster %}
+                    <div class="column is-3 is-cover">
+                        {% include 'snippets/film_cover.html' with film=film cover_class='is-h-xl-mobile is-w-auto-tablet' size_mobile='xlarge' size='large' %}
+                    </div>
+                    {% endif %}
+
+                    <div class="column">
+                        <div class="field">
+                            <label class="label" for="id_poster">
+                                {% trans "Upload poster:" %}
+                            </label>
+                            {{ form.poster }}
+                        </div>
+                        <div class="field">
+                            <label class="label" for="id_poster_url">
+                                {% trans "Load poster from URL:" %}
+                            </label>
+                            <input class="input" name="poster-url" id="id_poster_url" type="url" value="{{ request.POST.poster_url|default:'' }}" aria-describedby="desc_poster">
+                        </div>
+
+                        {% include 'snippets/form_errors.html' with errors_list=form.poster.errors id="desc_poster" %}
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>

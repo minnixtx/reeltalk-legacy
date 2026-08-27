@@ -3,7 +3,7 @@
 from datetime import date
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Prefetch, Q, prefetch_related_objects
+from django.db.models import Q
 from django.http import HttpResponseNotFound, Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
@@ -56,20 +56,15 @@ class Feed(View):
             if get_annual_summary_year()
             else None
         )
-        readthroughs = (
-            models.ReadThrough.objects.filter(
-                user=request.user, finish_date__lte=cutoff
+        watched_films = (
+            request.user.shelffilm_set.filter(
+                shelf__identifier="read", shelved_date__lte=cutoff
             )
             if get_annual_summary_year()
             else []
         )
 
         page = paginated.get_page(request.GET.get("page"))
-        # prefetch on the objects, not the queryset, so the cache lands directly on status.book.
-        prefetch_related_objects(
-            [status.book for status in page if getattr(status, "book", None)],
-            Prefetch("authors", queryset=models.Author.objects.order_by("id")),
-        )
 
         data = {
             "user": request.user,
@@ -82,7 +77,7 @@ class Feed(View):
             "path": f"/{tab['key']}",
             "annual_summary_year": get_annual_summary_year(),
             "has_tour": True,
-            "has_summary_read_throughs": len(readthroughs),
+            "has_summary_watched_films": len(watched_films),
         }
         return TemplateResponse(request, "feed/feed.html", data)
 
@@ -229,24 +224,24 @@ class Replies(View):
         return ActivitypubResponse(status.to_replies(**request.GET))
 
 
-def get_suggested_books(user, max_books=5):
-    """helper to get a user's recent books"""
-    book_count = 0
-    preset_shelves = {"read": 2, "to-read": max_books}
-    suggested_books = []
+def get_suggested_films(user, max_films=5):
+    """helper to get a user's recent films"""
+    film_count = 0
+    preset_shelves = {"read": 2, "to-read": max_films}
+    suggested_films = []
 
     user_shelves = {
         shelf.identifier: shelf
         for shelf in user.shelf_set.filter(
             identifier__in=preset_shelves.keys()
-        ).exclude(books__isnull=True)
+        ).exclude(films__isnull=True)
     }
 
     for preset, shelf_max in preset_shelves.items():
         limit = (
             shelf_max
-            if shelf_max < (max_books - book_count)
-            else max_books - book_count
+            if shelf_max < (max_films - film_count)
+            else max_films - film_count
         )
         shelf = user_shelves.get(preset, None)
         if not shelf:
@@ -255,13 +250,12 @@ def get_suggested_books(user, max_books=5):
         shelf_preview = {
             "name": shelf.name,
             "identifier": shelf.identifier,
-            "books": models.Edition.viewer_aware_objects(user)
+            "films": models.Film.viewer_aware_objects(user)
             .filter(
-                shelfbook__shelf=shelf,
+                shelffilm__shelf=shelf,
             )
-            .order_by("-shelfbook__shelved_date")
-            .prefetch_related("authors")[:limit],
+            .order_by("-shelffilm__shelved_date")[:limit],
         }
-        suggested_books.append(shelf_preview)
-        book_count += len(shelf_preview["books"])
-    return suggested_books
+        suggested_films.append(shelf_preview)
+        film_count += len(shelf_preview["films"])
+    return suggested_films

@@ -58,8 +58,8 @@ def init_permissions():
             "groups": ["admin", "owner", "moderator"],
         },
         {
-            "codename": "edit_book",
-            "name": "edit book info",
+            "codename": "edit_film",
+            "name": "edit film info",
             "groups": ["admin", "owner", "moderator", "editor"],
         },
     ]
@@ -74,51 +74,6 @@ def init_permissions():
         # add the permission to the appropriate groups
         for group_name in permission["groups"]:
             Group.objects.get(name=group_name).permissions.add(permission_obj)
-
-
-def init_connectors():
-    """access book data sources"""
-    models.Connector.objects.get_or_create(
-        identifier="bookwyrm.social",
-        defaults={
-            "name": "Reeltalk.social",
-            "connector_file": "reeltalk_connector",
-            "base_url": "https://bookwyrm.social",
-            "books_url": "https://bookwyrm.social/book",
-            "covers_url": "https://bookwyrm.social/images/",
-            "search_url": "https://bookwyrm.social/search?q=",
-            "isbn_search_url": "https://bookwyrm.social/isbn/",
-            "priority": 2,
-        },
-    )
-
-    models.Connector.objects.get_or_create(
-        identifier="inventaire.io",
-        defaults={
-            "name": "Inventaire",
-            "connector_file": "inventaire",
-            "base_url": "https://inventaire.io",
-            "books_url": "https://inventaire.io/api/entities",
-            "covers_url": "https://inventaire.io",
-            "search_url": "https://inventaire.io/api/search?types=works&types=works&search=",
-            "isbn_search_url": "https://inventaire.io/api/entities?action=by-uris&uris=isbn%3A",
-            "priority": 3,
-        },
-    )
-
-    models.Connector.objects.get_or_create(
-        identifier="openlibrary.org",
-        defaults={
-            "name": "OpenLibrary",
-            "connector_file": "openlibrary",
-            "base_url": "https://openlibrary.org",
-            "books_url": "https://openlibrary.org",
-            "covers_url": "https://covers.openlibrary.org",
-            "search_url": "https://openlibrary.org/search?q=",
-            "isbn_search_url": "https://openlibrary.org/api/books?jscmd=data&format=json&bibkeys=ISBN:",
-            "priority": 3,
-        },
-    )
 
 
 def init_settings():
@@ -169,7 +124,6 @@ class Command(BaseCommand):
         tables = [
             "group",
             "permission",
-            "connector",
             "settings",
             "linkdomain",
         ]
@@ -180,8 +134,6 @@ class Command(BaseCommand):
             init_groups()
         if not limit or limit == "permission":
             init_permissions()
-        if not limit or limit == "connector":
-            init_connectors()
         if not limit or limit == "settings":
             init_settings()
         if not limit or limit == "linkdomain":
