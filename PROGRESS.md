@@ -24,13 +24,13 @@
 | CSRF trusted-origins fix | ✅ Done, pushed (2026-08-24) |
 | Local instance | ✅ Running and **initialized**: DB migrated, `initdb` seeded, admin account created via the `/setup` wizard (2 users exist), `install_mode=false`. Reachable at **http://192.168.1.138:3030** |
 | Phase 2 — milestone 1 (UI rebrand books→films + binary film shelf model) | ✅ Done, committed, pushed, verified live (full test suite green: 1332 passed) |
-| Phase 2 — milestone 2 (film domain model + AP rework) | 🚧 **Commit 1** (`08af0c971`) done: Film model + AP wire types + migration 0247, book models deleted. **Commit 2** (app layer: views/templates/URLs `/book/`→`/film/`, wording pass, removals) **done and committed locally** 2026-08-26 — *not pushed* (push needs owner approval). **Commit 3 (test rework) + live verification = next session** (§5) |
+| Phase 2 — milestone 2 (film domain model + AP rework) | 🚧 **Commit 1** (`08af0c971`) done: Film model + AP wire types + migration 0247, book models deleted. **Commit 2** (`2726a1067`, app layer: views/templates/URLs `/book/`→`/film/`, wording pass, removals) **done and committed locally** 2026-08-26 — *not pushed* (push needs owner approval). **Commit 3 (test rework) + live verification = next session** (§5) |
 | Phase 2 — remainder after m2 (TMDB importer/connector, artwork, Crowdin, public deploy) | ⬜ Not started |
 
 ## 3. Commit history (`main`)
 
 ```
-(this commit) <commit 2 message: app-layer rework /book/→/film/, wording pass, removals>   ← Phase 2 milestone 2 (commit 2/3)
+2726a1067 Rework views, templates and URLs onto the Film model; remove book-era features   ← Phase 2 milestone 2 (commit 2/3)
 08af0c971 Replace book domain with flat Film model and federation wire types             ← Phase 2 milestone 2 (commit 1/3)
 4203dc65f Mark Phase 2 milestone 1 as pushed in progress tracker
 582f8138a Rework shelves into a binary film model; rebrand UI from books to films        ← Phase 2 milestone 1 (commit 2/2)
@@ -108,7 +108,7 @@ Owner design decisions for this milestone (see §8 #13–20): flat `Film` model,
 - **New `"Film"` AP wire type** in `reeltalk/activitypub/`; book/author/note wire types removed.
 - Historical migration fix: squashed 0006 imported the deleted `reeltalk.models.connector` (broke all migration loading) — the `ConnectorFiles` enum values were inlined as a literal list so the constraint stays byte-identical for fresh DBs.
 
-**Commit 2/3 (this commit) — app layer:**
+**Commit 2/3 (`2726a1067`) — app layer:**
 - **URLs:** `/book/<id>` → `/film/<id>` throughout; reading-status routes now `want|finish` only (`/reading-status/want/<film_id>/`, `/reading-status/finish/<film_id>/`); list item routes renamed (`list-add-film`, `list-remove-film`, `list-set-film-position`); block/unblock film routes named (`block-film`, `unblock-film`).
 - **Binary watch state finished:** `ReadingStatusChoices` = to-read/read (migration 0249 AlterField on comment/quotation/review); `Shelf.READ_STATUS_IDENTIFIERS` = (to-read, read) — READING/STOPPED_READING constants kept only because migration 0146 imports them at runtime; status headers reduced to `wants to watch` + `finished watching` (+ review/comment/quotation/rating); `handle_reading_status` map now only `{"to-read": "wants to watch"}`.
 - **Finish flow (owner decisions):** POST finish validates a rating (float 0.5–5, checked *before* any DB writes due to transaction commit semantics) → shelves film to read → delegates to `CreateStatus.as_view()` as `"review"` (content present) or `"rating"` (rating-only). No "Post to feed" checkbox — watched is silent; want flow posts a comment or a "wants to watch" GeneratedNote.
