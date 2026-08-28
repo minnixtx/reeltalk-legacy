@@ -35,10 +35,9 @@ class LinkDomainViews(TestCase):
         group = Group.objects.get(name="moderator")
         cls.local_user.groups.set([group])
 
-        cls.book = models.Edition.objects.create(title="hello")
-        models.FileLink.objects.create(
-            book=cls.book,
-            url="https://beep.com/book/1",
+        cls.film = models.Film.objects.create(title="hello")
+        models.Link.objects.create(
+            url="https://beep.com/film/1",
             added_by=cls.local_user,
         )
 
@@ -58,20 +57,19 @@ class LinkDomainViews(TestCase):
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
 
-    def test_domain_page_post(self):
-        """there are so many views, this just makes sure it LOADS"""
+    def test_domain_page_set_name(self):
+        """the display-name modal POST updates the domain"""
         domain = models.LinkDomain.objects.get(domain="beep.com")
-        self.assertEqual(domain.name, "beep.com")
 
         view = views.LinkDomain.as_view()
-        request = self.factory.post("", {"name": "ugh"})
+        request = self.factory.post("", {"name": "Beep"})
         request.user = self.local_user
 
         result = view(request, "pending", domain.id)
         self.assertEqual(result.status_code, 302)
 
         domain.refresh_from_db()
-        self.assertEqual(domain.name, "ugh")
+        self.assertEqual(domain.name, "Beep")
 
     def test_domain_page_set_status_approved(self):
         """there are so many views, this just makes sure it LOADS"""

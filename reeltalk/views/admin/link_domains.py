@@ -31,7 +31,6 @@ class LinkDomain(View):
                 "approved": models.LinkDomain.objects.filter(status="approved").count(),
                 "blocked": models.LinkDomain.objects.filter(status="blocked").count(),
             },
-            "form": forms.EmailBlocklistForm(),
             "status": status,
         }
         return TemplateResponse(

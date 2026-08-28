@@ -137,7 +137,7 @@ class ActivityStream(RedisStore):
             "comment__film",
             "review__film",
             "quotation__film",
-            "mention_films__film",
+            "mention_films",
         )
         # flatten the list of sets into a single set of only non-None values
         thread_film_ids = set(j for i in thread_films for j in i if j)

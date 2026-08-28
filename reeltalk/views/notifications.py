@@ -20,7 +20,7 @@ class Notifications(View):
                 "related_status",
                 "related_status__reply_parent",
                 "related_group",
-                "related_import",
+                "related_user_export",
             )
             .prefetch_related(
                 "related_reports",
