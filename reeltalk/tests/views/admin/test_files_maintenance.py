@@ -146,24 +146,3 @@ class FilesMaintenanceViews(TestCase):
         site.refresh_from_db()
 
         self.assertEqual(site.export_files_lifetime_hours, 48)
-
-    def test_schedule_missing_covers_job(self):
-        """Schedule the missing covers job"""
-
-        self.assertFalse(IntervalSchedule.objects.exists())
-
-        form = forms.IntervalScheduleForm()
-        form.data["every"] = 1
-        form.data["period"] = "days"
-        request = self.factory.post("", form.data)
-        request.user = self.local_user
-
-        response = views.schedule_run_missing_covers_job(request)
-        self.assertEqual(response.status_code, 302)
-
-        self.assertTrue(IntervalSchedule.objects.exists())
-        self.assertTrue(PeriodicTask.objects.exists())
-        self.assertEqual(
-            PeriodicTask.objects.first().task,
-            "reeltalk.models.housekeeping.run_missing_covers_job",
-        )

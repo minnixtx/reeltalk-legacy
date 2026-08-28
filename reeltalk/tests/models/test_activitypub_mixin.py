@@ -86,18 +86,18 @@ class ActivitypubMixins(TestCase):
         """attempt to match a remote id to an object in the db"""
         # uses a different remote id scheme
         # this isn't really part of this test directly but it's helpful to state
-        book = models.Edition.objects.create(
-            title="Test Edition", remote_id="http://book.com/book"
+        film = models.Film.objects.create(
+            title="Test Film", remote_id="http://film.com/film"
         )
 
-        self.assertEqual(book.origin_id, "http://book.com/book")
-        self.assertNotEqual(book.remote_id, "http://book.com/book")
+        self.assertEqual(film.origin_id, "http://film.com/film")
+        self.assertNotEqual(film.remote_id, "http://film.com/film")
 
         # uses subclasses
         models.Comment.objects.create(
             user=self.local_user,
             content="test status",
-            book=book,
+            film=film,
             remote_id="https://comment.net",
         )
 
@@ -108,40 +108,38 @@ class ActivitypubMixins(TestCase):
         self.assertEqual(result, self.local_user)
 
         # test using origin id
-        result = models.Edition.find_existing_by_remote_id("http://book.com/book")
-        self.assertEqual(result, book)
+        result = models.Film.find_existing_by_remote_id("http://film.com/film")
+        self.assertEqual(result, film)
 
         # test subclass match
         result = models.Status.find_existing_by_remote_id("https://comment.net")
 
     def test_find_existing(self, *_):
         """match a blob of data to a model"""
-        book = models.Edition.objects.create(
-            title="Test edition",
-            openlibrary_key="OL1234",
+        film = models.Film.objects.create(
+            title="Test film",
+            tmdb_id="1234",
         )
 
-        result = models.Edition.find_existing({"openlibraryKey": "OL1234"})
-        self.assertEqual(result, book)
+        result = models.Film.find_existing({"tmdbId": "1234"})
+        self.assertEqual(result, film)
 
     def test_find_existing_with_id(self, *_):
         """make sure that an "id" field won't produce a match"""
-        book = models.Edition.objects.create(title="Test edition")
+        film = models.Film.objects.create(title="Test film")
 
-        result = models.Edition.find_existing({"id": book.id})
+        result = models.Film.find_existing({"id": film.id})
         self.assertIsNone(result)
 
     def test_find_existing_with_id_and_match(self, *_):
         """make sure that an "id" field won't produce a match"""
-        book = models.Edition.objects.create(title="Test edition")
-        matching_book = models.Edition.objects.create(
-            title="Another test edition", openlibrary_key="OL1234"
+        film = models.Film.objects.create(title="Test film")
+        matching_film = models.Film.objects.create(
+            title="Another test film", tmdb_id="1234"
         )
 
-        result = models.Edition.find_existing(
-            {"id": book.id, "openlibraryKey": "OL1234"}
-        )
-        self.assertEqual(result, matching_book)
+        result = models.Film.find_existing({"id": film.id, "tmdbId": "1234"})
+        self.assertEqual(result, matching_film)
 
     def test_get_recipients_public_object(self, *_):
         """determines the recipients for an object's broadcast"""

@@ -9,7 +9,7 @@ from reeltalk import activitystreams, models
 
 @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
 @patch("reeltalk.activitystreams.add_status_task.delay")
-@patch("reeltalk.activitystreams.add_book_statuses_task.delay")
+@patch("reeltalk.activitystreams.add_film_statuses_task.delay")
 @patch("reeltalk.suggested_users.rerank_suggestions_task.delay")
 @patch("reeltalk.activitystreams.populate_stream_task.delay")
 class Activitystreams(TestCase):
@@ -36,44 +36,37 @@ class Activitystreams(TestCase):
                 inbox="https://example.com/users/rat/inbox",
                 outbox="https://example.com/users/rat/outbox",
             )
-        work = models.Work.objects.create(title="test work")
-        cls.book = models.Edition.objects.create(title="test book", parent_work=work)
+        cls.film = models.Film.objects.create(title="Test Film")
 
-    def test_get_statuses_for_user_books(self, *_):
+    def test_get_statuses_for_user_films(self, *_):
         """create a stream for a user"""
-        alt_book = models.Edition.objects.create(
-            title="hi", parent_work=self.book.parent_work
-        )
         status = models.Status.objects.create(
             user=self.local_user, content="hi", privacy="public"
         )
-        status = models.Comment.objects.create(
-            user=self.remote_user, content="hi", privacy="public", book=alt_book
+        comment = models.Comment.objects.create(
+            user=self.remote_user, content="hi", privacy="public", film=self.film
         )
-        models.ShelfBook.objects.create(
+        models.ShelfFilm.objects.create(
             user=self.local_user,
             shelf=self.local_user.shelf_set.first(),
-            book=self.book,
+            film=self.film,
         )
-        # yes book, yes audience
-        result = activitystreams.BooksStream().get_statuses_for_user(self.local_user)
-        self.assertEqual(list(result), [status])
+        # yes film, yes audience
+        result = activitystreams.FilmsStream().get_statuses_for_user(self.local_user)
+        self.assertEqual(list(result), [comment])
 
-    def test_book_statuses(self, *_):
-        """statuses about a book"""
-        alt_book = models.Edition.objects.create(
-            title="hi", parent_work=self.book.parent_work
-        )
+    def test_film_statuses(self, *_):
+        """statuses about a film"""
         status = models.Status.objects.create(
             user=self.local_user, content="hi", privacy="public"
         )
-        status = models.Comment.objects.create(
-            user=self.remote_user, content="hi", privacy="public", book=alt_book
+        comment = models.Comment.objects.create(
+            user=self.remote_user, content="hi", privacy="public", film=self.film
         )
-        models.ShelfBook.objects.create(
+        models.ShelfFilm.objects.create(
             user=self.local_user,
             shelf=self.local_user.shelf_set.first(),
-            book=self.book,
+            film=self.film,
         )
 
         class RedisMockCounter:
@@ -87,17 +80,17 @@ class Activitystreams(TestCase):
 
         redis_mock_counter = RedisMockCounter()
         with patch(
-            "reeltalk.activitystreams.BooksStream.bulk_add_objects_to_store"
+            "reeltalk.activitystreams.FilmsStream.bulk_add_objects_to_store"
         ) as redis_mock:
             redis_mock.side_effect = redis_mock_counter.bulk_add_objects_to_store
-            activitystreams.BooksStream().add_book_statuses(self.local_user, self.book)
+            activitystreams.FilmsStream().add_film_statuses(self.local_user, self.film)
 
         self.assertEqual(sum(map(lambda x: x[0].count(), redis_mock_counter.calls)), 1)
         self.assertTrue(
-            status
+            comment
             in itertools.chain.from_iterable(
                 map(lambda x: x[0], redis_mock_counter.calls)
             )
         )
         for call in redis_mock_counter.calls:
-            self.assertEqual(call[1], f"{self.local_user.id}-books")
+            self.assertEqual(call[1], f"{self.local_user.id}-films")

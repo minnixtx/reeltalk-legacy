@@ -15,7 +15,7 @@ from reeltalk.suggested_users import suggested_users, get_annotated_users
 @patch("reeltalk.suggested_users.rerank_suggestions_task.delay")
 @patch("reeltalk.activitystreams.populate_stream_task.delay")
 @patch("reeltalk.lists_stream.populate_lists_task.delay")
-@patch("reeltalk.activitystreams.add_book_statuses_task.delay")
+@patch("reeltalk.activitystreams.add_film_statuses_task.delay")
 @patch("reeltalk.suggested_users.rerank_user_task.delay")
 @patch("reeltalk.suggested_users.remove_user_task.delay")
 class SuggestedUsers(TestCase):
@@ -33,7 +33,7 @@ class SuggestedUsers(TestCase):
             )
 
     def test_get_rank(self, *_):
-        """a float that reflects both the mutuals count and shared books"""
+        """a float that reflects both the mutuals count and shared films"""
         Mock = namedtuple("AnnotatedUserMock", ("mutuals", "shared_books"))
         annotated_user_mock = Mock(3, 27)
         rank = suggested_users.get_rank(annotated_user_mock)
@@ -54,7 +54,7 @@ class SuggestedUsers(TestCase):
         )
 
     def test_get_counts_from_rank(self, *_):
-        """reverse the rank computation to get the mutuals and shared books counts"""
+        """reverse the rank computation to get the mutuals and shared films counts"""
         counts = suggested_users.get_counts_from_rank(3.9642857142857144)
         self.assertEqual(counts["mutuals"], 3)
         # self.assertEqual(counts["shared_books"], 27)
@@ -222,25 +222,20 @@ class SuggestedUsers(TestCase):
             local=True,
             localname="fish",
         )
-        work = models.Work.objects.create(title="Test Work")
-        book = models.Edition.objects.create(
-            title="Test Book",
-            remote_id="https://example.com/book/1",
-            parent_work=work,
-        )
+        film = models.Film.objects.create(title="Test Film")
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             # 1 shared follow
             self.local_user.following.add(user_2)
             user_1.followers.add(user_2)
 
-            # 1 shared book
-            models.ShelfBook.objects.create(
+            # 1 shared film
+            models.ShelfFilm.objects.create(
                 user=self.local_user,
-                book=book,
+                film=film,
                 shelf=self.local_user.shelf_set.first(),
             )
-            models.ShelfBook.objects.create(
-                user=user_1, book=book, shelf=user_1.shelf_set.first()
+            models.ShelfFilm.objects.create(
+                user=user_1, film=film, shelf=user_1.shelf_set.first()
             )
 
         result = get_annotated_users(self.local_user)
@@ -275,17 +270,14 @@ class SuggestedUsers(TestCase):
 
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             for i in range(3):
-                book = models.Edition.objects.create(
-                    title=i,
-                    parent_work=models.Work.objects.create(title=i),
-                )
-                models.ShelfBook.objects.create(
+                film = models.Film.objects.create(title=str(i))
+                models.ShelfFilm.objects.create(
                     user=self.local_user,
-                    book=book,
+                    film=film,
                     shelf=self.local_user.shelf_set.first(),
                 )
-                models.ShelfBook.objects.create(
-                    user=user_1, book=book, shelf=user_1.shelf_set.first()
+                models.ShelfFilm.objects.create(
+                    user=user_1, film=film, shelf=user_1.shelf_set.first()
                 )
 
         result = get_annotated_users(

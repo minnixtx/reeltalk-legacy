@@ -31,11 +31,9 @@ class OutboxView(TestCase):
                 localname="mouse",
                 remote_id="https://example.com/users/mouse",
             )
-        work = models.Work.objects.create(title="Test Work")
-        cls.book = models.Edition.objects.create(
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
-            parent_work=work,
+        cls.film = models.Film.objects.create(
+            title="Example Film",
+            remote_id="https://example.com/film/1",
         )
 
     def setUp(self):
@@ -92,7 +90,7 @@ class OutboxView(TestCase):
                 content="look at this",
                 name="hi",
                 rating=1,
-                book=self.book,
+                film=self.film,
                 user=self.local_user,
             )
             models.Status.objects.create(content="look at this", user=self.local_user)
@@ -118,7 +116,7 @@ class OutboxView(TestCase):
                 name="hi",
                 content="look at this",
                 user=self.local_user,
-                book=self.book,
+                film=self.film,
                 privacy="public",
             )
 
@@ -136,7 +134,7 @@ class OutboxView(TestCase):
                 name="hi",
                 content="look at this",
                 user=self.local_user,
-                book=self.book,
+                film=self.film,
                 privacy="public",
             )
 

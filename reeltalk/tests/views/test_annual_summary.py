@@ -38,12 +38,9 @@ class AnnualSummary(TestCase):
                 remote_id="https://example.com/users/mouse",
                 summary_keys={"2020": "0123456789"},
             )
-        cls.work = models.Work.objects.create(title="Test Work")
-        cls.book = models.Edition.objects.create(
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
-            parent_work=cls.work,
-            pages=300,
+        cls.film = models.Film.objects.create(
+            title="Example Film",
+            remote_id="https://example.com/film/1",
         )
 
     def setUp(self):
@@ -53,8 +50,22 @@ class AnnualSummary(TestCase):
         self.anonymous_user = AnonymousUser
         self.anonymous_user.is_authenticated = False
 
+    def shelve_film(self, film, year_date, shelf_identifier="read"):
+        """add a film to one of the user's shelves on a given date"""
+        shelf = self.local_user.shelf_set.get(identifier=shelf_identifier)
+        with (
+            patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"),
+            patch("reeltalk.activitystreams.add_film_statuses_task.delay"),
+        ):
+            models.ShelfFilm.objects.create(
+                film=film,
+                shelf=shelf,
+                user=self.local_user,
+                shelved_date=year_date,
+            )
+
     def test_annual_summary_not_authenticated(self, *_):
-        """there are so many views, this just makes sure it DOESN’T LOAD"""
+        """there are so many views, this just makes sure it DOESN'T LOAD"""
         view = views.AnnualSummary.as_view()
         request = self.factory.get("")
         request.user = self.anonymous_user
@@ -67,7 +78,7 @@ class AnnualSummary(TestCase):
         key = self.local_user.summary_keys[self.year]
         view = views.AnnualSummary.as_view()
         request_url = (
-            f"user/{self.local_user.localname}/{self.year}-in-the-books?key={key}"
+            f"user/{self.local_user.localname}/{self.year}-in-review?key={key}"
         )
         request = self.factory.get(request_url)
         request.user = self.anonymous_user
@@ -79,13 +90,13 @@ class AnnualSummary(TestCase):
         self.assertEqual(result.status_code, 200)
 
     def test_annual_summary_wrong_year(self, *_):
-        """there are so many views, this just makes sure it DOESN’T LOAD"""
+        """there are so many views, this just makes sure it DOESN'T LOAD"""
         view = views.AnnualSummary.as_view()
         request = self.factory.get("")
         request.user = self.anonymous_user
 
         with self.assertRaises(Http404):
-            view(request, self.local_user.localname, self.year)
+            view(request, self.local_user.localname, "2019")
 
     def test_annual_summary_empty_page(self, *_):
         """there are so many views, this just makes sure it LOADS"""
@@ -99,13 +110,9 @@ class AnnualSummary(TestCase):
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
 
-    @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
-    @patch("reeltalk.activitystreams.add_book_statuses_task.delay")
     def test_annual_summary_page(self, *_):
         """there are so many views, this just makes sure it LOADS"""
-        models.ReadThrough.objects.create(
-            user=self.local_user, book=self.book, finish_date=make_date(2020, 1, 1)
-        )
+        self.shelve_film(self.film, make_date(2020, 1, 1))
 
         view = views.AnnualSummary.as_view()
         request = self.factory.get("")
@@ -117,8 +124,6 @@ class AnnualSummary(TestCase):
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
 
-    @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
-    @patch("reeltalk.activitystreams.add_book_statuses_task.delay")
     def test_annual_summary_page_with_review(self, *_):
         """there are so many views, this just makes sure it LOADS"""
 
@@ -127,12 +132,10 @@ class AnnualSummary(TestCase):
             content="test content",
             rating=3.0,
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
 
-        models.ReadThrough.objects.create(
-            user=self.local_user, book=self.book, finish_date=make_date(2020, 1, 1)
-        )
+        self.shelve_film(self.film, make_date(2020, 1, 1))
 
         view = views.AnnualSummary.as_view()
         request = self.factory.get("")
@@ -153,7 +156,7 @@ class AnnualSummary(TestCase):
         result = view(request, 2020)
 
         self.assertEqual(result.status_code, 302)
-        self.assertEqual(result.url, "/user/mouse/2020-in-the-books")
+        self.assertEqual(result.url, "/user/mouse/2020-in-review")
 
     def test_summary_add_key(self, *_):
         """add shareable key"""
@@ -179,26 +182,18 @@ class AnnualSummary(TestCase):
         self.assertEqual(result.status_code, 302)
         self.assertFalse("2020" in self.local_user.summary_keys.keys())
 
-    def test_annual_summary_with_blocked_book(self, *_):
-        """don't show blocked books"""
+    def test_annual_summary_with_blocked_film(self, *_):
+        """don't show blocked films"""
 
-        bad_work = models.Work.objects.create(title="Bad Work")
-        bad_book = models.Edition.objects.create(
-            title="Bad Edition",
-            remote_id="https://example.com/book/666",
-            parent_work=bad_work,
-            pages=666,
+        bad_film = models.Film.objects.create(
+            title="Bad Film",
+            remote_id="https://example.com/film/666",
         )
 
-        models.ReadThrough.objects.create(
-            user=self.local_user, book=self.book, finish_date=make_date(2020, 1, 1)
-        )
+        self.shelve_film(self.film, make_date(2020, 1, 1))
+        self.shelve_film(bad_film, make_date(2020, 1, 2))
 
-        models.ReadThrough.objects.create(
-            user=self.local_user, book=bad_book, finish_date=make_date(2020, 1, 2)
-        )
-
-        self.local_user.blocked_books.add(bad_work)
+        self.local_user.blocked_films.add(bad_film)
 
         view = views.AnnualSummary.as_view()
         request = self.factory.get("")
@@ -210,5 +205,5 @@ class AnnualSummary(TestCase):
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
 
-        self.assertFalse(result.context_data["books"].contains(bad_book))
-        self.assertTrue(result.context_data["books"].contains(self.book))
+        self.assertFalse(result.context_data["films"].contains(bad_film))
+        self.assertTrue(result.context_data["films"].contains(self.film))

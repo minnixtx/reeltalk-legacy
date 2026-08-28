@@ -14,7 +14,7 @@ class InboxUpdate(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        """basic user and book data"""
+        """basic user and film data"""
         with (
             patch("reeltalk.suggested_users.rerank_suggestions_task.delay"),
             patch("reeltalk.activitystreams.populate_stream_task.delay"),
@@ -52,18 +52,18 @@ class InboxUpdate(TestCase):
         }
 
     def test_update_list(self):
-        """a new list"""
+        """update an existing list"""
         with (
             patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"),
             patch("reeltalk.lists_stream.remove_list_task.delay"),
         ):
-            book_list = models.List.objects.create(
+            film_list = models.List.objects.create(
                 name="hi", remote_id="https://example.com/list/22", user=self.local_user
             )
         activity = self.update_json
         activity["object"] = {
             "id": "https://example.com/list/22",
-            "type": "BookList",
+            "type": "FilmList",
             "totalItems": 1,
             "first": "https://example.com/list/22?page=1",
             "last": "https://example.com/list/22?page=1",
@@ -73,15 +73,14 @@ class InboxUpdate(TestCase):
             "cc": ["https://example.com/user/mouse/followers"],
             "summary": "summary text",
             "curation": "curated",
-            "@context": "https://www.w3.org/ns/activitystreams",
         }
         with patch("reeltalk.lists_stream.remove_list_task.delay"):
             views.inbox.activity_task(activity)
-        book_list.refresh_from_db()
-        self.assertEqual(book_list.name, "Test List")
-        self.assertEqual(book_list.curation, "curated")
-        self.assertEqual(book_list.description, "summary text")
-        self.assertEqual(book_list.remote_id, "https://example.com/list/22")
+        film_list.refresh_from_db()
+        self.assertEqual(film_list.name, "Test List")
+        self.assertEqual(film_list.curation, "curated")
+        self.assertEqual(film_list.description, "summary text")
+        self.assertEqual(film_list.remote_id, "https://example.com/list/22")
 
     @patch("reeltalk.suggested_users.rerank_user_task.delay")
     @patch("reeltalk.activitystreams.add_user_statuses_task.delay")
@@ -124,118 +123,61 @@ class InboxUpdate(TestCase):
         self.assertTrue(self.remote_user in self.local_user.followers.all())
         self.assertTrue(self.local_user in self.remote_user.followers.all())
 
-    def test_update_edition(self):
-        """update an existing edition"""
-        datafile = pathlib.Path(__file__).parent.joinpath("../../data/bw_edition.json")
-        bookdata = json.loads(datafile.read_bytes())
-
-        models.Work.objects.create(
-            title="Test Work", remote_id="https://bookwyrm.social/book/5988"
-        )
-        book = models.Edition.objects.create(
-            title="Test Book", remote_id="https://bookwyrm.social/book/5989"
+    def test_update_film(self):
+        """update an existing film"""
+        film = models.Film.objects.create(
+            title="Test Film", remote_id="https://bookwyrm.social/film/5989"
         )
 
-        del bookdata["authors"]
-        self.assertEqual(book.title, "Test Book")
+        self.assertEqual(film.title, "Test Film")
 
-        with patch("reeltalk.activitypub.base_activity.set_related_field.delay"):
-            views.inbox.activity_task(
-                {
-                    "type": "Update",
-                    "to": [],
-                    "cc": [],
-                    "actor": "hi",
-                    "id": "sdkjf",
-                    "object": bookdata,
-                }
-            )
-        book = models.Edition.objects.get(id=book.id)
-        self.assertEqual(book.title, "Piranesi")
-        self.assertEqual(book.last_edited_by, self.remote_user)
-
-    def test_update_edition_links(self):
-        """add links to edition"""
-        datafile = pathlib.Path(__file__).parent.joinpath("../../data/bw_edition.json")
-        bookdata = json.loads(datafile.read_bytes())
-        del bookdata["authors"]
-        link_data = {
-            "href": "https://openlibrary.org/books/OL11645413M/Queen_Victoria/daisy",
-            "mediaType": "Daisy",
-            "attributedTo": self.remote_user.remote_id,
-        }
-        bookdata["fileLinks"] = [link_data]
-
-        models.Work.objects.create(
-            title="Test Work", remote_id="https://bookwyrm.social/book/5988"
+        views.inbox.activity_task(
+            {
+                "type": "Update",
+                "to": [],
+                "cc": [],
+                "actor": "hi",
+                "id": "sdkjf",
+                "object": {
+                    "id": "https://bookwyrm.social/film/5989",
+                    "type": "Film",
+                    "title": "Piranesi",
+                    "description": "A mysterious house and its keeper.",
+                    "year": 2020,
+                    "runtime": 120,
+                    "lastEditedBy": self.remote_user.remote_id,
+                },
+            }
         )
-        book = models.Edition.objects.create(
-            title="Test Book", remote_id="https://bookwyrm.social/book/5989"
-        )
-        self.assertFalse(book.file_links.exists())
-
-        with patch(
-            "reeltalk.activitypub.base_activity.set_related_field.delay"
-        ) as mock:
-            views.inbox.activity_task(
-                {
-                    "type": "Update",
-                    "to": [],
-                    "cc": [],
-                    "actor": "hi",
-                    "id": "sdkjf",
-                    "object": bookdata,
-                }
-            )
-        args = mock.call_args[0]
-        self.assertEqual(args[0], "FileLink")
-        self.assertEqual(args[1], "Edition")
-        self.assertEqual(args[2], "book")
-        self.assertEqual(args[3], book.remote_id)
-        self.assertEqual(args[4], link_data)
-        # idk how to test that related name works, because of the transaction
-
-    def test_update_work(self):
-        """update an existing edition"""
-        datafile = pathlib.Path(__file__).parent.joinpath("../../data/bw_work.json")
-        bookdata = json.loads(datafile.read_bytes())
-
-        book = models.Work.objects.create(
-            title="Test Book", remote_id="https://bookwyrm.social/book/5988"
-        )
-
-        del bookdata["authors"]
-        self.assertEqual(book.title, "Test Book")
-        with patch("reeltalk.activitypub.base_activity.set_related_field.delay"):
-            views.inbox.activity_task(
-                {
-                    "type": "Update",
-                    "to": [],
-                    "cc": [],
-                    "actor": "hi",
-                    "id": "sdkjf",
-                    "object": bookdata,
-                }
-            )
-        book = models.Work.objects.get(id=book.id)
-        self.assertEqual(book.title, "Piranesi")
+        film = models.Film.objects.get(id=film.id)
+        self.assertEqual(film.title, "Piranesi")
+        self.assertEqual(film.last_edited_by, self.remote_user)
 
     @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
     @patch("reeltalk.activitystreams.add_status_task.delay")
     def test_update_status(self, *_):
         """edit a status"""
-        status = models.Status.objects.create(user=self.remote_user, content="hi")
-
-        datafile = pathlib.Path(__file__).parent.joinpath("../../data/ap_note.json")
-        status_data = json.loads(datafile.read_bytes())
-        status_data["id"] = status.remote_id
-        status_data["updated"] = "2021-12-13T05:09:29Z"
+        status = models.Status.objects.create(
+            user=self.remote_user,
+            content="hi",
+            remote_id="https://example.com/status/1",
+        )
 
         activity = self.update_json
-        activity["object"] = status_data
+        activity["object"] = {
+            "id": status.remote_id,
+            "type": "Note",
+            "published": "2020-12-13T05:09:29Z",
+            "url": "https://example.com/@rat/1234567",
+            "attributedTo": self.remote_user.remote_id,
+            "to": ["https://example.com/user/mouse"],
+            "cc": [],
+            "sensitive": False,
+            "content": "test content in note",
+            "updated": "2021-12-13T05:09:29Z",
+        }
 
-        with patch("reeltalk.activitypub.base_activity.set_related_field.delay"):
-            views.inbox.activity_task(activity)
+        views.inbox.activity_task(activity)
 
         status.refresh_from_db()
         self.assertEqual(status.content, "test content in note")

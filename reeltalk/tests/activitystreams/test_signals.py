@@ -106,7 +106,7 @@ class ActivitystreamsSignals(TestCase):
             )
         self.assertEqual(mock.call_count, 3)
         args = mock.call_args[0]
-        self.assertEqual(args[0], "books")
+        self.assertEqual(args[0], "films")
         self.assertEqual(args[1], self.local_user.id)
 
     def test_remove_statuses_on_block(self, *_):
@@ -136,7 +136,7 @@ class ActivitystreamsSignals(TestCase):
         kwargs = mock.call_args.kwargs
         self.assertEqual(args[0], self.local_user.id)
         self.assertEqual(args[1], self.remote_user.id)
-        self.assertEqual(kwargs["stream_list"], ["local", "books"])
+        self.assertEqual(kwargs["stream_list"], ["local", "films"])
 
     def test_add_statuses_on_unblock_reciprocal_block(self, *_):
         """re-add statuses on unblock"""

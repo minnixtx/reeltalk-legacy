@@ -10,7 +10,7 @@ from reeltalk import models, views
 from reeltalk.tests.validate_html import validate_html
 
 
-@patch("reeltalk.activitystreams.add_book_statuses_task.delay")
+@patch("reeltalk.activitystreams.add_film_statuses_task.delay")
 @patch("reeltalk.activitystreams.add_status_task.delay")
 @patch("reeltalk.activitystreams.populate_stream_task.delay")
 @patch("reeltalk.suggested_users.rerank_suggestions_task.delay")
@@ -33,14 +33,10 @@ class ExportViews(TestCase):
                 localname="mouse",
                 remote_id="https://example.com/users/mouse",
             )
-        cls.work = models.Work.objects.create(title="Test Work")
-        cls.book = models.Edition.objects.create(
-            title="Test Book",
-            remote_id="https://example.com/book/1",
-            parent_work=cls.work,
-            isbn_13="9781234567890",
-            pages=123,
-            bnf_id="beep",
+        cls.film = models.Film.objects.create(
+            title="Test Film",
+            remote_id="https://example.com/film/1",
+            tmdb_id="42",
         )
 
     def setUp(self):
@@ -56,12 +52,12 @@ class ExportViews(TestCase):
 
     def test_export_file(self, *_):
         """simple export"""
-        shelfbook = models.ShelfBook.objects.create(
+        shelf_film = models.ShelfFilm.objects.create(
             shelf=self.local_user.shelf_set.first(),
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
-        book_date = str.encode(f"{shelfbook.shelved_date.date()}")
+        film_date = str.encode(f"{shelf_film.shelved_date.date()}")
         request = self.factory.post("")
         request.user = self.local_user
         export = views.Export.as_view()(request)
@@ -70,51 +66,27 @@ class ExportViews(TestCase):
 
         self.assertEqual(
             export.content,
-            b"title,author_text,remote_id,openlibrary_key,finna_key,libris_key,inventaire_id,librarything_key,goodreads_key,bnf_id,viaf,wikidata,asin,aasin,isfdb,isbn_10,isbn_13,oclc_number,pages,start_date,finish_date,stopped_date,rating,review_name,review_cw,review_content,review_published,shelf,shelf_name,shelf_date\r\n"
-            + b"Test Book,,%b,,,,,,,beep,,,,,,123456789X,9781234567890,,123,,,,,,,,,to-read,Want to Watch,%b\r\n"
-            % (self.book.remote_id.encode("utf-8"), book_date),
-        )
-
-    def test_export_file_with_readthrough(self, *_):
-        """simple export"""
-        shelfbook = models.ShelfBook.objects.create(
-            shelf=self.local_user.shelf_set.first(),
-            user=self.local_user,
-            book=self.book,
-        )
-        book_date = str.encode(f"{shelfbook.shelved_date.date()}")
-        models.ReadThrough.objects.create(
-            book=self.book, user=self.local_user, start_date=shelfbook.shelved_date
-        )
-        request = self.factory.post("")
-        request.user = self.local_user
-        export = views.Export.as_view()(request)
-        self.assertIsInstance(export, HttpResponse)
-        self.assertEqual(export.status_code, 200)
-
-        self.assertEqual(
-            export.content,
-            b"title,author_text,remote_id,openlibrary_key,finna_key,libris_key,inventaire_id,librarything_key,goodreads_key,bnf_id,viaf,wikidata,asin,aasin,isfdb,isbn_10,isbn_13,oclc_number,pages,start_date,finish_date,stopped_date,rating,review_name,review_cw,review_content,review_published,shelf,shelf_name,shelf_date\r\n"
-            + b"Test Book,,%b,,,,,,,beep,,,,,,123456789X,9781234567890,,123,%b,,,,,,,,to-read,Want to Watch,%b\r\n"
-            % (self.book.remote_id.encode("utf-8"), book_date, book_date),
+            b"title,director_text,remote_id,tmdb_id,imdb_id,year,runtime,rating,review_name,review_cw,review_content,review_published,shelf,shelf_name,shelf_date\r\n"
+            + b"Test Film,,%b,42,,,,,,,,,to-read,Want to Watch,%b\r\n"
+            % (self.film.remote_id.encode("utf-8"), film_date),
         )
 
     def test_export_file_with_review(self, *_):
         """simple export"""
-        shelfbook = models.ShelfBook.objects.create(
+        shelf_film = models.ShelfFilm.objects.create(
             shelf=self.local_user.shelf_set.first(),
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         review = models.Review.objects.create(
-            book=self.book,
+            film=self.film,
             user=self.local_user,
             name="review title",
             content="content here",
             rating=3,
         )
         review_date = str.encode(f"{review.published_date.date()}")
-        book_date = str.encode(f"{shelfbook.shelved_date.date()}")
+        film_date = str.encode(f"{shelf_film.shelved_date.date()}")
         request = self.factory.post("")
         request.user = self.local_user
         export = views.Export.as_view()(request)
@@ -123,7 +95,27 @@ class ExportViews(TestCase):
 
         self.assertEqual(
             export.content,
-            b"title,author_text,remote_id,openlibrary_key,finna_key,libris_key,inventaire_id,librarything_key,goodreads_key,bnf_id,viaf,wikidata,asin,aasin,isfdb,isbn_10,isbn_13,oclc_number,pages,start_date,finish_date,stopped_date,rating,review_name,review_cw,review_content,review_published,shelf,shelf_name,shelf_date\r\n"
-            + b"Test Book,,%b,,,,,,,beep,,,,,,123456789X,9781234567890,,123,,,,3.00,review title,,content here,%b,to-read,Want to Watch,%b\r\n"
-            % (self.book.remote_id.encode("utf-8"), review_date, book_date),
+            b"title,director_text,remote_id,tmdb_id,imdb_id,year,runtime,rating,review_name,review_cw,review_content,review_published,shelf,shelf_name,shelf_date\r\n"
+            + b"Test Film,,%b,42,,,,3.00,review title,,content here,%b,to-read,Want to Watch,%b\r\n"
+            % (self.film.remote_id.encode("utf-8"), review_date, film_date),
         )
+
+    def test_export_file_with_rating_only(self, *_):
+        """export a rating-only entry"""
+        models.ReviewRating.objects.create(
+            film=self.film,
+            user=self.local_user,
+            rating=4.5,
+        )
+        request = self.factory.post("")
+        request.user = self.local_user
+        export = views.Export.as_view()(request)
+        self.assertIsInstance(export, HttpResponse)
+        self.assertEqual(export.status_code, 200)
+
+        lines = export.content.decode("utf-8").strip().split("\r\n")
+        self.assertEqual(len(lines), 2)
+        values = dict(zip(lines[0].split(","), lines[1].split(",")))
+        self.assertEqual(values["title"], "Test Film")
+        self.assertEqual(values["rating"], "4.50")
+        self.assertEqual(values["shelf"], "")

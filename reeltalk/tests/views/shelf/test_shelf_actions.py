@@ -12,10 +12,10 @@ from reeltalk import models, views
 @patch("reeltalk.suggested_users.rerank_suggestions_task.delay")
 @patch("reeltalk.activitystreams.populate_stream_task.delay")
 @patch("reeltalk.lists_stream.populate_lists_task.delay")
-@patch("reeltalk.activitystreams.add_book_statuses_task.delay")
-@patch("reeltalk.activitystreams.remove_book_statuses_task.delay")
+@patch("reeltalk.activitystreams.add_film_statuses_task.delay")
+@patch("reeltalk.activitystreams.remove_film_statuses_task.delay")
 class ShelfActionViews(TestCase):
-    """tag views"""
+    """shelf action views"""
 
     @classmethod
     def setUpTestData(cls):
@@ -41,12 +41,7 @@ class ShelfActionViews(TestCase):
                 localname="rat",
                 remote_id="https://example.com/users/rat",
             )
-        cls.work = models.Work.objects.create(title="Test Work")
-        cls.book = models.Edition.objects.create(
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
-            parent_work=cls.work,
-        )
+        cls.film = models.Film.objects.create(title="Example Film")
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             cls.shelf = models.Shelf.objects.create(
                 name="Test Shelf", identifier="test-shelf", user=cls.local_user
@@ -57,9 +52,9 @@ class ShelfActionViews(TestCase):
         self.factory = RequestFactory()
 
     def test_shelve(self, *_):
-        """shelve a book"""
+        """shelve a film"""
         request = self.factory.post(
-            "", {"book": self.book.id, "shelf": self.shelf.identifier}
+            "", {"film": self.film.id, "shelf": self.shelf.identifier}
         )
         request.user = self.local_user
         with patch(
@@ -71,51 +66,51 @@ class ShelfActionViews(TestCase):
         activity = mock.call_args[0][0]
         self.assertEqual(activity["type"], "Add")
 
-        item = models.ShelfBook.objects.get()
+        item = models.ShelfFilm.objects.get()
         self.assertEqual(activity["object"]["id"], item.remote_id)
-        # make sure the book is on the shelf
-        self.assertEqual(self.shelf.books.get(), self.book)
+        # make sure the film is on the shelf
+        self.assertEqual(self.shelf.films.get(), self.film)
 
     def test_shelve_to_read(self, *_):
         """special behavior for the to-read shelf"""
         shelf = models.Shelf.objects.get(user=self.local_user, identifier="to-read")
         request = self.factory.post(
-            "", {"book": self.book.id, "shelf": shelf.identifier}
+            "", {"film": self.film.id, "shelf": shelf.identifier}
         )
         request.user = self.local_user
 
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             views.shelve(request)
-        # make sure the book is on the shelf
-        self.assertEqual(shelf.books.get(), self.book)
+        # make sure the film is on the shelf
+        self.assertEqual(shelf.films.get(), self.film)
 
     def test_shelve_read(self, *_):
         """special behavior for the read shelf"""
         shelf = models.Shelf.objects.get(user=self.local_user, identifier="read")
         request = self.factory.post(
-            "", {"book": self.book.id, "shelf": shelf.identifier}
+            "", {"film": self.film.id, "shelf": shelf.identifier}
         )
         request.user = self.local_user
 
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             views.shelve(request)
-        # make sure the book is on the shelf
-        self.assertEqual(shelf.books.get(), self.book)
+        # make sure the film is on the shelf
+        self.assertEqual(shelf.films.get(), self.film)
 
     def test_shelve_read_with_change_shelf(self, *_):
         """special behavior for the read shelf"""
         previous_shelf = models.Shelf.objects.get(
             user=self.local_user, identifier="to-read"
         )
-        models.ShelfBook.objects.create(
-            shelf=previous_shelf, user=self.local_user, book=self.book
+        models.ShelfFilm.objects.create(
+            shelf=previous_shelf, user=self.local_user, film=self.film
         )
         shelf = models.Shelf.objects.get(user=self.local_user, identifier="read")
 
         request = self.factory.post(
             "",
             {
-                "book": self.book.id,
+                "film": self.film.id,
                 "shelf": shelf.identifier,
                 "change-shelf-from": previous_shelf.identifier,
             },
@@ -124,21 +119,21 @@ class ShelfActionViews(TestCase):
 
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             views.shelve(request)
-        # make sure the book is on the shelf
-        self.assertEqual(shelf.books.get(), self.book)
-        self.assertEqual(list(previous_shelf.books.all()), [])
+        # make sure the film is on the shelf
+        self.assertEqual(shelf.films.get(), self.film)
+        self.assertEqual(list(previous_shelf.films.all()), [])
 
     def test_unshelve(self, *_):
-        """remove a book from a shelf"""
+        """remove a film from a shelf"""
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            models.ShelfBook.objects.create(
-                book=self.book, user=self.local_user, shelf=self.shelf
+            models.ShelfFilm.objects.create(
+                film=self.film, user=self.local_user, shelf=self.shelf
             )
-        item = models.ShelfBook.objects.get()
+        item = models.ShelfFilm.objects.get()
 
         self.shelf.save()
-        self.assertEqual(self.shelf.books.count(), 1)
-        request = self.factory.post("", {"book": self.book.id, "shelf": self.shelf.id})
+        self.assertEqual(self.shelf.films.count(), 1)
+        request = self.factory.post("", {"film": self.film.id, "shelf": self.shelf.id})
         request.user = self.local_user
         with patch(
             "reeltalk.models.activitypub_mixin.ActivitypubMixin.broadcast"
@@ -147,4 +142,4 @@ class ShelfActionViews(TestCase):
         activity = mock.call_args[0][0]
         self.assertEqual(activity["type"], "Remove")
         self.assertEqual(activity["object"]["id"], item.remote_id)
-        self.assertEqual(self.shelf.books.count(), 0)
+        self.assertEqual(self.shelf.films.count(), 0)

@@ -49,7 +49,7 @@ class Activitystreams(TestCase):
                 inbox="https://example.com/users/rat/inbox",
                 outbox="https://example.com/users/rat/outbox",
             )
-        cls.book = models.Edition.objects.create(title="test book")
+        cls.film = models.Film.objects.create(title="test film")
 
     def test_populate_streams(self, *_):
         """make sure the function on the redis manager gets called"""

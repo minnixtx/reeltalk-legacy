@@ -1,7 +1,5 @@
 """tests incoming activities"""
 
-import json
-import pathlib
 from unittest.mock import patch
 
 from django.test import TestCase, TransactionTestCase
@@ -9,12 +7,14 @@ from django.test import TestCase, TransactionTestCase
 from reeltalk import models, views
 from reeltalk.activitypub import ActivitySerializerError
 
+FILM_ID = "https://example.com/film/1"
+
 
 class TransactionInboxCreate(TransactionTestCase):
     """readthrough tests"""
 
     def setUp(self):
-        """basic user and book data"""
+        """basic user and film data"""
         with (
             patch("reeltalk.suggested_users.rerank_suggestions_task.delay"),
             patch("reeltalk.activitystreams.populate_stream_task.delay"),
@@ -51,16 +51,21 @@ class TransactionInboxCreate(TransactionTestCase):
 
     def test_create_status_transaction(self, *_):
         """the "it justs works" mode"""
-        datafile = pathlib.Path(__file__).parent.joinpath(
-            "../../data/ap_quotation.json"
-        )
-        status_data = json.loads(datafile.read_bytes())
-
-        models.Edition.objects.create(
-            title="Test Book", remote_id="https://example.com/book/1"
-        )
+        models.Film.objects.create(title="Test Film", remote_id=FILM_ID)
         activity = self.create_json
-        activity["object"] = status_data
+        activity["object"] = {
+            "id": "https://example.com/user/mouse/quotation/13",
+            "url": "https://example.com/user/mouse/quotation/13",
+            "published": "2020-05-10T02:38:31.150343+00:00",
+            "attributedTo": "https://example.com/user/mouse",
+            "to": ["https://www.w3.org/ns/activitystreams#Public"],
+            "cc": ["https://example.com/user/mouse/followers"],
+            "sensitive": False,
+            "content": "commentary",
+            "type": "Quotation",
+            "inReplyToFilm": FILM_ID,
+            "quote": "quote body",
+        }
 
         with patch("reeltalk.activitystreams.add_status_task.apply_async") as mock:
             views.inbox.activity_task(activity)
@@ -68,13 +73,13 @@ class TransactionInboxCreate(TransactionTestCase):
 
 
 @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
-@patch("reeltalk.activitystreams.add_book_statuses_task.delay")
+@patch("reeltalk.activitystreams.add_film_statuses_task.delay")
 class InboxCreate(TestCase):
     """readthrough tests"""
 
     @classmethod
     def setUpTestData(cls):
-        """basic user and book data"""
+        """basic user and film data"""
         with (
             patch("reeltalk.suggested_users.rerank_suggestions_task.delay"),
             patch("reeltalk.activitystreams.populate_stream_task.delay"),
@@ -104,6 +109,7 @@ class InboxCreate(TestCase):
 
     def setUp(self):
         """individual test setup"""
+        self.film = models.Film.objects.create(title="Test Film", remote_id=FILM_ID)
         self.create_json = {
             "id": "hi",
             "type": "Create",
@@ -115,16 +121,20 @@ class InboxCreate(TestCase):
 
     def test_create_status(self, *_):
         """the "it justs works" mode"""
-        datafile = pathlib.Path(__file__).parent.joinpath(
-            "../../data/ap_quotation.json"
-        )
-        status_data = json.loads(datafile.read_bytes())
-
-        models.Edition.objects.create(
-            title="Test Book", remote_id="https://example.com/book/1"
-        )
         activity = self.create_json
-        activity["object"] = status_data
+        activity["object"] = {
+            "id": "https://example.com/user/mouse/quotation/13",
+            "url": "https://example.com/user/mouse/quotation/13",
+            "published": "2020-05-10T02:38:31.150343+00:00",
+            "attributedTo": "https://example.com/user/mouse",
+            "to": ["https://www.w3.org/ns/activitystreams#Public"],
+            "cc": ["https://example.com/user/mouse/followers"],
+            "sensitive": False,
+            "content": "commentary",
+            "type": "Quotation",
+            "inReplyToFilm": FILM_ID,
+            "quote": "quote body",
+        }
 
         views.inbox.activity_task(activity)
 
@@ -142,16 +152,21 @@ class InboxCreate(TestCase):
         self.assertEqual(models.Status.objects.count(), 1)
 
     def test_create_comment_with_reading_status(self, *_):
-        """the "it justs works" mode"""
-        datafile = pathlib.Path(__file__).parent.joinpath("../../data/ap_comment.json")
-        status_data = json.loads(datafile.read_bytes())
-        status_data["readingStatus"] = "to-read"
-
-        models.Edition.objects.create(
-            title="Test Book", remote_id="https://example.com/book/1"
-        )
+        """a comment on a film with a reading status"""
         activity = self.create_json
-        activity["object"] = status_data
+        activity["object"] = {
+            "id": "https://example.com/user/mouse/comment/6",
+            "url": "https://example.com/user/mouse/comment/6",
+            "published": "2020-05-08T23:45:44.768012+00:00",
+            "attributedTo": "https://example.com/user/mouse",
+            "to": ["https://www.w3.org/ns/activitystreams#Public"],
+            "cc": ["https://example.com/user/mouse/followers"],
+            "sensitive": False,
+            "content": "commentary",
+            "type": "Comment",
+            "inReplyToFilm": FILM_ID,
+            "readingStatus": "to-read",
+        }
 
         views.inbox.activity_task(activity)
 
@@ -171,10 +186,25 @@ class InboxCreate(TestCase):
             models.Notification.objects.filter(user=self.local_user).exists()
         )
 
-        datafile = pathlib.Path(__file__).parent.joinpath("../../data/ap_note.json")
-        status_data = json.loads(datafile.read_bytes())
         activity = self.create_json
-        activity["object"] = status_data
+        activity["object"] = {
+            "id": "https://example.com/users/rat/statuses/1234567",
+            "type": "Note",
+            "published": "2020-12-13T05:09:29Z",
+            "url": "https://example.com/@rat/1234567",
+            "attributedTo": self.remote_user.remote_id,
+            "to": ["https://example.com/user/mouse"],
+            "cc": [],
+            "sensitive": False,
+            "content": "test content in note",
+            "tag": [
+                {
+                    "type": "Mention",
+                    "href": self.local_user.remote_id,
+                    "name": "@mouse@example.com",
+                }
+            ],
+        }
 
         views.inbox.activity_task(activity)
 
@@ -197,12 +227,19 @@ class InboxCreate(TestCase):
         self.assertEqual(models.Status.objects.count(), 1)
         self.assertFalse(models.Notification.objects.filter(user=self.local_user))
 
-        datafile = pathlib.Path(__file__).parent.joinpath("../../data/ap_note.json")
-        status_data = json.loads(datafile.read_bytes())
-        del status_data["tag"]
-        status_data["inReplyTo"] = parent_status.remote_id
         activity = self.create_json
-        activity["object"] = status_data
+        activity["object"] = {
+            "id": "https://example.com/users/rat/statuses/1234567",
+            "type": "Note",
+            "published": "2020-12-13T05:09:29Z",
+            "url": "https://example.com/@rat/1234567",
+            "attributedTo": self.remote_user.remote_id,
+            "to": ["https://example.com/user/mouse"],
+            "cc": [],
+            "sensitive": False,
+            "content": "test content in note",
+            "inReplyTo": parent_status.remote_id,
+        }
 
         views.inbox.activity_task(activity)
         status = models.Status.objects.last()
@@ -214,9 +251,6 @@ class InboxCreate(TestCase):
 
     def test_create_rating(self, *_):
         """a remote rating activity"""
-        book = models.Edition.objects.create(
-            title="Test Book", remote_id="https://example.com/book/1"
-        )
         activity = self.create_json
         activity["object"] = {
             "id": "https://example.com/user/mouse/reviewrating/12",
@@ -225,26 +259,13 @@ class InboxCreate(TestCase):
             "attributedTo": "https://example.com/user/mouse",
             "to": ["https://www.w3.org/ns/activitystreams#Public"],
             "cc": ["https://example.com/user/mouse/followers"],
-            "replies": {
-                "id": "https://example.com/user/mouse/reviewrating/12/replies",
-                "type": "OrderedCollection",
-                "totalItems": 0,
-                "first": "https://example.com/u/mouse/reviewrating/12/replies?page=1",
-                "last": "https://example.com/u/mouse/reviewrating/12/replies?page=1",
-                "@context": "https://www.w3.org/ns/activitystreams",
-            },
-            "inReplyTo": "",
-            "summary": "",
-            "tag": [],
-            "attachment": [],
             "sensitive": False,
-            "inReplyToBook": "https://example.com/book/1",
+            "inReplyToFilm": FILM_ID,
             "rating": 3,
-            "@context": "https://www.w3.org/ns/activitystreams",
         }
         views.inbox.activity_task(activity)
         rating = models.ReviewRating.objects.first()
-        self.assertEqual(rating.book, book)
+        self.assertEqual(rating.film, self.film)
         self.assertEqual(rating.rating, 3.0)
 
     def test_create_list(self, *_):
@@ -252,7 +273,7 @@ class InboxCreate(TestCase):
         activity = self.create_json
         activity["object"] = {
             "id": "https://example.com/list/22",
-            "type": "BookList",
+            "type": "FilmList",
             "totalItems": 1,
             "first": "https://example.com/list/22?page=1",
             "last": "https://example.com/list/22?page=1",
@@ -262,14 +283,13 @@ class InboxCreate(TestCase):
             "cc": ["https://example.com/user/mouse/followers"],
             "summary": "summary text",
             "curation": "curated",
-            "@context": "https://www.w3.org/ns/activitystreams",
         }
         views.inbox.activity_task(activity)
-        book_list = models.List.objects.get()
-        self.assertEqual(book_list.name, "Test List")
-        self.assertEqual(book_list.curation, "curated")
-        self.assertEqual(book_list.description, "summary text")
-        self.assertEqual(book_list.remote_id, "https://example.com/list/22")
+        film_list = models.List.objects.get()
+        self.assertEqual(film_list.name, "Test List")
+        self.assertEqual(film_list.curation, "curated")
+        self.assertEqual(film_list.description, "summary text")
+        self.assertEqual(film_list.remote_id, "https://example.com/list/22")
 
     def test_create_unsupported_type_question(self, *_):
         """ignore activities we know we can't handle"""
@@ -293,7 +313,6 @@ class InboxCreate(TestCase):
             "to": ["https://www.w3.org/ns/activitystreams#Public"],
             "cc": ["https://example.com/user/mouse/followers"],
             "sensitive": False,
-            "@context": "https://www.w3.org/ns/activitystreams",
         }
         # just observe how it doesn't throw an error
         views.inbox.activity_task(activity)

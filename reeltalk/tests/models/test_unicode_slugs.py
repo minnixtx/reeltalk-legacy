@@ -81,21 +81,21 @@ class UnicodeSlugTest(TestCase):
 
     def test_model_local_path_with_unicode(self):
         """Test that model local_path generates Unicode slugs correctly"""
-        # Test with Author model which uses slugs
-        author = models.Author.objects.create(name="José García")
+        # Test with the Film model which uses slugs
+        film = models.Film.objects.create(title="José García")
 
         # Check that local_path includes Unicode slug
-        local_path = author.local_path
+        local_path = film.local_path
         self.assertIn(
             "josé-garcía", local_path
         )  # Unicode preserved, space becomes hyphen
         self.assertIn("/s/", local_path)
 
-    def test_serbian_author_model_integration(self):
-        """Test Serbian Cyrillic author name integration with model local_path"""
-        # Test Nobel Prize winner Ivo Andrić
-        author = models.Author.objects.create(name="Иво Андрић")
-        local_path = author.local_path
+    def test_serbian_film_model_integration(self):
+        """Test Serbian Cyrillic film title integration with model local_path"""
+        # Test a film named after the Nobel Prize winner Ivo Andrić
+        film = models.Film.objects.create(title="Иво Андрић")
+        local_path = film.local_path
 
         self.assertIn("иво-андрић", local_path)
         self.assertIn("/s/", local_path)
@@ -151,8 +151,8 @@ class UnicodeSlugTest(TestCase):
 
         for name in ascii_names:
             with self.subTest(name=name):
-                author = models.Author.objects.create(name=name)
-                local_path = author.local_path
+                film = models.Film.objects.create(title=name)
+                local_path = film.local_path
                 # Should still generate proper slugs
                 self.assertIn("/s/", local_path)
                 # Should not contain original spaces/caps

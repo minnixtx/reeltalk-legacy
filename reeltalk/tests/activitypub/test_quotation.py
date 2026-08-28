@@ -1,7 +1,5 @@
 """quotation activity object serializer class"""
 
-import json
-import pathlib
 from unittest.mock import patch
 
 from django.test import TestCase
@@ -24,15 +22,35 @@ class Quotation(TestCase):
                 outbox="https://example.com/user/mouse/outbox",
                 remote_id="https://example.com/user/mouse",
             )
-        cls.book = models.Edition.objects.create(
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
-        )
+        cls.film = models.Film.objects.create(title="Example Film")
 
     def setUp(self):
         """other test data"""
-        datafile = pathlib.Path(__file__).parent.joinpath("../data/ap_quotation.json")
-        self.status_data = json.loads(datafile.read_bytes())
+        self.status_data = {
+            "id": "https://example.com/user/mouse/quotation/13",
+            "url": "https://example.com/user/mouse/quotation/13",
+            "inReplyTo": None,
+            "published": "2020-05-10T02:38:31.150343+00:00",
+            "attributedTo": "https://example.com/user/mouse",
+            "to": ["https://www.w3.org/ns/activitystreams#Public"],
+            "cc": ["https://example.com/user/mouse/followers"],
+            "sensitive": False,
+            "content": "commentary",
+            "type": "Quotation",
+            "replies": {
+                "id": "https://example.com/user/mouse/quotation/13/replies",
+                "type": "Collection",
+                "first": {
+                    "type": "CollectionPage",
+                    "next": "https://example.com/user/mouse/quotation/13"
+                    "/replies?only_other_accounts=true&page=true",
+                    "partOf": "https://example.com/user/mouse/quotation/13/replies",
+                    "items": [],
+                },
+            },
+            "inReplyToFilm": self.film.remote_id,
+            "quote": "quote body",
+        }
 
     def test_quotation_activity(self):
         """create a Quotation ap object from json"""
@@ -42,7 +60,7 @@ class Quotation(TestCase):
         self.assertEqual(quotation.id, "https://example.com/user/mouse/quotation/13")
         self.assertEqual(quotation.content, "commentary")
         self.assertEqual(quotation.quote, "quote body")
-        self.assertEqual(quotation.inReplyToBook, "https://example.com/book/1")
+        self.assertEqual(quotation.inReplyToFilm, self.film.remote_id)
         self.assertEqual(quotation.published, "2020-05-10T02:38:31.150343+00:00")
 
     def test_activity_to_model(self):
@@ -50,5 +68,5 @@ class Quotation(TestCase):
         activity = activitypub.Quotation(**self.status_data)
         quotation = activity.to_model(model=models.Quotation)
 
-        self.assertEqual(quotation.book, self.book)
+        self.assertEqual(quotation.film, self.film)
         self.assertEqual(quotation.user, self.user)

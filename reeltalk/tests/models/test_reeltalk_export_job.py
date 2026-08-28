@@ -1,12 +1,10 @@
 """test reeltalk user export functions"""
 
-import datetime
 import json
 import pathlib
 
 from unittest.mock import patch
 
-from django.utils import timezone
 from django.test import TestCase
 
 from reeltalk import models
@@ -26,7 +24,8 @@ class ReeltalkExportJob(TestCase):
             patch("reeltalk.suggested_users.rerank_user_task.delay"),
             patch("reeltalk.lists_stream.remove_list_task.delay"),
             patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"),
-            patch("reeltalk.activitystreams.add_book_statuses_task"),
+            patch("reeltalk.activitystreams.add_film_statuses_task"),
+            patch("reeltalk.activitystreams.remove_film_statuses_task"),
         ):
             self.local_user = models.User.objects.create_user(
                 "mouse",
@@ -35,7 +34,7 @@ class ReeltalkExportJob(TestCase):
                 local=True,
                 localname="mouse",
                 name="Mouse",
-                summary="I'm a real bookmouse",
+                summary="I'm a real film mouse",
                 manually_approves_followers=False,
                 hide_follows=False,
                 show_suggested_users=False,
@@ -77,59 +76,33 @@ class ReeltalkExportJob(TestCase):
             self.local_user.blocks.add(self.badger_user)
             self.rat_user.followers.add(self.local_user)
 
-            # book, edition, author
-            self.author = models.Author.objects.create(name="Sam Zhu")
-            self.work = models.Work.objects.create(
-                title="Example Work", remote_id="https://example.com/book/1"
-            )
-            self.edition = models.Edition.objects.create(
-                title="Example Edition", parent_work=self.work
-            )
-            self.second_work = models.Work.objects.create(
-                title="Another Example Work", remote_id="https://example.com/book/2"
-            )
-            self.another_edition = models.Edition.objects.create(
-                title="Another Edition", parent_work=self.second_work
-            )
+            # films
+            self.film = models.Film.objects.create(title="Example Film")
+            self.another_film = models.Film.objects.create(title="Another Film")
 
-            # edition cover
-            cover_path = pathlib.Path(__file__).parent.joinpath(
+            # film poster
+            poster_path = pathlib.Path(__file__).parent.joinpath(
                 "../../static/images/default_avi.jpg"
             )
-            with open(cover_path, "rb") as cover_file:
-                self.edition.cover.save("tèst.jpg", cover_file)
-
-            self.edition.authors.add(self.author)
-
-            # readthrough
-            self.readthrough_start = timezone.now()
-            finish = self.readthrough_start + datetime.timedelta(days=1)
-            models.ReadThrough.objects.create(
-                user=self.local_user,
-                book=self.edition,
-                start_date=self.readthrough_start,
-                finish_date=finish,
-            )
-            models.ReadThrough.objects.create(
-                user=self.local_user,
-                book=self.another_edition,
-                start_date=self.readthrough_start,
-                finish_date=finish,
-            )
+            with open(poster_path, "rb") as poster_file:
+                self.film.poster.save("tèst.jpg", poster_file)
 
             # shelve
             read_shelf = models.Shelf.objects.get(
                 user=self.local_user, identifier="read"
             )
-            models.ShelfBook.objects.create(
-                book=self.edition, shelf=read_shelf, user=self.local_user
+            models.ShelfFilm.objects.create(
+                film=self.film, shelf=read_shelf, user=self.local_user
+            )
+            models.ShelfFilm.objects.create(
+                film=self.another_film, shelf=read_shelf, user=self.local_user
             )
 
             # add to list
             models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.local_user,
-                edition=self.edition,
+                film=self.film,
                 approved=True,
                 order=1,
             )
@@ -140,21 +113,19 @@ class ReeltalkExportJob(TestCase):
                 name="my review",
                 rating=5,
                 user=self.local_user,
-                book=self.edition,
+                film=self.film,
             )
             # comment
             models.Comment.objects.create(
                 content="ok so far",
                 user=self.local_user,
-                book=self.edition,
-                progress=15,
+                film=self.film,
             )
             # deleted comment
             models.Comment.objects.create(
                 content="so far",
                 user=self.local_user,
-                book=self.edition,
-                progress=5,
+                film=self.film,
                 deleted=True,
             )
             # quote
@@ -162,14 +133,14 @@ class ReeltalkExportJob(TestCase):
                 content="check this out",
                 quote="A rose by any other name",
                 user=self.local_user,
-                book=self.edition,
+                film=self.film,
             )
             # deleted quote
             models.Quotation.objects.create(
                 content="check this out",
                 quote="A rose by any other name",
                 user=self.local_user,
-                book=self.edition,
+                film=self.film,
                 deleted=True,
             )
 
@@ -180,24 +151,24 @@ class ReeltalkExportJob(TestCase):
                 models.reeltalk_export_job.create_export_json_task(job_id=self.job.id)
             self.job.refresh_from_db()
 
-    def test_add_book_to_user_export_job(self):
-        """does AddBookToUserExportJob ...add the book to the export?"""
-        self.assertIsNotNone(self.job.export_json["books"])
-        self.assertEqual(len(self.job.export_json["books"]), 2)
-        book = self.job.export_json["books"][0]
+    def test_add_film_to_user_export_job(self):
+        """does the export include the films and their related data?"""
+        self.assertIsNotNone(self.job.export_json["films"])
+        self.assertEqual(len(self.job.export_json["films"]), 2)
 
-        self.assertEqual(book["work"]["id"], self.work.remote_id)
-        self.assertEqual(len(book["authors"]), 1)
-        self.assertEqual(len(book["shelves"]), 1)
-        self.assertEqual(len(book["lists"]), 1)
-        self.assertEqual(len(book["comments"]), 1)
-        self.assertEqual(len(book["reviews"]), 1)
-        self.assertEqual(len(book["quotations"]), 1)
-        self.assertEqual(len(book["readthroughs"]), 1)
+        entry = next(
+            f for f in self.job.export_json["films"] if f["film"]["id"] == self.film.remote_id
+        )
 
-        self.assertEqual(book["edition"]["id"], self.edition.remote_id)
+        self.assertEqual(entry["film"]["title"], "Example Film")
+        self.assertEqual(len(entry["shelves"]), 1)
+        self.assertEqual(len(entry["lists"]), 1)
+        self.assertEqual(len(entry["comments"]), 1)
+        self.assertEqual(len(entry["reviews"]), 1)
+        self.assertEqual(len(entry["quotations"]), 1)
+
         self.assertEqual(
-            book["edition"]["cover"]["url"], f"images/{self.edition.cover.name}"
+            entry["film"]["poster"]["url"], f"images/{self.film.poster.name}"
         )
 
     def test_start_export_task(self):
@@ -235,13 +206,15 @@ class ReeltalkExportJob(TestCase):
         )
         self.assertFalse(self.job.export_json["settings"]["show_suggested_users"])
 
-    def test_get_books_for_user(self):
-        """does get_books_for_user get all the books"""
+    def test_get_films_for_user(self):
+        """does get_films_for_user get all the films"""
 
-        data = models.reeltalk_export_job.get_books_for_user(self.local_user)
+        data = models.reeltalk_export_job.get_films_for_user(self.local_user)
 
         self.assertEqual(len(data), 2)
-        self.assertEqual(data[0].title, "Example Edition")
+        self.assertCountEqual(
+            [f.title for f in data], ["Example Film", "Another Film"]
+        )
 
     def test_archive(self):
         """actually create the TAR file"""

@@ -9,7 +9,7 @@ from reeltalk import activitystreams, models
 
 @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
 @patch("reeltalk.activitystreams.add_status_task.delay")
-@patch("reeltalk.activitystreams.add_book_statuses_task.delay")
+@patch("reeltalk.activitystreams.add_film_statuses_task.delay")
 @patch("reeltalk.suggested_users.rerank_suggestions_task.delay")
 @patch("reeltalk.activitystreams.populate_stream_task.delay")
 class Activitystreams(TestCase):
@@ -43,8 +43,7 @@ class Activitystreams(TestCase):
                 inbox="https://example.com/users/rat/inbox",
                 outbox="https://example.com/users/rat/outbox",
             )
-        work = models.Work.objects.create(title="test work")
-        cls.book = models.Edition.objects.create(title="test book", parent_work=work)
+        cls.film = models.Film.objects.create(title="Test Film")
 
     def setUp(self):
         """per-test setUp"""
@@ -99,13 +98,13 @@ class Activitystreams(TestCase):
             user=self.remote_user,
             content="hi",
             privacy="direct",
-            book=self.book,
+            film=self.film,
         )
         models.Comment.objects.create(
             user=self.remote_user,
             content="hi",
             privacy="direct",
-            book=self.book,
+            film=self.film,
         )
         with (
             patch("reeltalk.activitystreams.r.set"),
@@ -145,7 +144,7 @@ class Activitystreams(TestCase):
             user=self.remote_user,
             content="hi",
             privacy="direct",
-            book=self.book,
+            film=self.film,
         )
         status.mention_users.add(self.local_user)
         users = self.test_stream.get_audience(status)
@@ -169,7 +168,7 @@ class Activitystreams(TestCase):
             user=self.local_user,
             content="hi",
             privacy="direct",
-            book=self.book,
+            film=self.film,
         )
         users = self.test_stream.get_audience(status)
         self.assertTrue(self.local_user.id in users)
@@ -182,7 +181,7 @@ class Activitystreams(TestCase):
             user=self.remote_user,
             content="hi",
             privacy="direct",
-            book=self.book,
+            film=self.film,
         )
         status.mention_users.add(self.local_user)
 
@@ -198,39 +197,39 @@ class Activitystreams(TestCase):
             user=self.remote_user,
             content="hi",
             privacy="direct",
-            book=self.book,
+            film=self.film,
         )
         users = self.test_stream.get_audience(status)
         self.assertFalse(self.local_user.id in users)
         self.assertFalse(self.another_user.id in users)
         self.assertFalse(self.remote_user.id in users)
 
-    def test_abstractstream_exclude_books(self, *_):
-        """exlude users who have blocked a book"""
+    def test_abstractstream_exclude_films(self, *_):
+        """exlude users who have blocked a film"""
 
-        self.local_user.blocked_books.add(self.book.parent_work)
+        self.local_user.blocked_films.add(self.film)
 
         status = models.Comment.objects.create(
             user=self.remote_user,
             content="This book is awful",
             privacy="public",
-            book=self.book,
+            film=self.film,
         )
 
         users = self.test_stream.get_audience(status)
         self.assertTrue(self.another_user.id in users)
         self.assertFalse(self.local_user.id in users)
 
-    def test_abstractstream_exclude_books_in_thread(self, *_):
-        """exlude users who have blocked a book mentioned earlier in the thread"""
+    def test_abstractstream_exclude_films_in_thread(self, *_):
+        """exlude users who have blocked a film mentioned earlier in the thread"""
 
-        self.local_user.blocked_books.add(self.book.parent_work)
+        self.local_user.blocked_films.add(self.film)
 
         parent_status = models.Comment.objects.create(
             user=self.remote_user,
             content="This book is awful",
             privacy="public",
-            book=self.book,
+            film=self.film,
         )
         status = models.Status.objects.create(
             user=self.remote_user,

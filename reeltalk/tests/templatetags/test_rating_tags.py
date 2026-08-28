@@ -1,8 +1,10 @@
-"""Gettings book ratings"""
+"""Gettings film ratings"""
 
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.test import TestCase
+from django.utils import timezone
 
 from reeltalk import models
 from reeltalk.templatetags import rating_tags
@@ -36,57 +38,73 @@ class RatingTags(TestCase):
                 remote_id="http://example.com/rat",
                 local=False,
             )
-        work = models.Work.objects.create(title="Work title")
-        cls.book = models.Edition.objects.create(
-            title="Test Book",
-            parent_work=work,
-        )
+        cls.film = models.Film.objects.create(title="Test Film")
 
     @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
     def test_get_rating(self, *_):
-        """privacy filtered rating. Commented versions are how it ought to work with
-        subjective ratings, which are currently not used for performance reasons."""
-        # follows-only: not included
-        models.ReviewRating.objects.create(
-            user=self.remote_user,
-            rating=5,
-            book=self.book,
-            privacy="followers",
-        )
-        # self.assertEqual(rating_tags.get_rating(self.book, self.local_user), 0)
-        self.assertEqual(rating_tags.get_rating(self.book, self.local_user), 5)
+        """average of all ratings above zero. privacy filtering is how it
+        ought to work with subjective ratings, which are currently not used
+        for performance reasons."""
+        self.assertEqual(rating_tags.get_rating(self.film, self.local_user), 0)
 
-        # public: included
+        # rating-only entry: included
         models.ReviewRating.objects.create(
             user=self.remote_user,
-            rating=5,
-            book=self.book,
+            rating=4,
+            film=self.film,
             privacy="public",
         )
-        self.assertEqual(rating_tags.get_rating(self.book, self.local_user), 5)
+        self.assertEqual(rating_tags.get_rating(self.film, self.local_user), 4)
 
-        # rating unset: not included
+        # followers-only: included
+        models.ReviewRating.objects.create(
+            user=self.remote_user,
+            rating=5,
+            film=self.film,
+            privacy="followers",
+        )
+        self.assertEqual(rating_tags.get_rating(self.film, self.local_user), 4.5)
+
+        # review without a rating: not included
         models.Review.objects.create(
             name="blah",
             user=self.local_user,
-            rating=0,
-            book=self.book,
+            film=self.film,
             privacy="public",
         )
-        self.assertEqual(rating_tags.get_rating(self.book, self.local_user), 5)
-
-    def test_get_rating_broken_edition(self, *_):
-        """Don't have a server error if an edition is missing a work"""
-        broken_book = models.Edition.objects.create(title="Test")
-        broken_book.parent_work = None
-        self.assertIsNone(rating_tags.get_rating(broken_book, self.local_user))
+        self.assertEqual(rating_tags.get_rating(self.film, self.local_user), 4.5)
 
     def test_get_user_rating(self, *_):
-        """get a user's most recent rating of a book"""
+        """get a user's most recent rating of a film"""
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            models.Review.objects.create(user=self.local_user, book=self.book, rating=3)
-        self.assertEqual(rating_tags.get_user_rating(self.book, self.local_user), 3)
+            models.Review.objects.create(
+                user=self.local_user, film=self.film, rating=3
+            )
+        self.assertEqual(rating_tags.get_user_rating(self.film, self.local_user), 3)
+
+    def test_get_user_rating_most_recent(self, *_):
+        """the newest review wins"""
+        with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
+            models.Review.objects.create(
+                user=self.local_user,
+                film=self.film,
+                rating=2,
+                published_date=timezone.now() - timedelta(days=1),
+            )
+            models.Review.objects.create(
+                user=self.local_user, film=self.film, rating=5
+            )
+        self.assertEqual(rating_tags.get_user_rating(self.film, self.local_user), 5)
+
+    def test_get_user_rating_deleted(self, *_):
+        """deleted reviews don't count"""
+        with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
+            review = models.Review.objects.create(
+                user=self.local_user, film=self.film, rating=3
+            )
+        review.delete()
+        self.assertEqual(rating_tags.get_user_rating(self.film, self.local_user), 0)
 
     def test_get_user_rating_doesnt_exist(self, *_):
         """there is no rating available"""
-        self.assertEqual(rating_tags.get_user_rating(self.book, self.local_user), 0)
+        self.assertEqual(rating_tags.get_user_rating(self.film, self.local_user), 0)

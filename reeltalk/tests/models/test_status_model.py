@@ -2,7 +2,6 @@
 
 from unittest.mock import patch
 import pathlib
-import re
 
 from django.http import Http404
 from django.db import IntegrityError
@@ -41,7 +40,7 @@ class Status(TestCase):
                 inbox="https://example.com/users/rat/inbox",
                 outbox="https://example.com/users/rat/outbox",
             )
-        cls.book = models.Edition.objects.create(title="Test Edition")
+        cls.film = models.Film.objects.create(title="Test Film")
 
     def setUp(self):
         """individual test setup"""
@@ -50,11 +49,8 @@ class Status(TestCase):
         image_path = pathlib.Path(__file__).parent.joinpath(
             "../../static/images/default_avi.jpg"
         )
-        with (
-            patch("reeltalk.models.Status.broadcast"),
-            open(image_path, "rb") as image_file,
-        ):
-            self.book.cover.save("test.jpg", image_file)
+        with open(image_path, "rb") as image_file:
+            self.film.poster.save("test.jpg", image_file)
 
     def test_status_generated_fields(self, *_):
         """setting remote id"""
@@ -72,7 +68,7 @@ class Status(TestCase):
         )
         child.save(broadcast=False)
         sibling = models.Review(
-            content="hey", reply_parent=parent, user=self.local_user, book=self.book
+            content="hey", reply_parent=parent, user=self.local_user, film=self.film
         )
         sibling.save(broadcast=False)
         grandchild = models.Status(
@@ -113,7 +109,7 @@ class Status(TestCase):
             content="hello", reply_parent=parent, user=self.local_user
         )
         models.Review.objects.create(
-            content="hey", reply_parent=parent, user=self.local_user, book=self.book
+            content="hey", reply_parent=parent, user=self.local_user, film=self.film
         )
         models.Status.objects.create(
             content="hi hello", reply_parent=child, user=self.local_user
@@ -199,7 +195,7 @@ class Status(TestCase):
         status = models.GeneratedNote.objects.create(
             content="test content", user=self.local_user
         )
-        status.mention_books.set([self.book])
+        status.mention_films.set([self.film])
         status.mention_users.set([self.local_user])
         activity = status.to_activity()
         self.assertEqual(activity["id"], status.remote_id)
@@ -211,15 +207,15 @@ class Status(TestCase):
     def test_generated_note_to_pure_activity(self, *_):
         """subclass of the base model version with a "pure" serializer"""
         status = models.GeneratedNote.objects.create(
-            content="reads", user=self.local_user
+            content="wants to watch", user=self.local_user
         )
-        status.mention_books.set([self.book])
+        status.mention_films.set([self.film])
         status.mention_users.set([self.local_user])
         activity = status.to_activity(pure=True)
         self.assertEqual(activity["id"], status.remote_id)
         self.assertEqual(
             activity["content"],
-            f'mouse reads <a href="{self.book.remote_id}"><i>Test Edition</i></a>',
+            f'mouse wants to watch <a href="{self.film.remote_id}"><i>Test Film</i></a>',
         )
         self.assertEqual(len(activity["tag"]), 2)
         self.assertEqual(activity["type"], "Note")
@@ -228,25 +224,25 @@ class Status(TestCase):
         self.assertEqual(activity["attachment"][0]["type"], "Document")
         self.assertRegex(
             activity["attachment"][0]["url"],
-            rf"^{settings.BASE_URL}/images/covers/test(_[A-z0-9]+)?.jpg$",
+            rf"^{settings.BASE_URL}/images/posters/test(_[A-z0-9]+)?.jpg$",
         )
-        self.assertEqual(activity["attachment"][0]["name"], "Test Edition")
+        self.assertEqual(activity["attachment"][0]["name"], "Test Film")
 
     def test_comment_to_activity(self, *_):
         """subclass of the base model version with a "pure" serializer"""
         status = models.Comment.objects.create(
-            content="test content", user=self.local_user, book=self.book
+            content="test content", user=self.local_user, film=self.film
         )
         activity = status.to_activity()
         self.assertEqual(activity["id"], status.remote_id)
         self.assertEqual(activity["type"], "Comment")
         self.assertEqual(activity["content"], "<p>test content</p>")
-        self.assertEqual(activity["inReplyToBook"], self.book.remote_id)
+        self.assertEqual(activity["inReplyToFilm"], self.film.remote_id)
 
     def test_comment_to_pure_activity(self, *_):
         """subclass of the base model version with a "pure" serializer"""
         status = models.Comment.objects.create(
-            content="test content", user=self.local_user, book=self.book, progress=27
+            content="test content", user=self.local_user, film=self.film
         )
         activity = status.to_activity(pure=True)
         self.assertEqual(activity["id"], status.remote_id)
@@ -255,16 +251,16 @@ class Status(TestCase):
             activity["content"],
             (
                 "test content"
-                f'<p>(comment on <a href="{self.book.remote_id}">'
-                "<i>Test Edition</i></a>, p. 27)</p>"
+                f'<p>(comment on <a href="{self.film.remote_id}">'
+                "<i>Test Film</i></a>)</p>"
             ),
         )
         self.assertEqual(activity["attachment"][0]["type"], "Document")
         self.assertRegex(
             activity["attachment"][0]["url"],
-            rf"^{settings.BASE_URL}/images/covers/test_[A-z0-9]+.jpg$",
+            rf"^{settings.BASE_URL}/images/posters/test_[A-z0-9]+.jpg$",
         )
-        self.assertEqual(activity["attachment"][0]["name"], "Test Edition")
+        self.assertEqual(activity["attachment"][0]["name"], "Test Film")
 
     def test_quotation_to_activity(self, *_):
         """subclass of the base model version with a "pure" serializer"""
@@ -272,14 +268,14 @@ class Status(TestCase):
             quote="a sickening sense",
             content="test content",
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         activity = status.to_activity()
         self.assertEqual(activity["id"], status.remote_id)
         self.assertEqual(activity["type"], "Quotation")
         self.assertEqual(activity["quote"], "<p>a sickening sense</p>")
         self.assertEqual(activity["content"], "<p>test content</p>")
-        self.assertEqual(activity["inReplyToBook"], self.book.remote_id)
+        self.assertEqual(activity["inReplyToFilm"], self.film.remote_id)
 
     def test_quotation_to_pure_activity(self, *_):
         """subclass of the base model version with a "pure" serializer"""
@@ -287,7 +283,7 @@ class Status(TestCase):
             quote="a sickening sense",
             content="test content",
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         activity = status.to_activity(pure=True)
         self.assertEqual(activity["id"], status.remote_id)
@@ -296,67 +292,38 @@ class Status(TestCase):
             activity["content"],
             (
                 "a sickening sense "
-                f'<p>— <a href="{self.book.remote_id}">'
-                "<i>Test Edition</i></a></p>test content"
+                f'<p>— <a href="{self.film.remote_id}">'
+                "<i>Test Film</i></a></p>test content"
             ),
         )
         self.assertEqual(activity["attachment"][0]["type"], "Document")
         self.assertRegex(
             activity["attachment"][0]["url"],
-            rf"^{settings.BASE_URL}/images/covers/test(_[A-z0-9]+)?.jpg$",
+            rf"^{settings.BASE_URL}/images/posters/test(_[A-z0-9]+)?.jpg$",
         )
-        self.assertEqual(activity["attachment"][0]["name"], "Test Edition")
+        self.assertEqual(activity["attachment"][0]["name"], "Test Film")
 
-    def test_quotation_with_author_to_pure_activity(self, *_):
-        """serialization of quotation of a book with author and edition info"""
-        self.book.authors.set([models.Author.objects.create(name="Author Name")])
-        self.book.physical_format = "worm"
-        self.book.save()
+    def test_quotation_with_director_to_pure_activity(self, *_):
+        """serialization of quotation of a film with director"""
+        self.film.directors = ["Director Name"]
+        self.film.save(broadcast=False)
         status = models.Quotation.objects.create(
             quote="quote",
             content="",
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         activity = status.to_activity(pure=True)
         self.assertEqual(
             activity["content"],
             (
-                f'quote <p>— Author Name: <a href="{self.book.remote_id}">'
-                "<i>Test Edition</i></a></p>"
+                f'quote <p>— Director Name: <a href="{self.film.remote_id}">'
+                "<i>Test Film</i></a></p>"
             ),
         )
         self.assertEqual(
-            activity["attachment"][0]["name"], "Author Name: Test Edition (worm)"
+            activity["attachment"][0]["name"], "Director Name: Test Film"
         )
-
-    def test_quotation_page_serialization(self, *_):
-        """serialization of quotation page position"""
-        tests = [
-            ("single pos", "7", "", "p. 7"),
-            ("missing beg", "", "10", None),
-            ("page range", "7", "10", "pp. 7-10"),
-            ("page range roman", "xv", "xvi", "pp. xv-xvi"),
-            ("page range reverse", "14", "10", "pp. 14-10"),
-        ]
-        for desc, beg, end, pages in tests:
-            with self.subTest(desc):
-                status = models.Quotation.objects.create(
-                    quote="<p>my quote</p>",
-                    content="",
-                    user=self.local_user,
-                    book=self.book,
-                    position=beg,
-                    endposition=end,
-                    position_mode="PG",
-                )
-                activity = status.to_activity(pure=True)
-                if pages:
-                    pages_re = re.escape(pages)
-                    expect_re = f'^<p>"my quote"</p> <p>— <a .+</a>, {pages_re}</p>$'
-                else:
-                    expect_re = '^<p>"my quote"</p> <p>— <a .+</a></p>$'
-                self.assertRegex(activity["content"], expect_re)
 
     def test_review_to_activity(self, *_):
         """subclass of the base model version with a "pure" serializer"""
@@ -365,7 +332,7 @@ class Status(TestCase):
             content="test content",
             rating=3.0,
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         activity = status.to_activity()
         self.assertEqual(activity["id"], status.remote_id)
@@ -373,7 +340,7 @@ class Status(TestCase):
         self.assertEqual(activity["rating"], 3)
         self.assertEqual(activity["name"], "Review name")
         self.assertEqual(activity["content"], "<p>test content</p>")
-        self.assertEqual(activity["inReplyToBook"], self.book.remote_id)
+        self.assertEqual(activity["inReplyToFilm"], self.film.remote_id)
 
     def test_review_to_activity_no_name(self, *_):
         """subclass of the base model version with a "pure" serializer and no name"""
@@ -381,27 +348,27 @@ class Status(TestCase):
             content="test content",
             rating=3.0,
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         activity = status.to_activity()
         self.assertEqual(activity["id"], status.remote_id)
         self.assertEqual(activity["type"], "Review")
         self.assertEqual(activity["rating"], 3)
         self.assertEqual(activity["content"], "<p>test content</p>")
-        self.assertEqual(activity["inReplyToBook"], self.book.remote_id)
+        self.assertEqual(activity["inReplyToFilm"], self.film.remote_id)
 
     def test_review_to_activity_no_name_or_content(self, *_):
         """subclass of the base model version with a "pure" serializer and no content or name"""
         status = models.Review.objects.create(
             rating=3.0,
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         activity = status.to_activity()
         self.assertEqual(activity["id"], status.remote_id)
         self.assertEqual(activity["type"], "Review")
         self.assertEqual(activity["rating"], 3)
-        self.assertEqual(activity["inReplyToBook"], self.book.remote_id)
+        self.assertEqual(activity["inReplyToFilm"], self.film.remote_id)
 
     def test_review_to_pure_activity(self, *_):
         """subclass of the base model version with a "pure" serializer"""
@@ -410,22 +377,22 @@ class Status(TestCase):
             content="test content",
             rating=3.0,
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         activity = status.to_activity(pure=True)
         self.assertEqual(activity["id"], status.remote_id)
         self.assertEqual(activity["type"], "Article")
         self.assertEqual(
             activity["name"],
-            f'Review of "{self.book.title}" (3 stars): Review\'s name',
+            f'Review of "{self.film.title}" (3 stars): Review\'s name',
         )
         self.assertEqual(activity["content"], "test content")
         self.assertEqual(activity["attachment"][0]["type"], "Document")
         self.assertRegex(
             activity["attachment"][0]["url"],
-            rf"^{settings.BASE_URL}/images/covers/test_[A-z0-9]+.jpg$",
+            rf"^{settings.BASE_URL}/images/posters/test_[A-z0-9]+.jpg$",
         )
-        self.assertEqual(activity["attachment"][0]["name"], "Test Edition")
+        self.assertEqual(activity["attachment"][0]["name"], "Test Film")
 
     def test_review_to_pure_activity_no_rating(self, *_):
         """subclass of the base model version with a "pure" serializer"""
@@ -433,43 +400,50 @@ class Status(TestCase):
             name="Review name",
             content="test content",
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         activity = status.to_activity(pure=True)
         self.assertEqual(activity["id"], status.remote_id)
         self.assertEqual(activity["type"], "Article")
         self.assertEqual(
             activity["name"],
-            f'Review of "{self.book.title}": Review name',
+            f'Review of "{self.film.title}": Review name',
         )
         self.assertEqual(activity["content"], "test content")
         self.assertEqual(activity["attachment"][0]["type"], "Document")
         self.assertRegex(
             activity["attachment"][0]["url"],
-            rf"^{settings.BASE_URL}/images/covers/test_[A-z0-9]+.jpg$",
+            rf"^{settings.BASE_URL}/images/posters/test_[A-z0-9]+.jpg$",
         )
-        self.assertEqual(activity["attachment"][0]["name"], "Test Edition")
+        self.assertEqual(activity["attachment"][0]["name"], "Test Film")
 
     def test_reviewrating_to_pure_activity(self, *_):
         """subclass of the base model version with a "pure" serializer"""
         status = models.ReviewRating.objects.create(
             rating=3.0,
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         activity = status.to_activity(pure=True)
         self.assertEqual(activity["id"], status.remote_id)
         self.assertEqual(activity["type"], "Note")
         self.assertEqual(
             activity["content"],
-            f'rated <em><a href="{self.book.remote_id}">{self.book.title}</a></em>: 3 stars',
+            f'rated <em><a href="{self.film.remote_id}">{self.film.title}</a></em>: 3 stars',
         )
         self.assertEqual(activity["attachment"][0]["type"], "Document")
         self.assertRegex(
             activity["attachment"][0]["url"],
-            rf"^{settings.BASE_URL}/images/covers/test_[A-z0-9]+.jpg$",
+            rf"^{settings.BASE_URL}/images/posters/test_[A-z0-9]+.jpg$",
         )
-        self.assertEqual(activity["attachment"][0]["name"], "Test Edition")
+        self.assertEqual(activity["attachment"][0]["name"], "Test Film")
+
+    def test_reviewrating_requires_rating(self, *_):
+        """a rating-only status can't be saved without a rating"""
+        with self.assertRaises(ValueError):
+            models.ReviewRating.objects.create(
+                user=self.local_user, film=self.film
+            )
 
     def test_favorite(self, *_):
         """fav a status"""
@@ -507,7 +481,7 @@ class Status(TestCase):
     def test_create_broadcast(self, one, two, broadcast_mock, *_):
         """should send out two versions of a status on create"""
         models.Comment.objects.create(
-            content="hi", user=self.local_user, book=self.book
+            content="hi", user=self.local_user, film=self.film
         )
         self.assertEqual(broadcast_mock.call_count, 2)
         pure_call = broadcast_mock.call_args_list[0]
@@ -570,7 +544,7 @@ class Status(TestCase):
             quote="<p>my quote</p>",
             content="",
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         status.remote_id = "http://fish.com/nothing"
         status.save(broadcast=False)
@@ -600,7 +574,7 @@ class Status(TestCase):
             "tag": [],
             "attachment": [],
             "sensitive": False,
-            "inReplyToBook": "https://fish.com/book/2265331",
+            "inReplyToFilm": "https://fish.com/film/2265331",
             "name": "Leckie's Study of Provincial Life",
             "@context": [
                 "https://www.w3.org/ns/activitystreams",

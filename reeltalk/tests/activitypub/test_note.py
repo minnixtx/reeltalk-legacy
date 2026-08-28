@@ -25,31 +25,29 @@ class Note(TestCase):
         cls.user.remote_id = "https://test-instance.org/user/critic"
         cls.user.save(broadcast=False, update_fields=["remote_id"])
 
-        cls.book = models.Edition.objects.create(
-            title="Test Edition", remote_id="http://book.com/book"
-        )
+        cls.film = models.Film.objects.create(title="Test Film")
 
     def test_to_model_hashtag_postprocess_content(self):
         """test that hashtag links are post-processed and link to local URLs"""
         update_data = activitypub.Comment(
             id="https://test-instance.org/user/critic/comment/42",
             attributedTo=self.user.remote_id,
-            inReplyToBook=self.book.remote_id,
+            inReplyToFilm=self.film.remote_id,
             content="<p>This is interesting "
             + '<a href="https://test-instance.org/hashtag/2" data-mention="hashtag">'
-            + "#bookclub</a></p>",
+            + "#filmclub</a></p>",
             published="2023-02-17T23:12:59.398030+00:00",
             to=[],
             cc=[],
             tag=[
                 {
-                    "type": "Edition",
-                    "name": "gerald j. books",
-                    "href": "http://book.com/book",
+                    "type": "Film",
+                    "name": "test film",
+                    "href": self.film.remote_id,
                 },
                 {
                     "type": "Hashtag",
-                    "name": "#BookClub",
+                    "name": "#FilmClub",
                     "href": "https://test-instance.org/hashtag/2",
                 },
             ],
@@ -57,11 +55,11 @@ class Note(TestCase):
 
         instance = update_data.to_model(model=models.Status)
         self.assertIsNotNone(instance)
-        hashtag = models.Hashtag.objects.filter(name="#BookClub").first()
+        hashtag = models.Hashtag.objects.filter(name="#FilmClub").first()
         self.assertIsNotNone(hashtag)
         self.assertEqual(
             instance.content,
             "<p>This is interesting "
             + f'<a href="{hashtag.remote_id}" data-mention="hashtag">'
-            + "#bookclub</a></p>",
+            + "#filmclub</a></p>",
         )

@@ -29,8 +29,7 @@ class Activitystreams(TestCase):
             inbox="https://example.com/users/rat/inbox",
             outbox="https://example.com/users/rat/outbox",
         )
-        work = models.Work.objects.create(title="test work")
-        cls.book = models.Edition.objects.create(title="test book", parent_work=work)
+        cls.film = models.Film.objects.create(title="Test Film")
 
     def test_localstream_get_audience_remote_status(self):
         """get a list of users that should see a status"""
@@ -57,80 +56,76 @@ class Activitystreams(TestCase):
         users = activitystreams.LocalStream().get_audience(status)
         self.assertEqual(users, [])
 
-    def test_bookstream_get_audience_books_no_book(self):
+    def test_filmsstream_get_audience_no_film(self):
         """get a list of users that should see a status"""
         status = models.Status.objects.create(
             user=self.local_user, content="hi", privacy="public"
         )
-        models.ShelfBook.objects.create(
+        models.ShelfFilm.objects.create(
             user=self.local_user,
             shelf=self.local_user.shelf_set.first(),
-            book=self.book,
+            film=self.film,
         )
-        audience = activitystreams.BooksStream().get_audience(status)
-        # no books, no audience
+        audience = activitystreams.FilmsStream().get_audience(status)
+        # no film, no audience
         self.assertEqual(audience, [])
 
-    def test_bookstream_get_audience_books_mention_books(self):
+    def test_filmsstream_get_audience_mention_film(self):
         """get a list of users that should see a status"""
         status = models.Status.objects.create(
             user=self.local_user, content="hi", privacy="public"
         )
-        status.mention_books.add(self.book)
+        status.mention_films.add(self.film)
         status.save(broadcast=False)
-        models.ShelfBook.objects.create(
+        models.ShelfFilm.objects.create(
             user=self.another_user,
             shelf=self.another_user.shelf_set.first(),
-            book=self.book,
+            film=self.film,
         )
-        # yes book, yes audience
-        audience = activitystreams.BooksStream().get_audience(status)
+        # yes film, yes audience
+        audience = activitystreams.FilmsStream().get_audience(status)
         self.assertTrue(self.another_user.id in audience)
 
-    def test_bookstream_get_audience_books_book_field(self):
+    def test_filmsstream_get_audience_film_field(self):
         """get a list of users that should see a status"""
         status = models.Comment.objects.create(
-            user=self.local_user, content="hi", privacy="public", book=self.book
+            user=self.local_user, content="hi", privacy="public", film=self.film
         )
-        models.ShelfBook.objects.create(
+        models.ShelfFilm.objects.create(
             user=self.another_user,
             shelf=self.another_user.shelf_set.first(),
-            book=self.book,
+            film=self.film,
         )
-        # yes book, no audience
-        audience = activitystreams.BooksStream().get_audience(status)
+        # yes film, yes audience
+        audience = activitystreams.FilmsStream().get_audience(status)
         self.assertTrue(self.another_user.id in audience)
 
-    def test_bookstream_get_audience_books_alternate_edition(self):
-        """get a list of users that should see a status"""
-        alt_book = models.Edition.objects.create(
-            title="hi", parent_work=self.book.parent_work
-        )
+    def test_filmsstream_get_audience_different_film(self):
+        """a status about a different film doesn't reach this audience"""
+        alt_film = models.Film.objects.create(title="hi")
         status = models.Comment.objects.create(
-            user=self.remote_user, content="hi", privacy="public", book=alt_book
+            user=self.remote_user, content="hi", privacy="public", film=alt_film
         )
-        models.ShelfBook.objects.create(
+        models.ShelfFilm.objects.create(
             user=self.another_user,
             shelf=self.another_user.shelf_set.first(),
-            book=self.book,
+            film=self.film,
         )
-        # yes book, yes audience
-        audience = activitystreams.BooksStream().get_audience(status)
-        self.assertTrue(self.another_user.id in audience)
+        # different film, no audience
+        audience = activitystreams.FilmsStream().get_audience(status)
+        self.assertFalse(self.another_user.id in audience)
 
-    def test_bookstream_get_audience_books_non_public(self):
-        """get a list of users that should see a status"""
-        alt_book = models.Edition.objects.create(
-            title="hi", parent_work=self.book.parent_work
-        )
+    def test_filmsstream_get_audience_non_public(self):
+        """non-public film statuses have no films-stream audience"""
+        alt_film = models.Film.objects.create(title="hi")
         status = models.Comment.objects.create(
-            user=self.remote_user, content="hi", privacy="unlisted", book=alt_book
+            user=self.remote_user, content="hi", privacy="unlisted", film=alt_film
         )
-        models.ShelfBook.objects.create(
+        models.ShelfFilm.objects.create(
             user=self.local_user,
             shelf=self.local_user.shelf_set.first(),
-            book=self.book,
+            film=self.film,
         )
-        # yes book, yes audience
-        audience = activitystreams.BooksStream().get_audience(status)
+        # not public, no audience
+        audience = activitystreams.FilmsStream().get_audience(status)
         self.assertEqual(audience, [])

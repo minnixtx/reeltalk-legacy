@@ -20,7 +20,7 @@ from django.utils import timezone
 
 from reeltalk import activitypub
 from reeltalk.activitypub.base_activity import ActivityObject
-from reeltalk.models import fields, User, Status, Edition
+from reeltalk.models import fields, User, Status, Film
 from reeltalk.models.base_model import ReelTalkModel
 from reeltalk.models.activitypub_mixin import ActivitypubMixin
 from reeltalk.settings import PROTOCOL, NETLOC
@@ -462,7 +462,7 @@ class ModelFields(TestCase):
             "../../static/images/default_avi.jpg"
         )
 
-        instance = fields.ImageField(activitypub_field="cover", name="cover")
+        instance = fields.ImageField(activitypub_field="poster", name="poster")
 
         with open(image_file, "rb") as image_data:
             responses.add(
@@ -473,13 +473,13 @@ class ModelFields(TestCase):
                 status=200,
                 stream=True,
             )
-        book = Edition.objects.create(title="hello")
+        film = Film.objects.create(title="hello")
 
-        MockActivity = namedtuple("MockActivity", ("cover"))
+        MockActivity = namedtuple("MockActivity", ("poster"))
         mock_activity = MockActivity("http://www.example.com/image.jpg")
 
-        instance.set_field_from_activity(book, mock_activity)
-        self.assertIsNotNone(book.cover.name)
+        instance.set_field_from_activity(film, mock_activity)
+        self.assertIsNotNone(film.poster.name)
 
     @responses.activate
     def test_image_field_set_field_from_activity_no_overwrite_no_cover(self, *_):
@@ -488,7 +488,7 @@ class ModelFields(TestCase):
             "../../static/images/default_avi.jpg"
         )
 
-        instance = fields.ImageField(activitypub_field="cover", name="cover")
+        instance = fields.ImageField(activitypub_field="poster", name="poster")
 
         with open(image_file, "rb") as image_data:
             responses.add(
@@ -499,13 +499,13 @@ class ModelFields(TestCase):
                 content_type="image/jpeg",
                 stream=True,
             )
-        book = Edition.objects.create(title="hello")
+        film = Film.objects.create(title="hello")
 
-        MockActivity = namedtuple("MockActivity", ("cover"))
+        MockActivity = namedtuple("MockActivity", ("poster"))
         mock_activity = MockActivity("http://www.example.com/image.jpg")
 
-        instance.set_field_from_activity(book, mock_activity, overwrite=False)
-        self.assertIsNotNone(book.cover.name)
+        instance.set_field_from_activity(film, mock_activity, overwrite=False)
+        self.assertIsNotNone(film.poster.name)
 
     @responses.activate
     def test_image_field_set_field_from_activity_no_overwrite_with_cover(self, *_):
@@ -517,7 +517,7 @@ class ModelFields(TestCase):
             "../../static/images/logo.png"
         )
 
-        instance = fields.ImageField(activitypub_field="cover", name="cover")
+        instance = fields.ImageField(activitypub_field="poster", name="poster")
 
         with open(another_image_path, "rb") as another_image_file:
             responses.add(
@@ -526,18 +526,18 @@ class ModelFields(TestCase):
                 body=another_image_file.read(),
                 status=200,
             )
-        book = Edition.objects.create(title="hello")
+        film = Film.objects.create(title="hello")
         with open(image_path, "rb") as image_file:
-            book.cover.save("test.jpg", image_file)
-        cover_size = book.cover.size
-        self.assertIsNotNone(cover_size)
+            film.poster.save("test.jpg", image_file)
+        poster_size = film.poster.size
+        self.assertIsNotNone(poster_size)
 
-        MockActivity = namedtuple("MockActivity", ("cover"))
+        MockActivity = namedtuple("MockActivity", ("poster"))
         mock_activity = MockActivity("http://www.example.com/image.jpg")
 
-        instance.set_field_from_activity(book, mock_activity, overwrite=False)
+        instance.set_field_from_activity(film, mock_activity, overwrite=False)
         # same cover as before
-        self.assertEqual(book.cover.size, cover_size)
+        self.assertEqual(film.poster.size, poster_size)
 
     @responses.activate
     def test_image_field_set_field_from_activity_with_overwrite_with_cover(self, *_):
@@ -545,17 +545,17 @@ class ModelFields(TestCase):
         image_path = pathlib.Path(__file__).parent.joinpath(
             "../../static/images/default_avi.jpg"
         )
-        book = Edition.objects.create(title="hello")
+        film = Film.objects.create(title="hello")
         with open(image_path, "rb") as image_file:
-            book.cover.save("test.jpg", image_file)
-        cover_size = book.cover.size
-        self.assertIsNotNone(cover_size)
+            film.poster.save("test.jpg", image_file)
+        poster_size = film.poster.size
+        self.assertIsNotNone(poster_size)
 
         another_image_path = pathlib.Path(__file__).parent.joinpath(
             "../../static/images/logo.png"
         )
 
-        instance = fields.ImageField(activitypub_field="cover", name="cover")
+        instance = fields.ImageField(activitypub_field="poster", name="poster")
 
         with open(another_image_path, "rb") as another_image:
             responses.add(
@@ -567,13 +567,13 @@ class ModelFields(TestCase):
                 stream=True,
             )
 
-        MockActivity = namedtuple("MockActivity", ("cover"))
+        MockActivity = namedtuple("MockActivity", ("poster"))
         mock_activity = MockActivity("http://www.example.com/image.jpg")
 
-        instance.set_field_from_activity(book, mock_activity, overwrite=True)
+        instance.set_field_from_activity(film, mock_activity, overwrite=True)
         # new cover
-        self.assertIsNotNone(book.cover.name)
-        self.assertNotEqual(book.cover.size, cover_size)
+        self.assertIsNotNone(film.poster.name)
+        self.assertNotEqual(film.poster.size, poster_size)
 
     def test_datetime_field(self, *_):
         """this one is pretty simple, it just has to use isoformat"""

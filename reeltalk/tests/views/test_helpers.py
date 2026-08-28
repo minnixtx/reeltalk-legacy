@@ -51,11 +51,9 @@ class ViewsHelpers(TestCase):
                 inbox="https://example.com/users/rat/inbox",
                 outbox="https://example.com/users/rat/outbox",
             )
-        cls.work = models.Work.objects.create(title="Test Work")
-        cls.book = models.Edition.objects.create(
-            title="Test Book",
-            remote_id="https://example.com/book/1",
-            parent_work=cls.work,
+        cls.film = models.Film.objects.create(
+            title="Test Film",
+            remote_id="https://example.com/film/1",
         )
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             cls.shelf = models.Shelf.objects.create(
@@ -69,10 +67,9 @@ class ViewsHelpers(TestCase):
         self.userdata = json.loads(datafile.read_bytes())
         del self.userdata["icon"]
 
-    def test_get_edition(self, *_):
-        """given an edition or a work, returns an edition"""
-        self.assertEqual(views.helpers.get_edition(self.book.id), self.book)
-        self.assertEqual(views.helpers.get_edition(self.work.id), self.book)
+    def test_get_film(self, *_):
+        """given a film id, returns the film"""
+        self.assertEqual(views.helpers.get_film(self.film.id), self.film)
 
     def test_get_user_from_username(self, *_):
         """works for either localname or username"""
@@ -108,12 +105,12 @@ class ViewsHelpers(TestCase):
 
     def test_is_reeltalk_request(self, *_):
         """checks if a request came from a reeltalk instance"""
-        request = self.factory.get("", {"q": "Test Book"})
+        request = self.factory.get("", {"q": "Test Film"})
         self.assertFalse(views.helpers.is_reeltalk_request(request))
 
         request = self.factory.get(
             "",
-            {"q": "Test Book"},
+            {"q": "Test Film"},
             headers={
                 "user-agent": "http.rb/4.4.1 (Mastodon/3.3.0; +https://mastodon.social/)",
             },
@@ -122,7 +119,7 @@ class ViewsHelpers(TestCase):
 
         request = self.factory.get(
             "",
-            {"q": "Test Book"},
+            {"q": "Test Film"},
             headers={
                 "user-agent": USER_AGENT,
             },
@@ -239,17 +236,17 @@ class ViewsHelpers(TestCase):
         shelf = self.local_user.shelf_set.get(identifier="to-read")
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             views.helpers.handle_reading_status(
-                self.local_user, shelf, self.book, "public"
+                self.local_user, shelf, self.film, "public"
             )
         status = models.GeneratedNote.objects.get()
         self.assertEqual(status.user, self.local_user)
-        self.assertEqual(status.mention_books.first(), self.book)
-        self.assertEqual(status.content, "wants to read")
+        self.assertEqual(status.mention_films.first(), self.film)
+        self.assertEqual(status.content, "wants to watch")
 
-    def test_handle_reading_status_reading(self, *_):
-        """posts shelve activities"""
-        # no local user has a reading shelf anymore, but remote instances may
-        # still send them, so the helper keeps handling the identifier
+    def test_handle_reading_status_legacy_identifier(self, *_):
+        """legacy shelf identifiers no longer generate notes"""
+        # no local user has a "reading" shelf anymore, but remote instances
+        # may still send them, so the helper ignores the identifier
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             shelf = models.Shelf.objects.create(
                 name="Currently Reading",
@@ -257,30 +254,24 @@ class ViewsHelpers(TestCase):
                 user=self.local_user,
             )
         views.helpers.handle_reading_status(
-            self.local_user, shelf, self.book, "public"
+            self.local_user, shelf, self.film, "public"
         )
-        status = models.GeneratedNote.objects.get()
-        self.assertEqual(status.user, self.local_user)
-        self.assertEqual(status.mention_books.first(), self.book)
-        self.assertEqual(status.content, "started reading")
+        self.assertFalse(models.GeneratedNote.objects.exists())
 
     def test_handle_reading_status_read(self, *_):
-        """posts shelve activities"""
+        """finishing a film is silent: no generated note"""
         shelf = self.local_user.shelf_set.get(identifier="read")
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             views.helpers.handle_reading_status(
-                self.local_user, shelf, self.book, "public"
+                self.local_user, shelf, self.film, "public"
             )
-        status = models.GeneratedNote.objects.get()
-        self.assertEqual(status.user, self.local_user)
-        self.assertEqual(status.mention_books.first(), self.book)
-        self.assertEqual(status.content, "finished reading")
+        self.assertFalse(models.GeneratedNote.objects.exists())
 
     def test_handle_reading_status_other(self, *_):
         """posts shelve activities"""
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             views.helpers.handle_reading_status(
-                self.local_user, self.shelf, self.book, "public"
+                self.local_user, self.shelf, self.film, "public"
             )
         self.assertFalse(models.GeneratedNote.objects.exists())
 

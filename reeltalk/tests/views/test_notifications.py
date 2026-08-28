@@ -131,11 +131,13 @@ class NotificationViews(TestCase):
         self.assertIsInstance(result, TemplateResponse)
         validate_html(result.render())
 
-    def test_notifications_page_import(self):
-        """import completed notification"""
-        import_job = models.ImportJob.objects.create(user=self.local_user, mappings={})
+    def test_notifications_page_export(self):
+        """export completed notification"""
+        export_job = models.ReeltalkExportJob.objects.create(user=self.local_user)
         models.Notification.objects.create(
-            user=self.local_user, notification_type="IMPORT", related_import=import_job
+            user=self.local_user,
+            notification_type="USER_EXPORT",
+            related_user_export=export_job,
         )
         view = views.Notifications.as_view()
         request = self.factory.get("")
@@ -146,15 +148,15 @@ class NotificationViews(TestCase):
         self.assertEqual(result.status_code, 200)
 
     def test_notifications_page_list(self):
-        """Adding books to lists"""
-        book = models.Edition.objects.create(title="shape")
+        """Adding films to lists"""
+        film = models.Film.objects.create(title="shape")
         with (
             patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"),
             patch("reeltalk.lists_stream.remove_list_task.delay"),
         ):
             book_list = models.List.objects.create(user=self.local_user, name="hi")
             item = models.ListItem.objects.create(
-                edition=book, user=self.another_user, book_list=book_list, order=1
+                film=film, user=self.another_user, film_list=book_list, order=1
             )
         models.Notification.notify_list_item(self.local_user, item)
         view = views.Notifications.as_view()

@@ -35,10 +35,9 @@ class GetStartedViews(TestCase):
                 local=True,
                 localname="rat",
             )
-        cls.book = models.Edition.objects.create(
-            parent_work=models.Work.objects.create(title="hi"),
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
+        cls.film = models.Film.objects.create(
+            title="Example Film",
+            remote_id="https://example.com/film/1",
         )
 
     def setUp(self):
@@ -77,9 +76,9 @@ class GetStartedViews(TestCase):
         self.assertEqual(self.local_user.name, "New Name")
         self.assertTrue(self.local_user.discoverable)
 
-    def test_books_view(self, _):
+    def test_films_view(self, _):
         """there are so many views, this just makes sure it LOADS"""
-        view = views.GetStartedBooks.as_view()
+        view = views.GetStartedFilms.as_view()
         request = self.factory.get("")
         request.user = self.local_user
 
@@ -89,9 +88,9 @@ class GetStartedViews(TestCase):
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
 
-    def test_books_view_with_query(self, _):
+    def test_films_view_with_query(self, _):
         """there are so many views, this just makes sure it LOADS"""
-        view = views.GetStartedBooks.as_view()
+        view = views.GetStartedFilms.as_view()
         request = self.factory.get("?query=Example")
         request.user = self.local_user
 
@@ -102,24 +101,24 @@ class GetStartedViews(TestCase):
         self.assertEqual(result.status_code, 200)
 
     @patch("reeltalk.suggested_users.rerank_suggestions_task.delay")
-    @patch("reeltalk.activitystreams.add_book_statuses_task.delay")
-    def test_books_view_post(self, *_):
-        """shelve some books"""
-        view = views.GetStartedBooks.as_view()
-        data = {self.book.id: self.local_user.shelf_set.first().id}
+    @patch("reeltalk.activitystreams.add_film_statuses_task.delay")
+    def test_films_view_post(self, *_):
+        """shelve some films"""
+        view = views.GetStartedFilms.as_view()
+        data = {self.film.id: self.local_user.shelf_set.first().id}
         request = self.factory.post("", data)
         request.user = self.local_user
 
-        self.assertFalse(self.local_user.shelfbook_set.exists())
+        self.assertFalse(self.local_user.shelffilm_set.exists())
         with patch(
             "reeltalk.models.activitypub_mixin.ActivitypubMixin.broadcast"
         ) as delay_mock:
             view(request)
             self.assertEqual(delay_mock.call_count, 1)
 
-        shelfbook = self.local_user.shelfbook_set.first()
-        self.assertEqual(shelfbook.book, self.book)
-        self.assertEqual(shelfbook.user, self.local_user)
+        shelf_film = self.local_user.shelffilm_set.first()
+        self.assertEqual(shelf_film.film, self.film)
+        self.assertEqual(shelf_film.user, self.local_user)
 
     @patch("reeltalk.suggested_users.SuggestedUsers.get_suggestions")
     def test_users_view(self, *_):

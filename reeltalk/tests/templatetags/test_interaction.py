@@ -36,11 +36,11 @@ class InteractionTags(TestCase):
                 remote_id="http://example.com/rat",
                 local=False,
             )
-        cls.book = models.Edition.objects.create(title="Test Book")
+        cls.film = models.Film.objects.create(title="Test Film")
 
     def test_get_user_liked(self, *_):
         """did a user like a status"""
-        status = models.Review.objects.create(user=self.remote_user, book=self.book)
+        status = models.Review.objects.create(user=self.remote_user, film=self.film)
 
         self.assertFalse(interaction.get_user_liked(self.user, status))
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
@@ -49,7 +49,7 @@ class InteractionTags(TestCase):
 
     def test_get_user_boosted(self, *_):
         """did a user boost a status"""
-        status = models.Review.objects.create(user=self.remote_user, book=self.book)
+        status = models.Review.objects.create(user=self.remote_user, film=self.film)
 
         self.assertFalse(interaction.get_user_boosted(self.user, status))
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):

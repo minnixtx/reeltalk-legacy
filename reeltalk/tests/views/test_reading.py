@@ -1,10 +1,11 @@
 """test for app action functionality"""
 
 from unittest.mock import patch
-import dateutil
+
+from django.http import HttpResponseBadRequest, HttpResponseNotFound
+from django.template.response import TemplateResponse
 from django.test import TestCase
 from django.test.client import RequestFactory
-from django.utils import timezone
 
 from reeltalk import models, views
 from reeltalk.tests.validate_html import validate_html
@@ -13,9 +14,9 @@ from reeltalk.tests.validate_html import validate_html
 @patch("reeltalk.activitystreams.add_status_task.delay")
 @patch("reeltalk.suggested_users.rerank_suggestions_task.delay")
 @patch("reeltalk.activitystreams.populate_stream_task.delay")
-@patch("reeltalk.activitystreams.add_book_statuses_task.delay")
+@patch("reeltalk.activitystreams.add_film_statuses_task.delay")
 class ReadingViews(TestCase):
-    """viewing and creating statuses"""
+    """watch status for films"""
 
     @classmethod
     def setUpTestData(cls):
@@ -33,197 +34,214 @@ class ReadingViews(TestCase):
                 localname="mouse",
                 remote_id="https://example.com/users/mouse",
             )
-        with patch("reeltalk.models.user.set_remote_server.delay"):
-            cls.remote_user = models.User.objects.create_user(
-                "rat",
-                "rat@rat.com",
-                "ratword",
-                local=False,
-                remote_id="https://example.com/users/rat",
-                inbox="https://example.com/users/rat/inbox",
-                outbox="https://example.com/users/rat/outbox",
-            )
-        cls.work = models.Work.objects.create(title="Test Work")
-        cls.book = models.Edition.objects.create(
-            title="Test Book",
-            remote_id="https://example.com/book/1",
-            parent_work=cls.work,
+        cls.film = models.Film.objects.create(
+            title="Test Film",
+            remote_id="https://example.com/film/1",
         )
 
     def setUp(self):
         """individual test setup"""
         self.factory = RequestFactory()
 
+    def post_finish(self, extra=None, api=False):
+        """POST a finish request with the required form fields"""
+        data = {
+            "user": self.local_user.id,
+            "film": self.film.id,
+            "privacy": "public",
+        }
+        if extra:
+            data.update(extra)
+        request = self.factory.post("", data)
+        request.user = self.local_user
+        with patch("reeltalk.views.reading.is_api_request") as is_api:
+            is_api.return_value = api
+            return views.ReadingStatus.as_view()(request, "finish", self.film.id)
+
     def test_reading_status_get(self, *_):
-        """reading status modal"""
+        """watch status modal"""
         view = views.ReadingStatus.as_view()
         request = self.factory.get("")
         request.user = self.local_user
 
-        result = view(request, "want", self.book.id)
+        result = view(request, "want", self.film.id)
         validate_html(result.render())
 
-        result = view(request, "finish", self.book.id)
+        result = view(request, "finish", self.film.id)
         validate_html(result.render())
 
-    def test_finish_reading(self, *_):
-        """begin a book"""
-        shelf = self.local_user.shelf_set.get(identifier=models.Shelf.READ_FINISHED)
-        self.assertFalse(shelf.books.exists())
-        self.assertFalse(models.Status.objects.exists())
-        readthrough = models.ReadThrough.objects.create(
-            user=self.local_user, start_date=timezone.now(), book=self.book
-        )
-
-        request = self.factory.post(
-            "",
-            {
-                "post-status": True,
-                "privacy": "followers",
-                "start_date": readthrough.start_date,
-                "finish_date": timezone.now().isoformat(),
-                "id": readthrough.id,
-            },
-        )
+    def test_reading_status_get_invalid(self, *_):
+        """unknown status types 404"""
+        view = views.ReadingStatus.as_view()
+        request = self.factory.get("")
         request.user = self.local_user
+        result = view(request, "start", self.film.id)
+        self.assertIsInstance(result, HttpResponseNotFound)
 
-        with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            views.ReadingStatus.as_view()(request, "finish", self.book.id)
+    def test_finish_requires_rating(self, *_):
+        """finishing without a rating is rejected before any DB writes"""
+        result = self.post_finish()
+        self.assertIsInstance(result, TemplateResponse)
+        self.assertTrue(result.context_data["error"])
+        validate_html(result.render())
 
-        self.assertEqual(shelf.books.get(), self.book)
+        self.assertFalse(models.ShelfFilm.objects.exists())
+        self.assertFalse(models.ReviewRating.objects.exists())
+        self.assertFalse(models.Review.objects.exists())
 
-        status = models.GeneratedNote.objects.get()
+    def test_finish_rejects_invalid_rating(self, *_):
+        """ratings outside 0.5-5 are rejected before any DB writes"""
+        for bad in ("abc", "0", "0.4", "5.5", "-1"):
+            result = self.post_finish({"rating": bad})
+            self.assertIsInstance(result, TemplateResponse)
+            self.assertTrue(result.context_data["error"])
+
+        self.assertFalse(models.ShelfFilm.objects.exists())
+        self.assertFalse(models.ReviewRating.objects.exists())
+        self.assertFalse(models.Review.objects.exists())
+
+    def test_finish_rejects_invalid_rating_api(self, *_):
+        """API requests get a 400 for missing ratings"""
+        result = self.post_finish(api=True)
+        self.assertIsInstance(result, HttpResponseBadRequest)
+        self.assertFalse(models.ShelfFilm.objects.exists())
+        self.assertFalse(models.ReviewRating.objects.exists())
+
+    def test_finish_rating_only(self, *_):
+        """finishing with just a rating creates a ReviewRating"""
+        result = self.post_finish({"rating": "4"})
+        self.assertEqual(result.status_code, 302)
+
+        shelf = self.local_user.shelf_set.get(
+            identifier=models.Shelf.READ_FINISHED
+        )
+        self.assertEqual(shelf.films.get(), self.film)
+
+        status = models.ReviewRating.objects.get()
         self.assertEqual(status.user, self.local_user)
-        self.assertEqual(status.mention_books.get(), self.book)
-        self.assertEqual(status.privacy, "followers")
+        self.assertEqual(status.film, self.film)
+        self.assertEqual(status.rating, 4.0)
+        self.assertEqual(status.privacy, "public")
 
-        readthrough = models.ReadThrough.objects.get()
-        self.assertIsNotNone(readthrough.start_date)
-        self.assertIsNotNone(readthrough.finish_date)
-        self.assertEqual(readthrough.user, self.local_user)
-        self.assertEqual(readthrough.book, self.book)
+    def test_finish_rating_boundaries(self, *_):
+        """0.5 and 5 are both valid ratings"""
+        result = self.post_finish({"rating": "0.5"})
+        self.assertEqual(result.status_code, 302)
+        self.assertEqual(models.ReviewRating.objects.get().rating, 0.5)
 
-    def test_edit_readthrough(self, *_):
-        """adding dates to an ongoing readthrough"""
-        start = timezone.make_aware(dateutil.parser.parse("2021-01-03"))
-        readthrough = models.ReadThrough.objects.create(
-            book=self.book, user=self.local_user, start_date=start
+    def test_finish_with_content(self, *_):
+        """finishing with a written review creates a Review"""
+        result = self.post_finish(
+            {"rating": "4.5", "content": "a fine film"}
         )
+        self.assertEqual(result.status_code, 302)
+
+        shelf = self.local_user.shelf_set.get(
+            identifier=models.Shelf.READ_FINISHED
+        )
+        self.assertEqual(shelf.films.get(), self.film)
+
+        status = models.Status.objects.select_subclasses().get()
+        self.assertIsInstance(status, models.Review)
+        self.assertNotIsInstance(status, models.ReviewRating)
+        self.assertEqual(status.user, self.local_user)
+        self.assertEqual(status.film, self.film)
+        self.assertEqual(status.rating, 4.5)
+        self.assertEqual(status.content, "<p>a fine film</p>")
+
+    def test_finish_moves_from_to_read(self, *_):
+        """a want-to-watch film moves to the read shelf on finish"""
+        to_read = self.local_user.shelf_set.get(
+            identifier=models.Shelf.TO_READ
+        )
+        models.ShelfFilm.objects.create(
+            film=self.film, shelf=to_read, user=self.local_user
+        )
+
+        result = self.post_finish({"rating": "3"})
+        self.assertEqual(result.status_code, 302)
+
+        read = self.local_user.shelf_set.get(identifier=models.Shelf.READ_FINISHED)
+        self.assertEqual(read.films.get(), self.film)
+        self.assertFalse(to_read.films.exists())
+        self.assertEqual(models.ReviewRating.objects.count(), 1)
+
+    def test_finish_already_read(self, *_):
+        """finishing a film that is already read just redirects"""
+        result = self.post_finish({"rating": "3"})
+        self.assertEqual(result.status_code, 302)
+        self.assertEqual(models.ReviewRating.objects.count(), 1)
+
+        result = self.post_finish({"rating": "4"})
+        self.assertEqual(result.status_code, 302)
+        # no second rating or shelf entry
+        self.assertEqual(models.ReviewRating.objects.count(), 1)
+        self.assertEqual(models.ShelfFilm.objects.count(), 1)
+
+    def test_want_shelves_only(self, *_):
+        """wanting to watch without posting just shelves the film"""
         request = self.factory.post(
             "",
             {
-                "start_date": "2017-01-01",
-                "finish_date": "2018-03-07",
-                "book": "",
-                "id": readthrough.id,
-            },
-        )
-        request.user = self.local_user
-
-        views.edit_readthrough(request)
-        readthrough.refresh_from_db()
-        self.assertEqual(readthrough.start_date.year, 2017)
-        self.assertEqual(readthrough.start_date.month, 1)
-        self.assertEqual(readthrough.start_date.day, 1)
-        self.assertEqual(readthrough.finish_date.year, 2018)
-        self.assertEqual(readthrough.finish_date.month, 3)
-        self.assertEqual(readthrough.finish_date.day, 7)
-        self.assertEqual(readthrough.book, self.book)
-
-    def test_delete_readthrough(self, *_):
-        """remove a readthrough"""
-        readthrough = models.ReadThrough.objects.create(
-            book=self.book, user=self.local_user
-        )
-        models.ReadThrough.objects.create(book=self.book, user=self.local_user)
-        request = self.factory.post(
-            "",
-            {
-                "id": readthrough.id,
-            },
-        )
-        request.user = self.local_user
-
-        views.delete_readthrough(request)
-        self.assertFalse(models.ReadThrough.objects.filter(id=readthrough.id).exists())
-
-    def test_create_readthrough(self, *_):
-        """adding new read dates"""
-        request = self.factory.post(
-            "",
-            {
-                "start_date": "2017-01-01",
-                "finish_date": "2018-03-07",
-                "book": self.book.id,
-                "id": "",
                 "user": self.local_user.id,
+                "film": self.film.id,
+                "privacy": "public",
             },
         )
         request.user = self.local_user
+        result = views.ReadingStatus.as_view()(request, "want", self.film.id)
+        self.assertEqual(result.status_code, 302)
 
-        views.ReadThrough.as_view()(request)
-        readthrough = models.ReadThrough.objects.get()
-        self.assertEqual(readthrough.start_date.year, 2017)
-        self.assertEqual(readthrough.start_date.month, 1)
-        self.assertEqual(readthrough.start_date.day, 1)
-        self.assertEqual(readthrough.finish_date.year, 2018)
-        self.assertEqual(readthrough.finish_date.month, 3)
-        self.assertEqual(readthrough.finish_date.day, 7)
-        self.assertEqual(readthrough.book, self.book)
-        self.assertEqual(readthrough.user, self.local_user)
+        to_read = self.local_user.shelf_set.get(identifier=models.Shelf.TO_READ)
+        self.assertEqual(to_read.films.get(), self.film)
+        self.assertFalse(models.Status.objects.exists())
 
-    def test_create_readthrough_with_error(self, *_):
-        """adding new read dates"""
+    def test_want_with_content(self, *_):
+        """wanting to watch with a note posts a Comment"""
         request = self.factory.post(
             "",
             {
-                "start_date": "2019-01-01",
-                "finish_date": "2017-03-07",
-                "book": self.book.id,
-                "id": "",
                 "user": self.local_user.id,
-            },
-        )
-        request.user = self.local_user
-        result = views.ReadThrough.as_view()(request)
-        self.assertEqual(models.ReadThrough.objects.count(), 0)
-        validate_html(result.render())
-
-    def test_update_progress_comment(self, *_):
-        """update progress with commentary"""
-        readthrough = models.ReadThrough.objects.create(
-            user=self.local_user, start_date=timezone.now(), book=self.book
-        )
-        request = self.factory.post(
-            "",
-            {
-                "post-status": True,
+                "film": self.film.id,
                 "privacy": "followers",
-                "start_date": "2020-01-05",
-                "content": "hello hello",
-                "book": self.book.id,
-                "mention_books": self.book.id,
-                "user": self.local_user.id,
-                "id": readthrough.id,
-                "progress": 23,
-                "progress_mode": "PCT",
+                "post-status": "on",
+                "content": "heard great things",
             },
         )
         request.user = self.local_user
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            views.update_progress(request, self.book.id)
+            result = views.ReadingStatus.as_view()(request, "want", self.film.id)
+        self.assertEqual(result.status_code, 302)
+
+        to_read = self.local_user.shelf_set.get(identifier=models.Shelf.TO_READ)
+        self.assertEqual(to_read.films.get(), self.film)
 
         status = models.Comment.objects.get()
         self.assertEqual(status.user, self.local_user)
-        self.assertEqual(status.book, self.book)
-        self.assertFalse(status.mention_books.exists())
+        self.assertEqual(status.film, self.film)
+        self.assertEqual(status.content, "<p>heard great things</p>")
         self.assertEqual(status.privacy, "followers")
-        self.assertEqual(status.content, "<p>hello hello</p>")
-        self.assertIsNone(status.reading_status)
-        self.assertEqual(status.progress, 23)
-        self.assertEqual(status.progress_mode, "PCT")
 
-        self.assertIsNotNone(readthrough.start_date)
-        self.assertIsNone(readthrough.finish_date)
-        self.assertEqual(readthrough.user, self.local_user)
-        self.assertEqual(readthrough.book, self.book)
+    def test_want_without_content(self, *_):
+        """wanting to watch without a note posts a GeneratedNote"""
+        request = self.factory.post(
+            "",
+            {
+                "user": self.local_user.id,
+                "film": self.film.id,
+                "privacy": "followers",
+                "post-status": "on",
+            },
+        )
+        request.user = self.local_user
+        with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
+            result = views.ReadingStatus.as_view()(request, "want", self.film.id)
+        self.assertEqual(result.status_code, 302)
+
+        to_read = self.local_user.shelf_set.get(identifier=models.Shelf.TO_READ)
+        self.assertEqual(to_read.films.get(), self.film)
+
+        status = models.GeneratedNote.objects.get()
+        self.assertEqual(status.user, self.local_user)
+        self.assertEqual(status.mention_films.get(), self.film)
+        self.assertEqual(status.privacy, "followers")

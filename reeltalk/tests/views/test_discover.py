@@ -55,28 +55,28 @@ class DiscoverViews(TestCase):
         request = self.factory.get("")
         request.user = self.local_user
 
-        book = models.Edition.objects.create(
-            title="hi", parent_work=models.Work.objects.create(title="work")
-        )
+        # a distinct film per status: the discover page renders one finish
+        # modal per film tile and reusing a film would duplicate its ids
+        films = [models.Film.objects.create(title=f"hi {i}") for i in range(4)]
 
         models.ReviewRating.objects.create(
-            book=book,
+            film=films[0],
             user=self.local_user,
             rating=4,
         )
         models.Review.objects.create(
-            book=book,
+            film=films[1],
             user=self.local_user,
             content="hello",
             rating=4,
         )
         models.Comment.objects.create(
-            book=book,
+            film=films[2],
             user=self.local_user,
             content="hello",
         )
         models.Quotation.objects.create(
-            book=book,
+            film=films[3],
             user=self.local_user,
             quote="beep",
             content="hello",

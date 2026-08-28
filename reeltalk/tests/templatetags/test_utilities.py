@@ -38,8 +38,7 @@ class UtilitiesTags(TestCase):
                 remote_id="http://example.com/rat",
                 local=False,
             )
-        cls.author = models.Author.objects.create(name="Jessica", isni="4")
-        cls.book = models.Edition.objects.create(title="Test Book")
+        cls.film = models.Film.objects.create(title="Test Film")
 
     def test_get_uuid(self, *_):
         """uuid functionality"""
@@ -70,11 +69,19 @@ class UtilitiesTags(TestCase):
         self.assertIsNone(result)
 
     def test_get_title(self, *_):
-        """the title of a book"""
+        """the title of a film"""
         self.assertEqual(utilities.get_title(None), "")
-        self.assertEqual(utilities.get_title(self.book), "Test Book")
-        book = models.Edition.objects.create(title="Oh", subtitle="oh my")
-        self.assertEqual(utilities.get_title(book), "Oh: oh my")
+        self.assertEqual(utilities.get_title(self.film), "Test Film")
+        film = models.Film.objects.create(title="Oh", subtitle="oh my")
+        self.assertEqual(utilities.get_title(film), "Oh: oh my")
+
+    def test_get_title_too_short(self, *_):
+        """the too_short threshold can be overridden"""
+        film = models.Film.objects.create(title="Test Film", subtitle="oh my")
+        # default threshold (5) is below the title length: no subtitle shown
+        self.assertEqual(utilities.get_title(film), "Test Film")
+        # a higher threshold pulls in the subtitle
+        self.assertEqual(utilities.get_title(film, 10), "Test Film: oh my")
 
     def test_comparison_bool(self, *_):
         """just a simple comparison"""
@@ -90,14 +97,6 @@ class UtilitiesTags(TestCase):
         value = ValueMock("home/one/two/three/four")
         self.assertEqual(utilities.truncatepath(value, 2), "home/…ur")
         self.assertEqual(utilities.truncatepath(value, "a"), "four")
-
-    def test_get_isni_bio(self, *_):
-        """get ISNI bio"""
-        DataMock = namedtuple("Data", ("bio", "isni"))
-        data = [DataMock(r"One\Dtwo", "4"), DataMock("Not used", "4")]
-
-        result = utilities.get_isni_bio(data, self.author)
-        self.assertEqual(result, "Author of <em>One\\Dtwo</em>")
 
     def test_id_to_username(self, *_):
         """given an arbitrary remote id, return the username"""

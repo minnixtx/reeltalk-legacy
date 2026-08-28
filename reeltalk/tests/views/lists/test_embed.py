@@ -31,11 +31,9 @@ class ListViews(TestCase):
                 localname="mouse",
                 remote_id="https://example.com/users/mouse",
             )
-        work = models.Work.objects.create(title="Work")
-        cls.book = models.Edition.objects.create(
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
-            parent_work=work,
+        cls.film = models.Film.objects.create(
+            title="Example Film",
+            remote_id="https://example.com/film/1",
         )
 
         with (
@@ -57,9 +55,9 @@ class ListViews(TestCase):
         request.user = self.anonymous_user
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.local_user,
-                edition=self.book,
+                film=self.film,
                 approved=True,
                 order=1,
             )
@@ -76,9 +74,9 @@ class ListViews(TestCase):
         request.user = self.anonymous_user
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.local_user,
-                edition=self.book,
+                film=self.film,
                 approved=True,
                 order=1,
             )

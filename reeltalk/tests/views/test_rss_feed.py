@@ -23,11 +23,9 @@ class RssFeedView(TestCase):
             cls.local_user = models.User.objects.create_user(
                 "rss_user", "rss@test.rss", "password", local=True
             )
-        work = models.Work.objects.create(title="Test Work")
-        cls.book = models.Edition.objects.create(
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
-            parent_work=work,
+        cls.film = models.Film.objects.create(
+            title="Example Film",
+            remote_id="https://example.com/film/1",
         )
 
     def setUp(self):
@@ -48,14 +46,14 @@ class RssFeedView(TestCase):
         models.Comment.objects.create(
             content="comment test content",
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         view = rss_feed.RssFeed()
         request = self.factory.get("/user/rss_user/rss")
         request.user = self.local_user
         result = view(request, username=self.local_user.username)
         self.assertEqual(result.status_code, 200)
-        self.assertIn(b"Example Edition", result.content)
+        self.assertIn(b"Example Film", result.content)
 
     def test_rss_review(self, *_):
         """load an rss feed"""
@@ -64,7 +62,7 @@ class RssFeedView(TestCase):
             content="test content",
             rating=3,
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         view = rss_feed.RssFeed()
         request = self.factory.get("/user/rss_user/rss")
@@ -78,7 +76,7 @@ class RssFeedView(TestCase):
             quote="a sickening sense",
             content="test content",
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         view = rss_feed.RssFeed()
         request = self.factory.get("/user/rss_user/rss")
@@ -93,14 +91,14 @@ class RssFeedView(TestCase):
         models.Comment.objects.create(
             content="comment test content",
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         view = rss_feed.RssCommentsOnlyFeed()
         request = self.factory.get("/user/rss_user/rss")
         request.user = self.local_user
         result = view(request, username=self.local_user.username)
         self.assertEqual(result.status_code, 200)
-        self.assertIn(b"Example Edition", result.content)
+        self.assertIn(b"Example Film", result.content)
 
     def test_rss_review_only(self, *_):
         """load an rss feed"""
@@ -109,7 +107,7 @@ class RssFeedView(TestCase):
             content="test content",
             rating=3,
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         view = rss_feed.RssReviewsOnlyFeed()
         request = self.factory.get("/user/rss_user/rss")
@@ -123,7 +121,7 @@ class RssFeedView(TestCase):
             quote="a sickening sense",
             content="test content",
             user=self.local_user,
-            book=self.book,
+            film=self.film,
         )
         view = rss_feed.RssQuotesOnlyFeed()
         request = self.factory.get("/user/rss_user/rss")
@@ -137,23 +135,23 @@ class RssFeedView(TestCase):
         """load the rss feed of a shelf"""
         with (
             patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"),
-            patch("reeltalk.activitystreams.add_book_statuses_task.delay"),
+            patch("reeltalk.activitystreams.add_film_statuses_task.delay"),
         ):
             # make the shelf
             shelf = models.Shelf.objects.create(
                 name="Test Shelf", identifier="test-shelf", user=self.local_user
             )
-            # put the shelf on the book
-            models.ShelfBook.objects.create(
-                book=self.book,
+            # put the film on the shelf
+            models.ShelfFilm.objects.create(
+                film=self.film,
                 shelf=shelf,
                 user=self.local_user,
             )
         view = rss_feed.RssShelfFeed()
-        request = self.factory.get("/user/books/test-shelf/rss")
+        request = self.factory.get("/user/films/test-shelf/rss")
         request.user = self.local_user
         result = view(
             request, username=self.local_user.username, shelf_identifier="test-shelf"
         )
         self.assertEqual(result.status_code, 200)
-        self.assertIn(b"Example Edition", result.content)
+        self.assertIn(b"Example Film", result.content)

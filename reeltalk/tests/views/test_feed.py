@@ -44,10 +44,9 @@ class FeedViews(TestCase):
                 local=True,
                 localname="nutria",
             )
-        cls.book = models.Edition.objects.create(
-            parent_work=models.Work.objects.create(title="hi"),
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
+        cls.film = models.Film.objects.create(
+            title="Example Film",
+            remote_id="https://example.com/film/1",
         )
 
     def setUp(self):
@@ -158,7 +157,7 @@ class FeedViews(TestCase):
             status = models.Review.objects.create(
                 content="hi",
                 user=self.local_user,
-                book=self.book,
+                film=self.film,
             )
             attachment = models.Image.objects.create(
                 status=status, caption="alt text here"
@@ -223,42 +222,41 @@ class FeedViews(TestCase):
         self.assertEqual(result.context_data["partner"], self.another_user)
 
     @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
-    @patch("reeltalk.activitystreams.add_book_statuses_task.delay")
-    def test_get_suggested_book(self, *_):
-        """gets books the ~*~ algorithm ~*~ thinks you want to post about"""
-        models.ShelfBook.objects.create(
-            book=self.book,
+    @patch("reeltalk.activitystreams.add_film_statuses_task.delay")
+    def test_get_suggested_film(self, *_):
+        """gets films the ~*~ algorithm ~*~ thinks you want to post about"""
+        models.ShelfFilm.objects.create(
+            film=self.film,
             user=self.local_user,
             shelf=self.local_user.shelf_set.get(identifier="to-read"),
         )
-        suggestions = views.feed.get_suggested_books(self.local_user)
+        suggestions = views.feed.get_suggested_films(self.local_user)
         self.assertEqual(suggestions[0]["name"], "Want to Watch")
-        self.assertEqual(suggestions[0]["books"][0], self.book)
+        self.assertEqual(suggestions[0]["films"][0], self.film)
 
-    def test_get_suggested_book_filters_blocked(self, *_):
-        """gets books you're interested in minus books you definitely don't want to see"""
+    def test_get_suggested_film_filters_blocked(self, *_):
+        """gets films you're interested in minus films you definitely don't want to see"""
 
-        models.ShelfBook.objects.create(
-            book=self.book,
+        models.ShelfFilm.objects.create(
+            film=self.film,
             user=self.local_user,
             shelf=self.local_user.shelf_set.get(identifier="to-read"),
         )
 
-        awful_book = models.Edition.objects.create(
-            parent_work=models.Work.objects.create(title="bad book"),
-            title="This book is very bad",
-            remote_id="https://example.com/book/99",
+        awful_film = models.Film.objects.create(
+            title="This film is very bad",
+            remote_id="https://example.com/film/99",
         )
 
-        self.local_user.blocked_books.add(awful_book.parent_work)
+        self.local_user.blocked_films.add(awful_film)
 
-        models.ShelfBook.objects.create(
-            book=awful_book,
+        models.ShelfFilm.objects.create(
+            film=awful_film,
             user=self.local_user,
             shelf=self.local_user.shelf_set.get(identifier="to-read"),
         )
 
-        suggestions = views.feed.get_suggested_books(self.local_user)
+        suggestions = views.feed.get_suggested_films(self.local_user)
         self.assertEqual(suggestions[0]["name"], "Want to Watch")
-        self.assertEqual(suggestions[0]["books"][0], self.book)
-        self.assertTrue(awful_book not in suggestions[0]["books"])
+        self.assertEqual(suggestions[0]["films"][0], self.film)
+        self.assertTrue(awful_film not in list(suggestions[0]["films"]))

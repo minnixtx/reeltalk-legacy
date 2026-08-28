@@ -1,7 +1,6 @@
 """tests incoming activities"""
 
 import json
-import pathlib
 from unittest.mock import patch
 
 from django.core.exceptions import PermissionDenied
@@ -108,7 +107,7 @@ class Inbox(TestCase):
         activity = self.create_json
         activity["object"] = {
             "id": "https://example.com/list/22",
-            "type": "BookList",
+            "type": "FilmList",
             "totalItems": 1,
             "first": "https://example.com/list/22?page=1",
             "last": "https://example.com/list/22?page=1",
@@ -161,12 +160,18 @@ class Inbox(TestCase):
         """don't let deactivated users post"""
         self.remote_user.delete(broadcast=False)
         self.assertTrue(self.remote_user.deleted)
-        datafile = pathlib.Path(__file__).parent.joinpath("../../data/ap_note.json")
-        status_data = json.loads(datafile.read_bytes())
         activity = self.create_json
         activity["actor"] = self.remote_user.remote_id
-        activity["object"] = status_data
-        activity["type"] = "Create"
+        activity["object"] = {
+            "id": "https://example.com/users/rat/statuses/1234567",
+            "type": "Note",
+            "published": "2020-12-13T05:09:29Z",
+            "attributedTo": self.remote_user.remote_id,
+            "to": ["https://example.com/user/mouse"],
+            "cc": [],
+            "sensitive": False,
+            "content": "test content in note",
+        }
 
         response = self.client.post(
             "/inbox",

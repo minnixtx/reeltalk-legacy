@@ -48,11 +48,9 @@ class HashtagView(TestCase):
                 remote_id="https://example.com/users/other",
             )
 
-        cls.work = models.Work.objects.create(title="Test Work")
-        cls.book = models.Edition.objects.create(
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
-            parent_work=cls.work,
+        cls.film = models.Film.objects.create(
+            title="Example Film",
+            remote_id="https://example.com/film/1",
         )
 
         cls.hashtag_bookclub = models.Hashtag.objects.create(name="#BookClub")
@@ -62,7 +60,7 @@ class HashtagView(TestCase):
         ):
             cls.statuses_bookclub = [
                 models.Comment.objects.create(
-                    book=cls.book, user=cls.local_user, content="#BookClub"
+                    film=cls.film, user=cls.local_user, content="#BookClub"
                 ),
             ]
         for status in cls.statuses_bookclub:
@@ -98,7 +96,7 @@ class HashtagView(TestCase):
             patch("reeltalk.activitystreams.add_status_task.delay"),
         ):
             status = models.Comment.objects.create(
-                user=self.local_user, book=self.book, content="#test", privacy="direct"
+                user=self.local_user, film=self.film, content="#test", privacy="direct"
             )
             status.mention_hashtags.add(hashtag)
 
@@ -124,7 +122,7 @@ class HashtagView(TestCase):
         ):
             status = models.Comment.objects.create(
                 user=self.local_user,
-                book=self.book,
+                film=self.film,
                 content="#test",
                 privacy="unlisted",
             )
@@ -153,7 +151,7 @@ class HashtagView(TestCase):
         ):
             status = models.Comment.objects.create(
                 user=self.local_user,
-                book=self.book,
+                film=self.film,
                 content="#test",
                 privacy="followers",
             )

@@ -132,7 +132,7 @@ class InboxActivities(TestCase):
 
     def test_delete_list(self):
         """delete a list"""
-        book_list = models.List.objects.create(
+        film_list = models.List.objects.create(
             name="test list",
             user=self.remote_user,
             remote_id="https://example.com/list/1",
@@ -144,9 +144,9 @@ class InboxActivities(TestCase):
             "actor": "https://example.com/users/test-user",
             "to": ["https://www.w3.org/ns/activitystreams#Public"],
             "object": {
-                "id": book_list.remote_id,
+                "id": film_list.remote_id,
                 "owner": self.remote_user.remote_id,
-                "type": "BookList",
+                "type": "FilmList",
                 "totalItems": 0,
                 "first": "",
                 "name": "test list",

@@ -30,11 +30,9 @@ class ListViews(TestCase):
                 localname="mouse",
                 remote_id="https://example.com/users/mouse",
             )
-        work = models.Work.objects.create(title="Work")
-        cls.book = models.Edition.objects.create(
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
-            parent_work=work,
+        cls.film = models.Film.objects.create(
+            title="Example Film",
+            remote_id="https://example.com/film/1",
         )
 
         with (
@@ -56,9 +54,9 @@ class ListViews(TestCase):
         request.user = self.local_user
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.local_user,
-                edition=self.book,
+                film=self.film,
                 approved=False,
                 order=1,
             )
@@ -77,9 +75,9 @@ class ListViews(TestCase):
         view = views.Curate.as_view()
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             pending = models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.local_user,
-                edition=self.book,
+                film=self.film,
                 approved=False,
                 order=1,
             )
@@ -102,18 +100,18 @@ class ListViews(TestCase):
         self.assertEqual(activity["target"], self.list.remote_id)
 
         pending.refresh_from_db()
-        self.assertEqual(self.list.editions.count(), 1)
+        self.assertEqual(self.list.films.count(), 1)
         self.assertEqual(self.list.listitem_set.first(), pending)
         self.assertTrue(pending.approved)
 
     def test_curate_reject(self):
-        """approve a pending item"""
+        """reject a pending item"""
         view = views.Curate.as_view()
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            pending = models.ListItem.objects.create(
-                book_list=self.list,
+            models.ListItem.objects.create(
+                film_list=self.list,
                 user=self.local_user,
-                edition=self.book,
+                film=self.film,
                 approved=False,
                 order=1,
             )
@@ -121,7 +119,7 @@ class ListViews(TestCase):
         request = self.factory.post(
             "",
             {
-                "item": pending.id,
+                "item": models.ListItem.objects.get().id,
                 "approved": "false",
             },
         )
@@ -129,5 +127,5 @@ class ListViews(TestCase):
 
         view(request, self.list.id)
 
-        self.assertFalse(self.list.editions.exists())
+        self.assertFalse(self.list.films.exists())
         self.assertFalse(models.ListItem.objects.exists())

@@ -27,11 +27,9 @@ class ListItemViews(TestCase):
                 localname="mouse",
                 remote_id="https://example.com/users/mouse",
             )
-        work = models.Work.objects.create(title="Work")
-        cls.book = models.Edition.objects.create(
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
-            parent_work=work,
+        cls.film = models.Film.objects.create(
+            title="Example Film",
+            remote_id="https://example.com/film/1",
         )
         with (
             patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"),
@@ -48,17 +46,17 @@ class ListItemViews(TestCase):
         view = views.ListItem.as_view()
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             item = models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.local_user,
-                edition=self.book,
+                film=self.film,
                 approved=True,
                 order=1,
             )
         request = self.factory.post(
             "",
             {
-                "book_list": self.list.id,
-                "edition": self.book.id,
+                "film_list": self.list.id,
+                "film": self.film.id,
                 "user": self.local_user.id,
                 "notes": "beep boop",
             },

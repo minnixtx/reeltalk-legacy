@@ -47,16 +47,10 @@ class FollowViews(TestCase):
         cls.group = Group.objects.create(name="editor")
         cls.group.permissions.add(
             Permission.objects.create(
-                name="edit_book",
-                codename="edit_book",
+                name="edit_film",
+                codename="edit_film",
                 content_type=ContentType.objects.get_for_model(models.User),
             ).id
-        )
-        cls.work = models.Work.objects.create(title="Test Work")
-        cls.book = models.Edition.objects.create(
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
-            parent_work=cls.work,
         )
 
     def setUp(self):
@@ -229,7 +223,7 @@ class FollowViews(TestCase):
 
     def test_remote_follow_page(self, *_):
         """check remote follow page loads"""
-        request = self.factory.get("", {"acct": "mouse@local.com"})
+        request = self.factory.get("", {"user": self.local_user.username})
         request.user = self.remote_user
         result = views.remote_follow_page(request)
         self.assertIsInstance(result, TemplateResponse)

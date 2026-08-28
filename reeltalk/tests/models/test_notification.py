@@ -32,16 +32,12 @@ class Notification(TestCase):
                 inbox="https://example.com/users/rat/inbox",
                 outbox="https://example.com/users/rat/outbox",
             )
-        cls.work = models.Work.objects.create(title="Test Work")
-        cls.book = models.Edition.objects.create(
-            title="Test Book",
-            isbn_13="1234567890123",
-            remote_id="https://example.com/book/1",
-            parent_work=cls.work,
+        cls.film = models.Film.objects.create(
+            title="Test Film",
+            remote_id="https://example.com/film/1",
         )
-        cls.another_book = models.Edition.objects.create(
-            title="Second Test Book",
-            parent_work=models.Work.objects.create(title="Test Work"),
+        cls.another_film = models.Film.objects.create(
+            title="Second Test Film",
         )
 
     def test_notification(self):
@@ -116,7 +112,7 @@ class Notification(TestCase):
         test_list = models.List.objects.create(user=self.local_user, name="hi")
 
         models.ListItem.objects.create(
-            user=self.local_user, edition=self.book, book_list=test_list, order=1
+            user=self.local_user, film=self.film, film_list=test_list, order=1
         )
         self.assertFalse(models.Notification.objects.exists())
 
@@ -127,7 +123,7 @@ class Notification(TestCase):
         test_list = models.List.objects.create(user=self.remote_user, name="hi")
 
         models.ListItem.objects.create(
-            user=self.local_user, edition=self.book, book_list=test_list, order=1
+            user=self.local_user, film=self.film, film_list=test_list, order=1
         )
         self.assertFalse(models.Notification.objects.exists())
 
@@ -137,7 +133,7 @@ class Notification(TestCase):
         """Add list item notification"""
         test_list = models.List.objects.create(user=self.local_user, name="hi")
         list_item = models.ListItem.objects.create(
-            user=self.remote_user, edition=self.book, book_list=test_list, order=2
+            user=self.remote_user, film=self.film, film_list=test_list, order=2
         )
         notification = models.Notification.objects.get()
         self.assertEqual(notification.related_users.count(), 1)
@@ -147,8 +143,8 @@ class Notification(TestCase):
 
         models.ListItem.objects.create(
             user=self.remote_user,
-            edition=self.another_book,
-            book_list=test_list,
+            film=self.another_film,
+            film_list=test_list,
             order=3,
         )
         notification = models.Notification.objects.get()

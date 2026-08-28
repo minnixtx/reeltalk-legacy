@@ -38,32 +38,27 @@ class UserViews(TestCase):
         cls.rat = models.User.objects.create_user(
             "rat@local.com", "rat@rat.rat", "password", local=True, localname="rat"
         )
-        cls.book = models.Edition.objects.create(
-            title="test", parent_work=models.Work.objects.create(title="test work")
-        )
-        cls.another_book = models.Edition.objects.create(
-            title="test 2", parent_work=models.Work.objects.create(title="test work 2")
-        )
-        cls.book_recently_shelved = models.Edition.objects.create(
-            title="recently shelved",
-            parent_work=models.Work.objects.create(title="recent shelved"),
+        cls.film = models.Film.objects.create(title="test")
+        cls.another_film = models.Film.objects.create(title="test 2")
+        cls.film_recently_shelved = models.Film.objects.create(
+            title="recently shelved"
         )
         with (
             patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"),
             patch("reeltalk.suggested_users.rerank_suggestions_task.delay"),
-            patch("reeltalk.activitystreams.add_book_statuses_task.delay"),
+            patch("reeltalk.activitystreams.add_film_statuses_task.delay"),
         ):
-            models.ShelfBook.objects.create(
-                book=cls.book,
+            models.ShelfFilm.objects.create(
+                film=cls.film,
                 user=cls.local_user,
-                shelf=cls.local_user.shelf_set.first(),
+                shelf=cls.local_user.shelf_set.get(identifier="to-read"),
                 shelved_date=make_date(2020, 10, 21),
             )
 
-            models.ShelfBook.objects.create(
-                book=cls.book_recently_shelved,
+            models.ShelfFilm.objects.create(
+                film=cls.film_recently_shelved,
                 user=cls.local_user,
-                shelf=cls.local_user.shelf_set.first(),
+                shelf=cls.local_user.shelf_set.get(identifier="to-read"),
                 shelved_date=make_date(2024, 7, 1),
             )
 
@@ -209,7 +204,7 @@ class UserViews(TestCase):
         self.assertTrue(result.context_data["is_profile_locked"])
 
     def test_user_page_activity_sorted(self):
-        """the most recently shelved book should be displayed first"""
+        """the most recently shelved film should be displayed first"""
         view = views.User.as_view()
         request = self.factory.get("")
         request.user = self.local_user
@@ -221,9 +216,9 @@ class UserViews(TestCase):
         self.assertEqual(result.status_code, 200)
 
         first_shelf = result.context_data["shelves"][0]
-        first_book = first_shelf["books"][0]
+        first_film = first_shelf["films"][0]
 
-        self.assertEqual(first_book, self.book_recently_shelved)
+        self.assertEqual(first_film, self.film_recently_shelved)
 
     def test_followers_page(self):
         """there are so many views, this just makes sure it LOADS"""
@@ -385,51 +380,3 @@ class UserViews(TestCase):
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
 
-    def test_suggestions_page(self):
-        """view of all suggestions made by the user"""
-        suggestion_list = models.SuggestionList.objects.create(
-            suggests_for=self.book.parent_work
-        )
-        models.SuggestionListItem.objects.create(
-            book_list=suggestion_list,
-            user=self.local_user,
-            work=self.book_recently_shelved.parent_work,
-        )
-        models.SuggestionListItem.objects.create(
-            book_list=suggestion_list,
-            user=self.rat,
-            work=self.another_book.parent_work,
-        )
-
-        view = views.UserSuggestions.as_view()
-        request = self.factory.get("")
-        request.user = self.local_user
-        result = view(request, username="mouse")
-        self.assertIsInstance(result, TemplateResponse)
-        validate_html(result.render())
-        self.assertEqual(result.status_code, 200)
-
-        suggestions = result.context_data["suggestions"]
-        self.assertEqual(len(suggestions.object_list), 1)
-
-    def test_suggestions_page_empty(self):
-        """view of all suggestions made by the user"""
-        view = views.UserSuggestions.as_view()
-        request = self.factory.get("")
-        request.user = self.local_user
-        result = view(request, username="mouse")
-        self.assertIsInstance(result, TemplateResponse)
-        validate_html(result.render())
-        self.assertEqual(result.status_code, 200)
-
-        suggestions = result.context_data["suggestions"]
-        self.assertEqual(len(suggestions.object_list), 0)
-
-    def test_suggestions_page_is_not_self(self):
-        """view of all suggestions made by the user"""
-        view = views.UserSuggestions.as_view()
-        request = self.factory.get("")
-        request.user = self.anonymous_user
-        result = view(request, username="mouse")
-        self.assertEqual(result.status_code, 200)
-        validate_html(result.render())

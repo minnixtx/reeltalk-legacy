@@ -11,8 +11,8 @@ from reeltalk.tests.validate_html import validate_html
 
 
 @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
-class BlockedBooksViews(TestCase):
-    """block and unblock books"""
+class BlockedFilmsViews(TestCase):
+    """block and unblock films"""
 
     @classmethod
     def setUpTestData(cls):
@@ -26,11 +26,9 @@ class BlockedBooksViews(TestCase):
             localname="mouse",
         )
 
-        cls.work = models.Work.objects.create(title="Test Work")
-        cls.book = models.Edition.objects.create(
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
-            parent_work=cls.work,
+        cls.film = models.Film.objects.create(
+            title="Example Film",
+            remote_id="https://example.com/film/1",
         )
 
     def setUp(self):
@@ -39,7 +37,7 @@ class BlockedBooksViews(TestCase):
 
     def test_block_get(self, _):
         """there are so many views, this just makes sure it LOADS"""
-        view = views.BlockedBooks.as_view()
+        view = views.BlockedFilms.as_view()
         request = self.factory.get("")
         request.user = self.local_user
         result = view(request)
@@ -47,27 +45,33 @@ class BlockedBooksViews(TestCase):
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
 
-    def test_block_book(self, _):
-        """block a book"""
+    def test_block_film(self, _):
+        """block a film"""
 
-        self.assertFalse(self.work in self.local_user.blocked_books.all())
+        self.assertFalse(self.film in self.local_user.blocked_films.all())
 
-        view = views.BlockedBooks.as_view()
+        view = views.BlockedFilms.as_view()
         request = self.factory.post("")
         request.user = self.local_user
 
-        view(request, self.book.id)
+        with patch(
+            "reeltalk.activitystreams.remove_blocked_film_statuses_task.delay"
+        ):
+            view(request, self.film.id)
 
-        self.assertTrue(self.work in self.local_user.blocked_books.all())
+        self.assertTrue(self.film in self.local_user.blocked_films.all())
 
-    def test_unblock_book(self, _):
+    def test_unblock_film(self, _):
         """undo a block"""
 
-        self.local_user.blocked_books.add(self.work)
-        self.assertTrue(self.work in self.local_user.blocked_books.all())
+        self.local_user.blocked_films.add(self.film)
+        self.assertTrue(self.film in self.local_user.blocked_films.all())
 
         request = self.factory.post("")
         request.user = self.local_user
-        views.unblock_book(request, self.book.id)
+        with patch(
+            "reeltalk.activitystreams.add_blocked_film_statuses_task.delay"
+        ):
+            views.unblock_film(request, self.film.id)
 
-        self.assertFalse(self.work in self.local_user.blocked_books.all())
+        self.assertFalse(self.film in self.local_user.blocked_films.all())

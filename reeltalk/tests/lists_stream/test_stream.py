@@ -9,7 +9,7 @@ from reeltalk import lists_stream, models
 
 @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
 @patch("reeltalk.activitystreams.add_status_task.delay")
-@patch("reeltalk.activitystreams.add_book_statuses_task.delay")
+@patch("reeltalk.activitystreams.add_film_statuses_task.delay")
 @patch("reeltalk.suggested_users.rerank_suggestions_task.delay")
 @patch("reeltalk.activitystreams.populate_stream_task.delay")
 @patch("reeltalk.lists_stream.remove_list_task.delay")

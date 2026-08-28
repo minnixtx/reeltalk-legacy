@@ -224,9 +224,7 @@ class BaseActivity(TestCase):
                 content="test status",
                 user=self.user,
             )
-        book = models.Edition.objects.create(
-            title="Test Edition", remote_id="http://book.com/book"
-        )
+        film = models.Film.objects.create(title="Test Film")
         update_data = activitypub.Note(
             id=status.remote_id,
             content=status.content,
@@ -237,9 +235,9 @@ class BaseActivity(TestCase):
             tag=[
                 {"type": "Mention", "name": "gerald", "href": "http://example.com/a/b"},
                 {
-                    "type": "Edition",
-                    "name": "gerald j. books",
-                    "href": "http://book.com/book",
+                    "type": "Film",
+                    "name": "test film",
+                    "href": film.remote_id,
                 },
                 {
                     "type": "Hashtag",
@@ -250,7 +248,7 @@ class BaseActivity(TestCase):
         )
         update_data.to_model(model=models.Status, instance=status)
         self.assertEqual(status.mention_users.first(), self.user)
-        self.assertEqual(status.mention_books.first(), book)
+        self.assertEqual(status.mention_films.first(), film)
 
         hashtag = models.Hashtag.objects.filter(name="#BookClub").first()
         self.assertIsNotNone(hashtag)

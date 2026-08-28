@@ -12,7 +12,7 @@ class InboxRemove(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        """basic user and book data"""
+        """basic user and film data"""
         with (
             patch("reeltalk.suggested_users.rerank_suggestions_task.delay"),
             patch("reeltalk.activitystreams.populate_stream_task.delay"),
@@ -38,59 +38,61 @@ class InboxRemove(TestCase):
                 outbox="https://example.com/users/rat/outbox",
             )
 
-        cls.work = models.Work.objects.create(title="work title")
-        cls.book = models.Edition.objects.create(
+        cls.film = models.Film.objects.create(
             title="Test",
-            remote_id="https://bookwyrm.social/book/37292",
-            parent_work=cls.work,
+            remote_id="https://bookwyrm.social/film/37292",
         )
 
-    def test_handle_unshelve_book(self):
-        """remove a book from a shelf"""
+    def test_handle_unshelve_film(self):
+        """remove a film from a shelf"""
         shelf = models.Shelf.objects.create(user=self.remote_user, name="Test Shelf")
         shelf.remote_id = "https://bookwyrm.social/user/mouse/shelf/to-read"
         shelf.save()
 
-        shelfbook = models.ShelfBook.objects.create(
-            user=self.remote_user, shelf=shelf, book=self.book
+        shelffilm = models.ShelfFilm.objects.create(
+            user=self.remote_user, shelf=shelf, film=self.film
         )
+        shelffilm.remote_id = "https://example.com/shelffilm/6189"
+        shelffilm.save(broadcast=False)
 
-        self.assertEqual(shelf.books.first(), self.book)
-        self.assertEqual(shelf.books.count(), 1)
+        self.assertEqual(shelf.films.first(), self.film)
+        self.assertEqual(shelf.films.count(), 1)
 
         activity = {
-            "id": shelfbook.remote_id,
+            "id": shelffilm.remote_id,
             "type": "Remove",
             "actor": "https://example.com/users/rat",
             "object": {
                 "actor": self.remote_user.remote_id,
                 "type": "ShelfItem",
-                "book": self.book.remote_id,
-                "id": shelfbook.remote_id,
+                "film": "https://bookwyrm.social/film/37292",
+                "id": shelffilm.remote_id,
             },
             "target": "https://bookwyrm.social/user/mouse/shelf/to-read",
             "@context": "https://www.w3.org/ns/activitystreams",
         }
         views.inbox.activity_task(activity)
-        self.assertFalse(shelf.books.exists())
+        self.assertFalse(shelf.films.exists())
 
-    def test_handle_remove_book_from_list(self):
-        """listing a book"""
+    def test_handle_remove_film_from_list(self):
+        """remove a film from a list"""
         with (
             patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"),
             patch("reeltalk.lists_stream.remove_list_task.delay"),
         ):
-            booklist = models.List.objects.create(
+            film_list = models.List.objects.create(
                 name="test list",
                 user=self.local_user,
             )
             listitem = models.ListItem.objects.create(
                 user=self.local_user,
-                edition=self.book,
-                book_list=booklist,
+                film=self.film,
+                film_list=film_list,
                 order=1,
             )
-        self.assertEqual(booklist.editions.count(), 1)
+        listitem.remote_id = "https://example.com/listfilm/6189"
+        listitem.save(broadcast=False)
+        self.assertEqual(film_list.films.count(), 1)
 
         activity = {
             "id": listitem.remote_id,
@@ -99,12 +101,12 @@ class InboxRemove(TestCase):
             "object": {
                 "actor": self.remote_user.remote_id,
                 "type": "ListItem",
-                "book": self.book.remote_id,
+                "film": "https://bookwyrm.social/film/37292",
                 "id": listitem.remote_id,
             },
-            "target": booklist.remote_id,
+            "target": film_list.remote_id,
             "@context": "https://www.w3.org/ns/activitystreams",
         }
         views.inbox.activity_task(activity)
 
-        self.assertEqual(booklist.editions.count(), 0)
+        self.assertEqual(film_list.films.count(), 0)

@@ -9,8 +9,8 @@ from reeltalk import models, settings
 @patch("reeltalk.suggested_users.rerank_suggestions_task.delay")
 @patch("reeltalk.activitystreams.populate_stream_task.delay")
 @patch("reeltalk.lists_stream.populate_lists_task.delay")
-@patch("reeltalk.activitystreams.add_book_statuses_task.delay")
-@patch("reeltalk.activitystreams.remove_book_statuses_task.delay")
+@patch("reeltalk.activitystreams.add_film_statuses_task.delay")
+@patch("reeltalk.activitystreams.remove_film_statuses_task.delay")
 class Shelf(TestCase):
     """some activitypub oddness ahead"""
 
@@ -25,8 +25,7 @@ class Shelf(TestCase):
             cls.local_user = models.User.objects.create_user(
                 "mouse", "mouse@mouse.mouse", "mouseword", local=True, localname="mouse"
             )
-        work = models.Work.objects.create(title="Test Work")
-        cls.book = models.Edition.objects.create(title="test book", parent_work=work)
+        cls.film = models.Film.objects.create(title="Test Film")
 
     def test_remote_id(self, *_):
         """shelves use custom remote ids"""
@@ -34,7 +33,7 @@ class Shelf(TestCase):
             shelf = models.Shelf.objects.create(
                 name="Test Shelf", identifier="test-shelf", user=self.local_user
             )
-        expected_id = f"{settings.BASE_URL}/user/mouse/books/test-shelf"
+        expected_id = f"{settings.BASE_URL}/user/mouse/films/test-shelf"
         self.assertEqual(shelf.get_remote_id(), expected_id)
 
     def test_local_path_for_local_user_shelf(self, *_):
@@ -42,7 +41,7 @@ class Shelf(TestCase):
             shelf = models.Shelf.objects.create(
                 name="Test Shelf", identifier="test-shelf", user=self.local_user
             )
-        self.assertEqual(shelf.local_path, "/user/mouse/books/test-shelf")
+        self.assertEqual(shelf.local_path, "/user/mouse/films/test-shelf")
 
     def test_local_path_for_remote_user_shelf_stays_local(self, *_):
         remote_user = models.User.objects.create_user(
@@ -56,7 +55,7 @@ class Shelf(TestCase):
         shelf = models.Shelf.objects.create(
             name="Test Shelf", identifier="test-shelf", user=remote_user
         )
-        self.assertEqual(shelf.local_path, "/user/rat@example.com/books/test-shelf")
+        self.assertEqual(shelf.local_path, "/user/rat@example.com/films/test-shelf")
 
     def test_to_activity(self, *_):
         """jsonify it"""
@@ -107,25 +106,25 @@ class Shelf(TestCase):
         with patch(
             "reeltalk.models.activitypub_mixin.ActivitypubMixin.broadcast"
         ) as mock:
-            shelf_book = models.ShelfBook.objects.create(
-                shelf=shelf, user=self.local_user, book=self.book
+            shelf_film = models.ShelfFilm.objects.create(
+                shelf=shelf, user=self.local_user, film=self.film
             )
         self.assertEqual(mock.call_count, 1)
         activity = mock.call_args[0][0]
         self.assertEqual(activity["type"], "Add")
         self.assertEqual(activity["actor"], self.local_user.remote_id)
-        self.assertEqual(activity["object"]["id"], shelf_book.remote_id)
+        self.assertEqual(activity["object"]["id"], shelf_film.remote_id)
         self.assertEqual(activity["target"], shelf.remote_id)
-        self.assertEqual(shelf.books.first(), self.book)
+        self.assertEqual(shelf.films.first(), self.film)
 
         with patch(
             "reeltalk.models.activitypub_mixin.ActivitypubMixin.broadcast"
         ) as mock:
-            shelf_book.delete()
+            shelf_film.delete()
         self.assertEqual(mock.call_count, 1)
         activity = mock.call_args[0][0]
         self.assertEqual(activity["type"], "Remove")
         self.assertEqual(activity["actor"], self.local_user.remote_id)
-        self.assertEqual(activity["object"]["id"], shelf_book.remote_id)
+        self.assertEqual(activity["object"]["id"], shelf_film.remote_id)
         self.assertEqual(activity["target"], shelf.remote_id)
-        self.assertFalse(shelf.books.exists())
+        self.assertFalse(shelf.films.exists())

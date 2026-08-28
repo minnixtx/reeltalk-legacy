@@ -90,11 +90,9 @@ class InboxActivities(TestCase):
     @patch("reeltalk.activitystreams.handle_boost_task.delay")
     def test_boost_remote_status(self, _):
         """boost a status from a remote server"""
-        work = models.Work.objects.create(title="work title")
-        book = models.Edition.objects.create(
+        film = models.Film.objects.create(
             title="Test",
-            remote_id="https://bookwyrm.social/book/37292",
-            parent_work=work,
+            remote_id="https://bookwyrm.social/film/37292",
         )
         self.assertEqual(models.Notification.objects.count(), 0)
         activity = {
@@ -118,7 +116,7 @@ class InboxActivities(TestCase):
                 "to": ["https://www.w3.org/ns/activitystreams#Public"],
                 "cc": ["https://b875df3d118b.ngrok.io/user/mouse/followers"],
                 "inReplyTo": "",
-                "inReplyToBook": book.remote_id,
+                "inReplyToFilm": "https://bookwyrm.social/film/37292",
                 "summary": "",
                 "tag": [],
                 "sensitive": False,
@@ -133,7 +131,7 @@ class InboxActivities(TestCase):
         boost = models.Boost.objects.get()
         self.assertEqual(boost.boosted_status.remote_id, "https://remote.com/status/1")
         self.assertEqual(boost.boosted_status.comment.status_type, "Comment")
-        self.assertEqual(boost.boosted_status.comment.book, book)
+        self.assertEqual(boost.boosted_status.comment.film, film)
 
     @responses.activate
     def test_discarded_boost(self):

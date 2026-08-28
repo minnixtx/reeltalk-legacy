@@ -13,7 +13,7 @@ from reeltalk.tests.validate_html import validate_html
 
 
 class ShelfViews(TestCase):
-    """tag views"""
+    """shelf page views"""
 
     @classmethod
     def setUpTestData(cls):
@@ -26,15 +26,11 @@ class ShelfViews(TestCase):
             localname="mouse",
             remote_id="https://example.com/users/mouse",
         )
-        cls.work = models.Work.objects.create(title="Test Work")
-        cls.book = models.Edition.objects.create(
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
-            parent_work=cls.work,
-        )
-        cls.shelf = models.Shelf.objects.create(
-            name="Test Shelf", identifier="test-shelf", user=cls.local_user
-        )
+        cls.film = models.Film.objects.create(title="Example Film")
+        with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
+            cls.shelf = models.Shelf.objects.create(
+                name="Test Shelf", identifier="test-shelf", user=cls.local_user
+            )
 
     def setUp(self):
         """individual test setup"""
@@ -42,10 +38,10 @@ class ShelfViews(TestCase):
         self.anonymous_user = AnonymousUser
         self.anonymous_user.is_authenticated = False
 
-    def test_shelf_page_all_books(self):
+    def test_shelf_page_all_films(self):
         """there are so many views, this just makes sure it LOADS"""
-        models.ShelfBook.objects.create(
-            book=self.book,
+        models.ShelfFilm.objects.create(
+            film=self.film,
             shelf=self.shelf,
             user=self.local_user,
         )
@@ -59,8 +55,8 @@ class ShelfViews(TestCase):
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
 
-    def test_shelf_page_all_books_empty(self):
-        """No books shelved"""
+    def test_shelf_page_all_films_empty(self):
+        """No films shelved"""
         view = views.Shelf.as_view()
         request = self.factory.get("")
         request.user = self.local_user
@@ -71,15 +67,15 @@ class ShelfViews(TestCase):
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
 
-    def test_shelf_page_all_books_avoid_duplicates(self):
-        """Make sure books aren't showing up twice on the all shelves view"""
-        models.ShelfBook.objects.create(
-            book=self.book,
+    def test_shelf_page_all_films_avoid_duplicates(self):
+        """Make sure films aren't showing up twice on the all shelves view"""
+        models.ShelfFilm.objects.create(
+            film=self.film,
             shelf=self.shelf,
             user=self.local_user,
         )
-        models.ShelfBook.objects.create(
-            book=self.book,
+        models.ShelfFilm.objects.create(
+            film=self.film,
             shelf=self.local_user.shelf_set.first(),
             user=self.local_user,
         )
@@ -89,12 +85,12 @@ class ShelfViews(TestCase):
         with patch("reeltalk.views.shelf.shelf.is_api_request") as is_api:
             is_api.return_value = False
             result = view(request, username=self.local_user.username)
-        self.assertEqual(result.context_data["books"].object_list.count(), 1)
+        self.assertEqual(result.context_data["films"].object_list.count(), 1)
         self.assertIsInstance(result, TemplateResponse)
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
 
-    def test_shelf_page_all_books_json(self):
+    def test_shelf_page_all_films_json(self):
         """there is no json view here"""
         view = views.Shelf.as_view()
         request = self.factory.get("")
@@ -106,7 +102,7 @@ class ShelfViews(TestCase):
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
 
-    def test_shelf_page_all_books_anonymous(self):
+    def test_shelf_page_all_films_anonymous(self):
         """there are so many views, this just makes sure it LOADS"""
         view = views.Shelf.as_view()
         request = self.factory.get("")
@@ -162,45 +158,11 @@ class ShelfViews(TestCase):
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
 
-    def test_shelf_page_sorted_start_date(self):
+    def test_shelf_page_sorted_director(self):
         """there are so many views, this just makes sure it LOADS"""
         view = views.Shelf.as_view()
         shelf = self.local_user.shelf_set.first()
-        request = self.factory.get("", {"sort": "start_date"})
-        request.user = self.local_user
-        with patch("reeltalk.views.shelf.shelf.is_api_request") as is_api:
-            is_api.return_value = False
-            result = view(
-                request,
-                username=self.local_user.username,
-                shelf_identifier=shelf.identifier,
-            )
-        self.assertIsInstance(result, TemplateResponse)
-        validate_html(result.render())
-        self.assertEqual(result.status_code, 200)
-
-    def test_shelf_page_sorted_finish_date(self):
-        """there are so many views, this just makes sure it LOADS"""
-        view = views.Shelf.as_view()
-        shelf = self.local_user.shelf_set.first()
-        request = self.factory.get("", {"sort": "finish_date"})
-        request.user = self.local_user
-        with patch("reeltalk.views.shelf.shelf.is_api_request") as is_api:
-            is_api.return_value = False
-            result = view(
-                request,
-                username=self.local_user.username,
-                shelf_identifier=shelf.identifier,
-            )
-        self.assertIsInstance(result, TemplateResponse)
-        validate_html(result.render())
-        self.assertEqual(result.status_code, 200)
-
-    def test_shelf_page_sorted_author(self):
-        """there are so many views, this just makes sure it LOADS"""
-        view = views.Shelf.as_view()
-        shelf = self.local_user.shelf_set.first()
-        request = self.factory.get("", {"sort": "author"})
+        request = self.factory.get("", {"sort": "director"})
         request.user = self.local_user
         with patch("reeltalk.views.shelf.shelf.is_api_request") as is_api:
             is_api.return_value = False
@@ -306,19 +268,19 @@ class ShelfViews(TestCase):
         self.assertEqual(result.status_code, 200)
 
     def test_filter_shelf_found(self):
-        """display books that match a filter keyword"""
-        models.ShelfBook.objects.create(
-            book=self.book,
+        """display films that match a filter keyword"""
+        models.ShelfFilm.objects.create(
+            film=self.film,
             shelf=self.shelf,
             user=self.local_user,
         )
-        shelf_book = models.ShelfBook.objects.create(
-            book=self.book,
+        shelf_film = models.ShelfFilm.objects.create(
+            film=self.film,
             shelf=self.local_user.shelf_set.first(),
             user=self.local_user,
         )
         view = views.Shelf.as_view()
-        request = self.factory.get("", {"filter": shelf_book.book.title})
+        request = self.factory.get("", {"filter": shelf_film.film.title})
         request.user = self.local_user
         with patch("reeltalk.views.shelf.shelf.is_api_request") as is_api:
             is_api.return_value = False
@@ -326,16 +288,16 @@ class ShelfViews(TestCase):
         self.assertIsInstance(result, TemplateResponse)
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
-        self.assertEqual(len(result.context_data["books"].object_list), 1)
+        self.assertEqual(len(result.context_data["films"].object_list), 1)
         self.assertEqual(
-            result.context_data["books"].object_list[0].title,
-            shelf_book.book.title,
+            result.context_data["films"].object_list[0].title,
+            shelf_film.film.title,
         )
 
     def test_filter_shelf_none(self):
-        """display a message when no books match a filter keyword"""
-        models.ShelfBook.objects.create(
-            book=self.book,
+        """display a message when no films match a filter keyword"""
+        models.ShelfFilm.objects.create(
+            film=self.film,
             shelf=self.shelf,
             user=self.local_user,
         )
@@ -348,26 +310,24 @@ class ShelfViews(TestCase):
         self.assertIsInstance(result, TemplateResponse)
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
-        self.assertEqual(len(result.context_data["books"].object_list), 0)
+        self.assertEqual(len(result.context_data["films"].object_list), 0)
 
     def test_shelf_excludes_blocked(self):
-        """are blocked books actually blocked?"""
+        """are blocked films actually blocked?"""
         shelf = models.Shelf.objects.get(user=self.local_user, identifier="read")
-        work = models.Work.objects.create(title="Awful Book")
-        awful_book = models.Edition.objects.create(
-            title="Awful Edition",
-            remote_id="https://example.com/book/99",
-            parent_work=work,
+        awful_film = models.Film.objects.create(
+            title="Awful Film",
+            remote_id="https://example.com/film/99",
         )
 
-        models.ShelfBook.objects.create(
-            shelf=shelf, user=self.local_user, book=awful_book
+        models.ShelfFilm.objects.create(
+            shelf=shelf, user=self.local_user, film=awful_film
         )
-        models.ShelfBook.objects.create(
-            shelf=shelf, user=self.local_user, book=self.book
+        models.ShelfFilm.objects.create(
+            shelf=shelf, user=self.local_user, film=self.film
         )
 
-        self.local_user.blocked_books.add(work)
+        self.local_user.blocked_films.add(awful_film)
 
         view = views.Shelf.as_view()
         request = self.factory.get("")
@@ -377,6 +337,6 @@ class ShelfViews(TestCase):
         self.assertIsInstance(result, TemplateResponse)
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
-        self.assertEqual(len(result.context_data["books"].object_list), 1)
-        self.assertFalse(awful_book in result.context_data["books"].object_list)
-        self.assertEqual(result.context_data["books"].object_list, [self.book])
+        self.assertEqual(len(result.context_data["films"].object_list), 1)
+        self.assertFalse(awful_film in result.context_data["films"].object_list)
+        self.assertEqual(result.context_data["films"].object_list, [self.film])

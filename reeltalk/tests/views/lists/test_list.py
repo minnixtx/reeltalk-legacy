@@ -40,29 +40,21 @@ class ListViews(TestCase):
                 localname="rat",
                 remote_id="https://example.com/users/rat",
             )
-        work = models.Work.objects.create(title="Work")
-        cls.edition = models.Edition.objects.create(
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
-            parent_work=work,
+        cls.film = models.Film.objects.create(
+            title="Example Film",
+            remote_id="https://example.com/film/1",
         )
-        work_two = models.Work.objects.create(title="Labori")
-        cls.book_two = models.Edition.objects.create(
-            title="Example Edition 2",
-            remote_id="https://example.com/book/2",
-            parent_work=work_two,
+        cls.film_two = models.Film.objects.create(
+            title="Example Film 2",
+            remote_id="https://example.com/film/2",
         )
-        work_three = models.Work.objects.create(title="Trabajar")
-        cls.book_three = models.Edition.objects.create(
-            title="Example Edition 3",
-            remote_id="https://example.com/book/3",
-            parent_work=work_three,
+        cls.film_three = models.Film.objects.create(
+            title="Example Film 3",
+            remote_id="https://example.com/film/3",
         )
-        work_four = models.Work.objects.create(title="Travailler")
-        cls.book_four = models.Edition.objects.create(
-            title="Example Edition 4",
-            remote_id="https://example.com/book/4",
-            parent_work=work_four,
+        cls.film_four = models.Film.objects.create(
+            title="Example Film 4",
+            remote_id="https://example.com/film/4",
         )
 
         with (
@@ -84,9 +76,9 @@ class ListViews(TestCase):
         request.user = self.local_user
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.local_user,
-                edition=self.edition,
+                film=self.film,
                 approved=True,
                 notes="hello",
                 order=1,
@@ -100,9 +92,9 @@ class ListViews(TestCase):
         self.assertEqual(result.status_code, 200)
 
     def test_list_page_with_query(self):
-        """searching for a book to add"""
+        """searching for a film to add"""
         view = views.List.as_view()
-        request = self.factory.get("", {"q": "Example Edition"})
+        request = self.factory.get("", {"q": "Example Film"})
         request.user = self.local_user
 
         with patch("reeltalk.views.list.list.is_api_request") as is_api:
@@ -116,11 +108,11 @@ class ListViews(TestCase):
         """there are so many views, this just makes sure it LOADS"""
         view = views.List.as_view()
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            for i, book in enumerate([self.edition, self.book_two, self.book_three]):
+            for i, film in enumerate([self.film, self.film_two, self.film_three]):
                 models.ListItem.objects.create(
-                    book_list=self.list,
+                    film_list=self.list,
                     user=self.local_user,
-                    edition=book,
+                    film=film,
                     approved=True,
                     order=i + 1,
                 )
@@ -134,7 +126,7 @@ class ListViews(TestCase):
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
 
-        request = self.factory.get("/?sort_by=title")
+        request = self.factory.get("/?sort_by=sort_title")
         request.user = self.local_user
         with patch("reeltalk.views.list.list.is_api_request") as is_api:
             is_api.return_value = False
@@ -179,9 +171,9 @@ class ListViews(TestCase):
         view = views.List.as_view()
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.local_user,
-                edition=self.edition,
+                film=self.film,
                 notes="hi hello",
                 approved=True,
                 order=1,
@@ -203,9 +195,9 @@ class ListViews(TestCase):
         request.user = self.local_user
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.local_user,
-                edition=self.edition,
+                film=self.film,
                 approved=True,
                 order=1,
             )
@@ -271,16 +263,16 @@ class ListViews(TestCase):
         """delete an entire list"""
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.local_user,
-                edition=self.edition,
+                film=self.film,
                 approved=True,
                 order=1,
             )
             models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.local_user,
-                edition=self.book_two,
+                film=self.film_two,
                 approved=False,
                 order=2,
             )
@@ -298,7 +290,7 @@ class ListViews(TestCase):
         self.assertEqual(activity["type"], "Delete")
         self.assertEqual(activity["actor"], self.local_user.remote_id)
         self.assertEqual(activity["object"]["id"], self.list.remote_id)
-        self.assertEqual(activity["object"]["type"], "BookList")
+        self.assertEqual(activity["object"]["type"], "FilmList")
 
         self.assertEqual(mock.call_count, 1)
         self.assertFalse(models.List.objects.exists())
@@ -311,13 +303,13 @@ class ListViews(TestCase):
         with self.assertRaises(PermissionDenied):
             views.delete_list(request, self.list.id)
 
-    def test_add_book(self):
-        """put a book on a list"""
+    def test_add_film(self):
+        """put a film on a list"""
         request = self.factory.post(
             "",
             {
-                "edition": self.edition.id,
-                "book_list": self.list.id,
+                "film": self.film.id,
+                "film_list": self.list.id,
                 "user": self.local_user.id,
             },
         )
@@ -326,7 +318,7 @@ class ListViews(TestCase):
         with patch(
             "reeltalk.models.activitypub_mixin.ActivitypubMixin.broadcast"
         ) as mock:
-            views.add_book(request)
+            views.add_film(request)
             self.assertEqual(mock.call_count, 1)
             activity = mock.call_args[0][0]
             self.assertEqual(activity["type"], "Add")
@@ -334,20 +326,20 @@ class ListViews(TestCase):
             self.assertEqual(activity["target"], self.list.remote_id)
 
         item = self.list.listitem_set.get()
-        self.assertEqual(item.edition, self.edition)
+        self.assertEqual(item.film, self.film)
         self.assertEqual(item.user, self.local_user)
         self.assertTrue(item.approved)
 
-    def test_add_two_books(self):
+    def test_add_two_films(self):
         """
-        Putting two books on the list. The first should have an order value of
+        Putting two films on the list. The first should have an order value of
         1 and the second should have an order value of 2.
         """
         request_one = self.factory.post(
             "",
             {
-                "edition": self.edition.id,
-                "book_list": self.list.id,
+                "film": self.film.id,
+                "film_list": self.list.id,
                 "user": self.local_user.id,
             },
         )
@@ -356,32 +348,32 @@ class ListViews(TestCase):
         request_two = self.factory.post(
             "",
             {
-                "edition": self.book_two.id,
-                "book_list": self.list.id,
+                "film": self.film_two.id,
+                "film_list": self.list.id,
                 "user": self.local_user.id,
             },
         )
         request_two.user = self.local_user
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            views.add_book(request_one)
-            views.add_book(request_two)
+            views.add_film(request_one)
+            views.add_film(request_two)
 
         items = self.list.listitem_set.order_by("order").all()
-        self.assertEqual(items[0].edition, self.edition)
-        self.assertEqual(items[1].edition, self.book_two)
+        self.assertEqual(items[0].film, self.film)
+        self.assertEqual(items[1].film, self.film_two)
         self.assertEqual(items[0].order, 1)
         self.assertEqual(items[1].order, 2)
 
-    def test_add_three_books_and_remove_second(self):
+    def test_add_three_films_and_remove_second(self):
         """
-        Put three books on a list and then remove the one in the middle. The
+        Put three films on a list and then remove the one in the middle. The
         ordering of the list should adjust to not have a gap.
         """
         request_one = self.factory.post(
             "",
             {
-                "edition": self.edition.id,
-                "book_list": self.list.id,
+                "film": self.film.id,
+                "film_list": self.list.id,
                 "user": self.local_user.id,
             },
         )
@@ -390,8 +382,8 @@ class ListViews(TestCase):
         request_two = self.factory.post(
             "",
             {
-                "edition": self.book_two.id,
-                "book_list": self.list.id,
+                "film": self.film_two.id,
+                "film_list": self.list.id,
                 "user": self.local_user.id,
             },
         )
@@ -400,22 +392,22 @@ class ListViews(TestCase):
         request_three = self.factory.post(
             "",
             {
-                "edition": self.book_three.id,
-                "book_list": self.list.id,
+                "film": self.film_three.id,
+                "film_list": self.list.id,
                 "user": self.local_user.id,
             },
         )
         request_three.user = self.local_user
 
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            views.add_book(request_one)
-            views.add_book(request_two)
-            views.add_book(request_three)
+            views.add_film(request_one)
+            views.add_film(request_two)
+            views.add_film(request_three)
 
         items = self.list.listitem_set.order_by("order").all()
-        self.assertEqual(items[0].edition, self.edition)
-        self.assertEqual(items[1].edition, self.book_two)
-        self.assertEqual(items[2].edition, self.book_three)
+        self.assertEqual(items[0].film, self.film)
+        self.assertEqual(items[1].film, self.film_two)
+        self.assertEqual(items[2].film, self.film_three)
         self.assertEqual(items[0].order, 1)
         self.assertEqual(items[1].order, 2)
         self.assertEqual(items[2].order, 3)
@@ -423,91 +415,91 @@ class ListViews(TestCase):
         remove_request = self.factory.post("", {"item": items[1].id})
         remove_request.user = self.local_user
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            views.remove_book(remove_request, self.list.id)
+            views.remove_film(remove_request, self.list.id)
         items = self.list.listitem_set.order_by("order").all()
-        self.assertEqual(items[0].edition, self.edition)
-        self.assertEqual(items[1].edition, self.book_three)
+        self.assertEqual(items[0].film, self.film)
+        self.assertEqual(items[1].film, self.film_three)
         self.assertEqual(items[0].order, 1)
         self.assertEqual(items[1].order, 2)
 
-    def test_adding_book_with_a_pending_book(self):
+    def test_adding_film_with_a_pending_film(self):
         """
-        When a list contains any pending books, the pending books should have
-        be at the end of the list by order. If a book is added while a book is
-        pending, its order should precede the pending books.
+        When a list contains any pending films, the pending films should have
+        be at the end of the list by order. If a film is added while a film is
+        pending, its order should precede the pending films.
         """
         request = self.factory.post(
             "",
             {
-                "edition": self.book_three.id,
-                "book_list": self.list.id,
+                "film": self.film_three.id,
+                "film_list": self.list.id,
                 "user": self.local_user.id,
             },
         )
         request.user = self.local_user
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.local_user,
-                edition=self.edition,
+                film=self.film,
                 approved=True,
                 order=1,
             )
             models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.rat,
-                edition=self.book_two,
+                film=self.film_two,
                 approved=False,
                 order=2,
             )
-            views.add_book(request)
+            views.add_film(request)
 
         items = self.list.listitem_set.order_by("order").all()
-        self.assertEqual(items[0].edition, self.edition)
+        self.assertEqual(items[0].film, self.film)
         self.assertEqual(items[0].order, 1)
         self.assertTrue(items[0].approved)
 
-        self.assertEqual(items[1].edition, self.book_three)
+        self.assertEqual(items[1].film, self.film_three)
         self.assertEqual(items[1].order, 2)
         self.assertTrue(items[1].approved)
 
-        self.assertEqual(items[2].edition, self.book_two)
+        self.assertEqual(items[2].film, self.film_two)
         self.assertEqual(items[2].order, 3)
         self.assertFalse(items[2].approved)
 
-    def test_approving_one_pending_book_from_multiple(self):
+    def test_approving_one_pending_film_from_multiple(self):
         """
-        When a list contains any pending books, the pending books should have
-        be at the end of the list by order. If a pending book is approved, then
-        its order should be at the end of the approved books and before the
-        remaining pending books.
+        When a list contains any pending films, the pending films should have
+        be at the end of the list by order. If a pending film is approved, then
+        its order should be at the end of the approved films and before the
+        remaining pending films.
         """
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.local_user,
-                edition=self.edition,
+                film=self.film,
                 approved=True,
                 order=1,
             )
             models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.local_user,
-                edition=self.book_two,
+                film=self.film_two,
                 approved=True,
                 order=2,
             )
             models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.rat,
-                edition=self.book_three,
+                film=self.film_three,
                 approved=False,
                 order=3,
             )
             to_be_approved = models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.rat,
-                edition=self.book_four,
+                film=self.film_four,
                 approved=False,
                 order=4,
             )
@@ -526,32 +518,32 @@ class ListViews(TestCase):
             view(request, self.list.id)
 
         items = self.list.listitem_set.order_by("order").all()
-        self.assertEqual(items[0].edition, self.edition)
+        self.assertEqual(items[0].film, self.film)
         self.assertEqual(items[0].order, 1)
         self.assertTrue(items[0].approved)
 
-        self.assertEqual(items[1].edition, self.book_two)
+        self.assertEqual(items[1].film, self.film_two)
         self.assertEqual(items[1].order, 2)
         self.assertTrue(items[1].approved)
 
-        self.assertEqual(items[2].edition, self.book_four)
+        self.assertEqual(items[2].film, self.film_four)
         self.assertEqual(items[2].order, 3)
         self.assertTrue(items[2].approved)
 
-        self.assertEqual(items[3].edition, self.book_three)
+        self.assertEqual(items[3].film, self.film_three)
         self.assertEqual(items[3].order, 4)
         self.assertFalse(items[3].approved)
 
-    def test_add_three_books_and_move_last_to_first(self):
+    def test_add_three_films_and_move_last_to_first(self):
         """
-        Put three books on the list and move the last book to the first
+        Put three films on the list and move the last film to the first
         position.
         """
         request_one = self.factory.post(
             "",
             {
-                "edition": self.edition.id,
-                "book_list": self.list.id,
+                "film": self.film.id,
+                "film_list": self.list.id,
                 "user": self.local_user.id,
             },
         )
@@ -560,8 +552,8 @@ class ListViews(TestCase):
         request_two = self.factory.post(
             "",
             {
-                "edition": self.book_two.id,
-                "book_list": self.list.id,
+                "film": self.film_two.id,
+                "film_list": self.list.id,
                 "user": self.local_user.id,
             },
         )
@@ -570,22 +562,22 @@ class ListViews(TestCase):
         request_three = self.factory.post(
             "",
             {
-                "edition": self.book_three.id,
-                "book_list": self.list.id,
+                "film": self.film_three.id,
+                "film_list": self.list.id,
                 "user": self.local_user.id,
             },
         )
         request_three.user = self.local_user
 
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            views.add_book(request_one)
-            views.add_book(request_two)
-            views.add_book(request_three)
+            views.add_film(request_one)
+            views.add_film(request_two)
+            views.add_film(request_three)
 
         items = self.list.listitem_set.order_by("order").all()
-        self.assertEqual(items[0].edition, self.edition)
-        self.assertEqual(items[1].edition, self.book_two)
-        self.assertEqual(items[2].edition, self.book_three)
+        self.assertEqual(items[0].film, self.film)
+        self.assertEqual(items[1].film, self.film_two)
+        self.assertEqual(items[2].film, self.film_three)
         self.assertEqual(items[0].order, 1)
         self.assertEqual(items[1].order, 2)
         self.assertEqual(items[2].order, 3)
@@ -593,24 +585,24 @@ class ListViews(TestCase):
         set_position_request = self.factory.post("", {"position": 1})
         set_position_request.user = self.local_user
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            views.set_book_position(set_position_request, items[2].id)
+            views.set_film_position(set_position_request, items[2].id)
         items = self.list.listitem_set.order_by("order").all()
-        self.assertEqual(items[0].edition, self.book_three)
-        self.assertEqual(items[1].edition, self.edition)
-        self.assertEqual(items[2].edition, self.book_two)
+        self.assertEqual(items[0].film, self.film_three)
+        self.assertEqual(items[1].film, self.film)
+        self.assertEqual(items[2].film, self.film_two)
         self.assertEqual(items[0].order, 1)
         self.assertEqual(items[1].order, 2)
         self.assertEqual(items[2].order, 3)
 
-    def test_add_book_outsider(self):
-        """put a book on a list"""
+    def test_add_film_outsider(self):
+        """put a film on a list"""
         self.list.curation = "open"
         self.list.save(broadcast=False, update_fields=["curation"])
         request = self.factory.post(
             "",
             {
-                "edition": self.edition.id,
-                "book_list": self.list.id,
+                "film": self.film.id,
+                "film_list": self.list.id,
                 "user": self.rat.id,
             },
         )
@@ -619,7 +611,7 @@ class ListViews(TestCase):
         with patch(
             "reeltalk.models.activitypub_mixin.ActivitypubMixin.broadcast"
         ) as mock:
-            views.add_book(request)
+            views.add_film(request)
             self.assertEqual(mock.call_count, 1)
             activity = mock.call_args[0][0]
             self.assertEqual(activity["type"], "Add")
@@ -627,19 +619,19 @@ class ListViews(TestCase):
             self.assertEqual(activity["target"], self.list.remote_id)
 
         item = self.list.listitem_set.get()
-        self.assertEqual(item.edition, self.edition)
+        self.assertEqual(item.film, self.film)
         self.assertEqual(item.user, self.rat)
         self.assertTrue(item.approved)
 
-    def test_add_book_pending(self):
-        """put a book on a list awaiting approval"""
+    def test_add_film_pending(self):
+        """put a film on a list awaiting approval"""
         self.list.curation = "curated"
         self.list.save(broadcast=False, update_fields=["curation"])
         request = self.factory.post(
             "",
             {
-                "edition": self.edition.id,
-                "book_list": self.list.id,
+                "film": self.film.id,
+                "film_list": self.list.id,
                 "user": self.rat.id,
             },
         )
@@ -648,7 +640,7 @@ class ListViews(TestCase):
         with patch(
             "reeltalk.models.activitypub_mixin.ActivitypubMixin.broadcast"
         ) as mock:
-            views.add_book(request)
+            views.add_film(request)
 
         self.assertEqual(mock.call_count, 1)
         activity = mock.call_args[0][0]
@@ -660,19 +652,19 @@ class ListViews(TestCase):
         item = self.list.listitem_set.get()
         self.assertEqual(activity["object"]["id"], item.remote_id)
 
-        self.assertEqual(item.edition, self.edition)
+        self.assertEqual(item.film, self.film)
         self.assertEqual(item.user, self.rat)
         self.assertFalse(item.approved)
 
-    def test_add_book_self_curated(self):
-        """put a book on a list automatically approved"""
+    def test_add_film_self_curated(self):
+        """put a film on a list automatically approved"""
         self.list.curation = "curated"
         self.list.save(broadcast=False, update_fields=["curation"])
         request = self.factory.post(
             "",
             {
-                "edition": self.edition.id,
-                "book_list": self.list.id,
+                "film": self.film.id,
+                "film_list": self.list.id,
                 "user": self.local_user.id,
             },
         )
@@ -681,7 +673,7 @@ class ListViews(TestCase):
         with patch(
             "reeltalk.models.activitypub_mixin.ActivitypubMixin.broadcast"
         ) as mock:
-            views.add_book(request)
+            views.add_film(request)
             self.assertEqual(mock.call_count, 1)
             activity = mock.call_args[0][0]
             self.assertEqual(activity["type"], "Add")
@@ -689,35 +681,35 @@ class ListViews(TestCase):
             self.assertEqual(activity["target"], self.list.remote_id)
 
         item = self.list.listitem_set.get()
-        self.assertEqual(item.edition, self.edition)
+        self.assertEqual(item.film, self.film)
         self.assertEqual(item.user, self.local_user)
         self.assertTrue(item.approved)
 
-    def test_add_book_permission_denied(self):
+    def test_add_film_permission_denied(self):
         """you can't add to that list"""
         self.list.curation = "closed"
         self.list.save(broadcast=False, update_fields=["curation"])
         request = self.factory.post(
             "",
             {
-                "edition": self.edition.id,
-                "book_list": self.list.id,
+                "film": self.film.id,
+                "film_list": self.list.id,
                 "user": self.rat.id,
             },
         )
         request.user = self.rat
 
         with self.assertRaises(PermissionDenied):
-            views.add_book(request)
+            views.add_film(request)
 
-    def test_remove_book(self):
+    def test_remove_film(self):
         """take an item off a list"""
 
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             item = models.ListItem.objects.create(
-                book_list=self.list,
+                film_list=self.list,
                 user=self.local_user,
-                edition=self.edition,
+                film=self.film,
                 order=1,
             )
         self.assertTrue(self.list.listitem_set.exists())
@@ -726,21 +718,21 @@ class ListViews(TestCase):
         request.user = self.local_user
 
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            views.remove_book(request, self.list.id)
+            views.remove_film(request, self.list.id)
         self.assertFalse(self.list.listitem_set.exists())
 
-    def test_remove_book_unauthorized(self):
+    def test_remove_film_unauthorized(self):
         """take an item off a list"""
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             item = models.ListItem.objects.create(
-                book_list=self.list, user=self.local_user, edition=self.edition, order=1
+                film_list=self.list, user=self.local_user, film=self.film, order=1
             )
         self.assertTrue(self.list.listitem_set.exists())
         request = self.factory.post("", {"item": item.id})
         request.user = self.rat
 
         with self.assertRaises(PermissionDenied):
-            views.remove_book(request, self.list.id)
+            views.remove_film(request, self.list.id)
         self.assertTrue(self.list.listitem_set.exists())
 
     def test_save_unsave_list(self):
@@ -757,27 +749,27 @@ class ListViews(TestCase):
         self.assertFalse(self.local_user.saved_lists.exists())
 
     def test_list_page_excludes_blocked_items(self):
-        """exclude blocked books from lists"""
+        """exclude blocked films from lists"""
 
-        self.local_user.blocked_books.add(self.book_two.parent_work)
+        self.local_user.blocked_films.add(self.film_two)
 
         view = views.List.as_view()
         request = self.factory.get("")
         request.user = self.local_user
 
         list_item_one = models.ListItem.objects.create(
-            book_list=self.list,
+            film_list=self.list,
             user=self.local_user,
-            edition=self.edition,
+            film=self.film,
             approved=True,
             notes="hello",
             order=1,
         )
 
         list_item_two = models.ListItem.objects.create(
-            book_list=self.list,
+            film_list=self.list,
             user=self.local_user,
-            edition=self.book_two,
+            film=self.film_two,
             approved=True,
             notes="goodbye",
             order=2,

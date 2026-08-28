@@ -34,7 +34,7 @@ class InitDB(TestCase):
         self.assertTrue(group.permissions.filter(codename="create_invites").exists())
         self.assertTrue(group.permissions.filter(codename="moderate_user").exists())
         self.assertTrue(group.permissions.filter(codename="moderate_post").exists())
-        self.assertTrue(group.permissions.filter(codename="edit_book").exists())
+        self.assertTrue(group.permissions.filter(codename="edit_film").exists())
 
         group = Group.objects.get(name="moderator")
         self.assertTrue(group.permissions.filter(codename="set_user_group").exists())
@@ -44,23 +44,10 @@ class InitDB(TestCase):
         self.assertTrue(group.permissions.filter(codename="create_invites").exists())
         self.assertTrue(group.permissions.filter(codename="moderate_user").exists())
         self.assertTrue(group.permissions.filter(codename="moderate_post").exists())
-        self.assertTrue(group.permissions.filter(codename="edit_book").exists())
+        self.assertTrue(group.permissions.filter(codename="edit_film").exists())
 
         group = Group.objects.get(name="editor")
-        self.assertTrue(group.permissions.filter(codename="edit_book").exists())
-
-    def test_init_connectors(self):
-        """Outside data sources"""
-        initdb.init_connectors()
-        self.assertTrue(
-            models.Connector.objects.filter(identifier="bookwyrm.social").exists()
-        )
-        self.assertTrue(
-            models.Connector.objects.filter(identifier="inventaire.io").exists()
-        )
-        self.assertTrue(
-            models.Connector.objects.filter(identifier="openlibrary.org").exists()
-        )
+        self.assertTrue(group.permissions.filter(codename="edit_film").exists())
 
     def test_init_settings(self):
         """Create the settings file"""
@@ -105,7 +92,6 @@ class InitDB(TestCase):
         # everything should have been called
         self.assertEqual(Group.objects.count(), 4)
         self.assertTrue(Permission.objects.exists())
-        self.assertEqual(models.Connector.objects.count(), 3)
         self.assertEqual(models.SiteSettings.objects.count(), 1)
         self.assertEqual(models.LinkDomain.objects.count(), 5)
 
@@ -116,7 +102,6 @@ class InitDB(TestCase):
 
         # everything should have been called
         self.assertEqual(Group.objects.count(), 4)
-        self.assertEqual(models.Connector.objects.count(), 0)
         self.assertEqual(models.SiteSettings.objects.count(), 0)
         self.assertEqual(models.LinkDomain.objects.count(), 0)
 

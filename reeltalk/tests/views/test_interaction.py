@@ -38,13 +38,6 @@ class InteractionViews(TestCase):
                 inbox="https://example.com/users/rat/inbox",
                 outbox="https://example.com/users/rat/outbox",
             )
-        work = models.Work.objects.create(title="Test Work")
-        cls.book = models.Edition.objects.create(
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
-            parent_work=work,
-        )
-
     def setUp(self):
         """individual test setup"""
         self.factory = RequestFactory()

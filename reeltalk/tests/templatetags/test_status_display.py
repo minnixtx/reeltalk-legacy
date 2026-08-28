@@ -40,7 +40,7 @@ class StatusDisplayTags(TestCase):
                 remote_id="http://example.com/rat",
                 local=False,
             )
-        cls.book = models.Edition.objects.create(title="Test Book")
+        cls.film = models.Film.objects.create(title="Test Film")
 
     def test_get_mentions(self, *_):
         """list of people mentioned"""
@@ -52,7 +52,7 @@ class StatusDisplayTags(TestCase):
     def test_get_replies(self, *_):
         """direct replies to a status"""
         parent = models.Review.objects.create(
-            user=self.user, book=self.book, content="hi"
+            user=self.user, film=self.film, content="hi"
         )
         first_child = models.Status.objects.create(
             reply_parent=parent, user=self.user, content="hi"
@@ -77,7 +77,7 @@ class StatusDisplayTags(TestCase):
         """get the reply parent of a status"""
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             parent = models.Review.objects.create(
-                user=self.user, book=self.book, content="hi"
+                user=self.user, film=self.film, content="hi"
             )
             child = models.Status.objects.create(
                 reply_parent=parent, user=self.user, content="hi"
@@ -90,7 +90,9 @@ class StatusDisplayTags(TestCase):
     def test_get_boosted(self, *_):
         """load a boosted status"""
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            status = models.Review.objects.create(user=self.remote_user, book=self.book)
+            status = models.Review.objects.create(
+                user=self.remote_user, film=self.film
+            )
             boost = models.Boost.objects.create(user=self.user, boosted_status=status)
         boosted = status_display.get_boosted(boost)
         self.assertIsInstance(boosted, models.Review)
@@ -130,7 +132,7 @@ class StatusDisplayTags(TestCase):
     def test_get_header_template_rating_forwards_request(self, *_):
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             rating = models.ReviewRating.objects.create(
-                user=self.user, book=self.book, rating=3
+                user=self.user, film=self.film, rating=3
             )
         request = RequestFactory().get("")
         request.user = self.user

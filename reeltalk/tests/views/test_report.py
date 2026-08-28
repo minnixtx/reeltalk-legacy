@@ -93,9 +93,8 @@ class ReportViews(TestCase):
 
     def test_report_link(self):
         """a user reports a link as spam"""
-        book = models.Edition.objects.create(title="hi")
-        link = models.FileLink.objects.create(
-            book=book, added_by=self.local_user, url="https://skdjfs.sdf"
+        link = models.Link.objects.create(
+            url="https://skdjfs.sdf", added_by=self.local_user
         )
         domain = link.domain
         domain.status = "approved"

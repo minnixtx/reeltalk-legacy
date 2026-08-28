@@ -38,15 +38,13 @@ class EditUserViews(TestCase):
                 "rat@local.com", "rat@rat.rat", "password", local=True, localname="rat"
             )
 
-            cls.book = models.Edition.objects.create(
-                title="test", parent_work=models.Work.objects.create(title="test work")
-            )
+            cls.film = models.Film.objects.create(title="test")
             with (
                 patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"),
-                patch("reeltalk.activitystreams.add_book_statuses_task.delay"),
+                patch("reeltalk.activitystreams.add_film_statuses_task.delay"),
             ):
-                models.ShelfBook.objects.create(
-                    book=cls.book,
+                models.ShelfFilm.objects.create(
+                    film=cls.film,
                     user=cls.local_user,
                     shelf=cls.local_user.shelf_set.first(),
                 )

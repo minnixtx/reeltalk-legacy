@@ -36,33 +36,34 @@ class Activitystreams(TestCase):
                 inbox="https://example.com/users/rat/inbox",
                 outbox="https://example.com/users/rat/outbox",
             )
-        work = models.Work.objects.create(title="test work")
-        cls.book = models.Edition.objects.create(title="test book", parent_work=work)
+        cls.film = models.Film.objects.create(title="Test Film")
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
             cls.status = models.Status.objects.create(content="hi", user=cls.local_user)
 
-    def test_add_book_statuses_task(self):
-        """statuses related to a book"""
-        with patch("reeltalk.activitystreams.BooksStream.add_book_statuses") as mock:
-            activitystreams.add_book_statuses_task(self.local_user.id, self.book.id)
+    def test_add_film_statuses_task(self):
+        """statuses related to a film"""
+        with patch("reeltalk.activitystreams.FilmsStream.add_film_statuses") as mock:
+            activitystreams.add_film_statuses_task(self.local_user.id, self.film.id)
         self.assertTrue(mock.called)
         args = mock.call_args[0]
         self.assertEqual(args[0], self.local_user)
-        self.assertEqual(args[1], self.book)
+        self.assertEqual(args[1], self.film)
 
-    def test_remove_book_statuses_task(self):
-        """remove statuses related to a book"""
-        with patch("reeltalk.activitystreams.BooksStream.remove_book_statuses") as mock:
-            activitystreams.remove_book_statuses_task(self.local_user.id, self.book.id)
+    def test_remove_film_statuses_task(self):
+        """remove statuses related to a film"""
+        with patch("reeltalk.activitystreams.FilmsStream.remove_film_statuses") as mock:
+            activitystreams.remove_film_statuses_task(
+                self.local_user.id, self.film.id
+            )
         self.assertTrue(mock.called)
         args = mock.call_args[0]
         self.assertEqual(args[0], self.local_user)
-        self.assertEqual(args[1], self.book)
+        self.assertEqual(args[1], self.film)
 
     def test_populate_stream_task(self):
         """populate a given stream"""
-        with patch("reeltalk.activitystreams.BooksStream.populate_streams") as mock:
-            activitystreams.populate_stream_task("books", self.local_user.id)
+        with patch("reeltalk.activitystreams.FilmsStream.populate_streams") as mock:
+            activitystreams.populate_stream_task("films", self.local_user.id)
         self.assertTrue(mock.called)
         args = mock.call_args[0]
         self.assertEqual(args[0], self.local_user)
@@ -134,7 +135,7 @@ class Activitystreams(TestCase):
         self.assertEqual(args[1], self.another_user)
 
     @patch("reeltalk.activitystreams.LocalStream.remove_object_from_stores")
-    @patch("reeltalk.activitystreams.BooksStream.remove_object_from_stores")
+    @patch("reeltalk.activitystreams.FilmsStream.remove_object_from_stores")
     @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
     def test_boost_to_another_timeline(self, *_):
         """boost from a non-follower doesn't remove original status from feed"""
@@ -156,7 +157,7 @@ class Activitystreams(TestCase):
         self.assertEqual(call_args[0][1], [f"{self.another_user.id}-home"])
 
     @patch("reeltalk.activitystreams.LocalStream.remove_object_from_stores")
-    @patch("reeltalk.activitystreams.BooksStream.remove_object_from_stores")
+    @patch("reeltalk.activitystreams.FilmsStream.remove_object_from_stores")
     @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
     def test_boost_to_another_timeline_remote(self, *_):
         """boost from a remote non-follower doesn't remove original status from feed"""
@@ -178,7 +179,7 @@ class Activitystreams(TestCase):
         self.assertEqual(call_args[0][1], [])
 
     @patch("reeltalk.activitystreams.LocalStream.remove_object_from_stores")
-    @patch("reeltalk.activitystreams.BooksStream.remove_object_from_stores")
+    @patch("reeltalk.activitystreams.FilmsStream.remove_object_from_stores")
     @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
     def test_boost_to_following_timeline(self, *_):
         """add a boost and deduplicate the boosted status on the timeline"""
@@ -200,7 +201,7 @@ class Activitystreams(TestCase):
         self.assertTrue(f"{self.local_user.id}-home" in call_args[0][1])
 
     @patch("reeltalk.activitystreams.LocalStream.remove_object_from_stores")
-    @patch("reeltalk.activitystreams.BooksStream.remove_object_from_stores")
+    @patch("reeltalk.activitystreams.FilmsStream.remove_object_from_stores")
     @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
     def test_boost_to_same_timeline(self, *_):
         """add a boost and deduplicate the boosted status on the timeline"""

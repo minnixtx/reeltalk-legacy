@@ -43,11 +43,9 @@ class StatusTransactions(TransactionTestCase):
                 localname="nutria",
             )
 
-        work = models.Work.objects.create(title="Test Work")
-        self.book = models.Edition.objects.create(
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
-            parent_work=work,
+        self.film = models.Film.objects.create(
+            title="Example Film",
+            remote_id="https://example.com/film/1",
         )
 
     def test_create_status_saves(self, *_):
@@ -57,7 +55,7 @@ class StatusTransactions(TransactionTestCase):
             {
                 "content": "hi",
                 "user": self.local_user.id,
-                "book": self.book.id,
+                "film": self.film.id,
                 "privacy": "public",
             }
         )
@@ -112,11 +110,9 @@ class StatusViews(TestCase):
                 inbox="https://example.com/users/rat/inbox",
                 outbox="https://example.com/users/rat/outbox",
             )
-        work = models.Work.objects.create(title="Test Work")
-        cls.book = models.Edition.objects.create(
-            title="Example Edition",
-            remote_id="https://example.com/book/1",
-            parent_work=work,
+        cls.film = models.Film.objects.create(
+            title="Example Film",
+            remote_id="https://example.com/film/1",
         )
 
     def setUp(self):
@@ -130,7 +126,7 @@ class StatusViews(TestCase):
             {
                 "content": "hi",
                 "user": self.local_user.id,
-                "book": self.book.id,
+                "film": self.film.id,
                 "privacy": "public",
             }
         )
@@ -143,31 +139,8 @@ class StatusViews(TestCase):
         self.assertEqual(status.raw_content, "hi")
         self.assertEqual(status.content, "<p>hi</p>")
         self.assertEqual(status.user, self.local_user)
-        self.assertEqual(status.book, self.book)
+        self.assertEqual(status.film, self.film)
         self.assertIsNone(status.edited_date)
-
-    def test_create_status_quotation_syncs_readwise(self, *_):
-        """create a quote and enqueue Readwise sync"""
-        self.local_user.readwise_api_key = "readwise-token"
-        self.local_user.save(broadcast=False, update_fields=["readwise_api_key"])
-        view = views.CreateStatus.as_view()
-        form = forms.QuotationForm(
-            {
-                "quote": "a quotable bit",
-                "content": "a note",
-                "user": self.local_user.id,
-                "book": self.book.id,
-                "privacy": "public",
-            }
-        )
-        request = self.factory.post("", form.data)
-        request.user = self.local_user
-
-        with patch("reeltalk.views.status.sync_readwise_quotation.delay") as task_mock:
-            view(request, "quotation")
-
-        status = models.Quotation.objects.get()
-        task_mock.assert_called_once_with(status.id)
 
     def test_create_status_rating(self, *_):
         """create a status"""
@@ -176,7 +149,7 @@ class StatusViews(TestCase):
             {
                 "user": self.local_user.id,
                 "rating": 4,
-                "book": self.book.id,
+                "film": self.film.id,
                 "privacy": "public",
             }
         )
@@ -187,40 +160,9 @@ class StatusViews(TestCase):
 
         status = models.ReviewRating.objects.get()
         self.assertEqual(status.user, self.local_user)
-        self.assertEqual(status.book, self.book)
+        self.assertEqual(status.film, self.film)
         self.assertEqual(status.rating, 4.0)
         self.assertIsNone(status.edited_date)
-
-    def test_create_status_progress(self, *_):
-        """create a status that updates a readthrough"""
-        start_date = timezone.make_aware(dateutil.parser.parse("2024-07-27"))
-        readthrough = models.ReadThrough.objects.create(
-            book=self.book, user=self.local_user, start_date=start_date
-        )
-
-        self.assertEqual(start_date, readthrough.start_date)
-        self.assertIsNone(readthrough.progress)
-
-        view = views.CreateStatus.as_view()
-        form = forms.CommentForm(
-            {
-                "progress": 1,
-                "progress_mode": "PG",
-                "content": "I started the book",
-                "id": readthrough.id,
-                "book": self.book.id,
-                "user": self.local_user.id,
-                "privacy": "public",
-            }
-        )
-        request = self.factory.post("", form.data)
-        request.user = self.local_user
-
-        view(request, "comment")
-        readthrough.refresh_from_db()
-
-        self.assertEqual(1, readthrough.progress)
-        self.assertEqual(start_date, readthrough.start_date)  # not overwritten
 
     def test_create_status_wrong_user(self, *_):
         """You can't compose statuses for someone else"""
@@ -229,7 +171,7 @@ class StatusViews(TestCase):
             {
                 "content": "hi",
                 "user": self.remote_user.id,
-                "book": self.book.id,
+                "film": self.film.id,
                 "privacy": "public",
             }
         )
@@ -256,7 +198,7 @@ class StatusViews(TestCase):
             {
                 "content": f"pic !image({img_path})",
                 "user": self.local_user.id,
-                "book": self.book.id,
+                "film": self.film.id,
                 "privacy": "public",
             }
         )
@@ -313,7 +255,7 @@ class StatusViews(TestCase):
             {
                 "content": "hi @rat",
                 "user": self.local_user.id,
-                "book": self.book.id,
+                "film": self.film.id,
                 "privacy": "public",
             }
         )
@@ -339,7 +281,7 @@ class StatusViews(TestCase):
             {
                 "content": "hi @rat@example.com",
                 "user": self.local_user.id,
-                "book": self.book.id,
+                "film": self.film.id,
                 "privacy": "public",
             }
         )
@@ -438,7 +380,7 @@ class StatusViews(TestCase):
                 "content": "this is an #EXISTING hashtag but all uppercase, "
                 + "this one is #NewTag.",
                 "user": self.local_user.id,
-                "book": self.book.id,
+                "film": self.film.id,
                 "privacy": "public",
             }
         )
@@ -696,7 +638,7 @@ http://www.fish.com/"""
         """load the edit status view"""
         view = views.EditStatus.as_view()
         status = models.Comment.objects.create(
-            content="status", user=self.local_user, book=self.book
+            content="status", user=self.local_user, film=self.film
         )
 
         request = self.factory.get("")
@@ -709,7 +651,7 @@ http://www.fish.com/"""
         """load the edit status view"""
         view = views.EditStatus.as_view()
         parent = models.Comment.objects.create(
-            content="parent status", user=self.local_user, book=self.book
+            content="parent status", user=self.local_user, film=self.film
         )
         status = models.Status.objects.create(
             content="reply", user=self.local_user, reply_parent=parent
@@ -730,7 +672,7 @@ http://www.fish.com/"""
             {
                 "content": "hi",
                 "user": self.local_user.id,
-                "book": self.book.id,
+                "film": self.film.id,
                 "privacy": "public",
             }
         )
@@ -754,7 +696,7 @@ http://www.fish.com/"""
             {
                 "content": "hi",
                 "user": self.local_user.id,
-                "book": self.book.id,
+                "film": self.film.id,
                 "privacy": "public",
             }
         )

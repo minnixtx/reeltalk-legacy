@@ -12,7 +12,7 @@ from reeltalk.templatetags import shelf_tags
 @patch("reeltalk.activitystreams.add_status_task.delay")
 @patch("reeltalk.activitystreams.remove_status_task.delay")
 @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
-@patch("reeltalk.activitystreams.add_book_statuses_task.delay")
+@patch("reeltalk.activitystreams.add_film_statuses_task.delay")
 class ShelfTags(TestCase):
     """lotta different things here"""
 
@@ -39,23 +39,20 @@ class ShelfTags(TestCase):
                 remote_id="http://example.com/rat",
                 local=False,
             )
-        cls.book = models.Edition.objects.create(
-            title="Test Book",
-            parent_work=models.Work.objects.create(title="Test work"),
-        )
+        cls.film = models.Film.objects.create(title="Test Film")
 
     def setUp(self):
         """test data"""
         self.factory = RequestFactory()
 
-    def test_get_is_book_on_shelf(self, *_):
-        """check if a book is on a shelf"""
+    def test_get_is_film_on_shelf(self, *_):
+        """check if a film is on a shelf"""
         shelf = self.local_user.shelf_set.first()
-        self.assertFalse(shelf_tags.get_is_book_on_shelf(self.book, shelf))
-        models.ShelfBook.objects.create(
-            shelf=shelf, book=self.book, user=self.local_user
+        self.assertFalse(shelf_tags.get_is_film_on_shelf(self.film, shelf))
+        models.ShelfFilm.objects.create(
+            shelf=shelf, film=self.film, user=self.local_user
         )
-        self.assertTrue(shelf_tags.get_is_book_on_shelf(self.book, shelf))
+        self.assertTrue(shelf_tags.get_is_film_on_shelf(self.film, shelf))
 
     def test_get_next_shelf(self, *_):
         """self progress helper"""
@@ -64,13 +61,13 @@ class ShelfTags(TestCase):
         self.assertEqual(shelf_tags.get_next_shelf("blooooga"), "to-read")
 
     def test_active_shelf(self, *_):
-        """get the shelf a book is on"""
+        """get the shelf a film is on"""
         shelf = self.local_user.shelf_set.first()
         request = self.factory.get("")
         request.user = self.local_user
         context = {"request": request}
-        self.assertIsInstance(shelf_tags.active_shelf(context, self.book), dict)
-        models.ShelfBook.objects.create(
-            shelf=shelf, book=self.book, user=self.local_user
+        self.assertIsInstance(shelf_tags.active_shelf(context, self.film), dict)
+        models.ShelfFilm.objects.create(
+            shelf=shelf, film=self.film, user=self.local_user
         )
-        self.assertEqual(shelf_tags.active_shelf(context, self.book).shelf, shelf)
+        self.assertEqual(shelf_tags.active_shelf(context, self.film).shelf, shelf)
