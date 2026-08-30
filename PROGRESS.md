@@ -24,7 +24,7 @@
 | CSRF trusted-origins fix | ✅ Done, pushed (2026-08-24) |
 | Local instance | ✅ Running, **migrated to 0249** (2026-08-29): `initdb` seeded, admin account via `/setup` wizard (2 users), `install_mode=false`. Reachable at **http://192.168.1.138:3030** |
 | Phase 2 — milestone 1 (UI rebrand books→films + binary film shelf model) | ✅ Done, committed, pushed, verified live (full test suite green: 1332 passed) |
-| Phase 2 — milestone 2 (film domain model + AP rework) | ✅ **All three commits done + live-verified 2026-08-29** — `08af0c971` (model/AP/migrations), `2726a1067` (app layer), `dfa704781` (4 conversion-artifact fixes) + `192ea709f` (test rework, new baseline 975 passed). Migrations 0247→0249 applied to the live DB; full click-through green (37/37). **NOT pushed — owner review gate pending** (§5) |
+| Phase 2 — milestone 2 (film domain model + AP rework) | ✅ **Done, live-verified, PUSHED 2026-08-30** — `08af0c971` (model/AP/migrations), `2726a1067` (app layer), `dfa704781` (4 conversion-artifact fixes) + `192ea709f` (test rework, new baseline 975 passed). Migrations 0247→0249 applied to the live DB; full click-through green (37/37). Fork main = `edffe01bd` |
 | Phase 2 — remainder after m2 (TMDB importer/connector, artwork, Crowdin, public deploy) | ⬜ Not started |
 
 ## 3. Commit history (`main`)
@@ -147,9 +147,11 @@ Owner design decisions for this milestone (see §8 #13–20): flat `Film` model,
 
 ## 5. What still needs to be done
 
-### Immediate — owner review gate, then push (milestone 2)
+### Milestone 2 — pushed ✅ (2026-08-30)
 
-Commits `08af0c971`, `2726a1067`, `dfa704781`, `192ea709f` (+ tracker `b95617237`) are **committed locally, live-verified, and awaiting owner review**. After approval: push to the `fork` remote only (owner approval required at that moment; never origin, no force-push). The local instance is already running the milestone-2 code + migrations 0247→0249.
+Owner approved and the six milestone-2 commits went out to the `fork` remote (fast-forward, no force): fork main = `edffe01bd`. The local instance is already running this exact code + migrations 0247→0249.
+
+**Next milestone: TMDB/OMDb film importer** (search → create-or-match Film → import into lists; replaces the deleted book-list import). Design decisions (API choice, key handling, matching/dedup UX) need owner input first.
 
 **Known small gaps found during the sweep (non-blocking, fix opportunistically):**
 - `user.shared_books` is referenced in `directory/user_card.html` + `groups/suggested_users.html` but no longer exists on User — those "N films on your shelves" stats silently don't render. Implementing a `shared_films` annotate in the directory/group views is a small follow-up.
