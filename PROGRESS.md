@@ -1,6 +1,6 @@
 # ReelTalk — Progress Tracker
 
-**Last updated:** 2026-08-26
+**Last updated:** 2026-08-29
 **Audience:** any new session picking up this project. Read this first, then `PLAN.md` (the historical Phase 1 execution plan) if you need the original reasoning.
 
 ---
@@ -22,14 +22,17 @@
 | Phase 1 (rebrand + deployment simplification) | ✅ Done, pushed, verified (full test suite green ×2) |
 | Pre-Phase-2 changes (no HTTPS, no anubis, :3030 endpoint, no CONTRIBUTING) | ✅ Done, pushed (owner-directed, 2026-08-23) |
 | CSRF trusted-origins fix | ✅ Done, pushed (2026-08-24) |
-| Local instance | ✅ Running and **initialized**: DB migrated, `initdb` seeded, admin account created via the `/setup` wizard (2 users exist), `install_mode=false`. Reachable at **http://192.168.1.138:3030** |
+| Local instance | ✅ Running, **migrated to 0249** (2026-08-29): `initdb` seeded, admin account via `/setup` wizard (2 users), `install_mode=false`. Reachable at **http://192.168.1.138:3030** |
 | Phase 2 — milestone 1 (UI rebrand books→films + binary film shelf model) | ✅ Done, committed, pushed, verified live (full test suite green: 1332 passed) |
-| Phase 2 — milestone 2 (film domain model + AP rework) | 🚧 **Commit 1** (`08af0c971`) done: Film model + AP wire types + migration 0247, book models deleted. **Commit 2** (`2726a1067`, app layer: views/templates/URLs `/book/`→`/film/`, wording pass, removals) **done and committed locally** 2026-08-26 — *not pushed* (push needs owner approval). **Commit 3 (test rework) + live verification = next session** (§5) |
+| Phase 2 — milestone 2 (film domain model + AP rework) | ✅ **All three commits done + live-verified 2026-08-29** — `08af0c971` (model/AP/migrations), `2726a1067` (app layer), `dfa704781` (4 conversion-artifact fixes) + `192ea709f` (test rework, new baseline 975 passed). Migrations 0247→0249 applied to the live DB; full click-through green (37/37). **NOT pushed — owner review gate pending** (§5) |
 | Phase 2 — remainder after m2 (TMDB importer/connector, artwork, Crowdin, public deploy) | ⬜ Not started |
 
 ## 3. Commit history (`main`)
 
 ```
+192ea709f Rework test suite onto the Film model; remove book-era tests                  ← Phase 2 milestone 2 (commit 3/3)
+dfa704781 Fix four book-to-film conversion artifacts found by the test rework           ← Phase 2 milestone 2 (fixes)
+b95617237 Update progress tracker with milestone 2 commit hashes
 2726a1067 Rework views, templates and URLs onto the Film model; remove book-era features   ← Phase 2 milestone 2 (commit 2/3)
 08af0c971 Replace book domain with flat Film model and federation wire types             ← Phase 2 milestone 2 (commit 1/3)
 4203dc65f Mark Phase 2 milestone 1 as pushed in progress tracker
@@ -116,17 +119,37 @@ Owner design decisions for this milestone (see §8 #13–20): flat `Film` model,
 - **Template pass:** all film pages rewritten on the Film model (`film/*`, `search/film.html`, `shelf/*`, `lists/*` incl. new `suggestion_search.html`, `get_started/films.html`, `feed/suggested_films.html`, notifications items, discover cards renamed to `large-film`/`small-film`, about/landing superlatives via `get_film_superlatives`/`get_landing_films`, guided-tour fragments re-anchored to the new `tour-*-film*` element ids).
 - **Verified in container:** `makemigrations --check` clean, `manage.py check` no issues, `collectstatic` OK, and a full parse of all 340 templates through Django's engine (catches syntax errors + missing includes). **Test suite NOT yet re-run — the tests are still book-based; that is commit 3.**
 
+### Phase 2 — milestone 2 completion (executed 2026-08-27/29)
+
+**Commit `dfa704781` — four conversion-artifact fixes found by the test rework** (each verified by its scoped tests; all would have broken live pages, not just tests):
+- `activitystreams.py`: audience query had `mention_films__film` — `mention_films` is already an M2M to Film, so every feed render FieldError'd. Fixed to `mention_films`.
+- `forms/links.py`: `LinkDomainForm` was lost when the book-era forms file was deleted wholesale; admin domain-rename POST 500'd. Restored (FileLinkForm correctly stayed gone), dropped a copy-pasted `EmailBlocklistForm` from the link-domains GET context, added a regression test.
+- `views/notifications.py`: `select_related("related_import")` referenced an FK removed with the import feature — notifications page 500'd for all users. Now `related_user_export`.
+- `templates/lists/item_notes_field.html`: closing `</div>` dropped in the string pass — list pages with editable notes failed tidy validation (found via div-depth tracing of the rendered page).
+
+**Commit `192ea709f` — test rework to green** (157 files, +2285/−16710):
+- Deleted tests for removed features: connectors, importers, book views, user book-list imports, readwise, ISNI/ISBN, suggestion lists, series, cover jobs; 37 orphaned fixtures in `tests/data/`.
+- Rewrote the rest against Film/ReviewRating/binary shelves: new model + AP wire `test_film.py`, films-stream tests, film display tags/search tests, film-era inbox payloads (inline AP JSON with `inReplyToFilm` and literal origin ids — `Film.save()` nulls `remote_id` on new rows), initdb `edit_film` codename, finish-flow rating requirement.
+- **New green baseline: 975 passed / 1 skipped / 1 xfailed / 52 subtests** (was 1332 pre-milestone-2; the delta is removed-feature coverage). Run twice, CI-faithful flow.
+
+**Live verification (2026-08-29):**
+- `docker compose up -d --build` + nginx restart: **migrations 0247/0248/0249 applied to the live DB cleanly** (it had zero book rows, so 0247's data conversion was a no-op; daily pg_dump backups exist pre-migration in the `backups` volume).
+- Permissions: entrypoint's `initdb` auto-created `edit_film` and granted it to all four groups. Manually cleaned **23 stale content types + 92 permissions** for removed models (Django never deletes stale content types on migrate) plus the orphaned custom `edit_book` permission — 0 dangling perms remain.
+- **Click-through: 37/37 green** with a throwaway user (hard-deleted afterwards; live DB back to its original 2 users / 0 films): login, feed, create film, film page (301 slug redirect works), Want to Watch shelve + note, finish-without-rating rejected pre-DB-write ("A star rating is required"), rating-only finish → silent `ReviewRating` + Watched shelf, written-review finish → `Review`, list create/add×2/reposition/remove, search finds both films, block/unblock film (blocked hidden from search), admin files-maintenance page renders.
+
+**Flagged app nits found by the rework (NOT fixed — owner's call):**
+- `Film.viewer_aware_objects()` returns a raw Manager for anonymous viewers (all current call sites chain `.filter()`, so no live breakage).
+- `Status.delete()` soft-delete clears a nonexistent `quotation` attr (the field is `quote`) — soft-deleted quotations keep their quote text.
+- `Quotation.pure_content`: first regex line is dead code — opening quote mark missing on plain-text quotes in cross-instance display.
+- `ShelfFilm.save()`: `if not self.user:` raises on an unsaved instance with no user (all view call sites pass `user`; migration 0247 uses schema-level renames, so latent only).
+- `templatetags/rating_tags.py::get_rating` counts soft-deleted reviews in a film's average while `get_user_rating` excludes them.
+- `settings/link_domains/link_domains.html` still says "shown on book pages" (string-pass leftover).
+
 ## 5. What still needs to be done
 
-### Immediate / local — NEXT SESSION PLAN (milestone 2, commit 3 + verification)
+### Immediate — owner review gate, then push (milestone 2)
 
-**Commit 3 — test rework to green.** The suite is still book-based and will fail en masse until reworked. CI-faithful flow (§7): temp source tar → `compile_themes && collectstatic --no-input && pytest -n 3`. Expect to: delete tests for removed features (connectors, imports, readwise, suggestion lists, cover jobs, book AP types), rewrite the rest against `Film`/`ReviewRating`/binary shelves. Pre-migration baseline was 1332 passed / 1 skipped / 1 xfailed; the new green baseline will be lower and should be recorded here when reached.
-
-**Live verification (after commit 3, before push):**
-1. `docker compose up -d --build` then `docker compose restart nginx` (§7 quirk #1). The web entrypoint auto-runs migrations: live DB is at **0246**; it will apply **0247 (books→films data migration), 0248, 0249**. Watch the logs — 0247 is a big data migration.
-2. `initdb` already ran pre-migration; if any seed step references removed models, re-run `manage.py initdb --limit permission` for `edit_film` and SQL-delete stale `edit_book` perms (the permission codenames changed with the model swap).
-3. Click-through at http://192.168.1.138:3030: login → feed → film page (`/film/<id>/`) → shelve Want to Watch → finish flow (rating required; rating-only vs written review) → lists (add/suggest/remove/reposition) → search → blocked films prefs → admin files-maintenance page renders.
-4. Owner review gate, then push (owner approval required at that moment; `fork` remote only).
+Commits `08af0c971`, `2726a1067`, `dfa704781`, `192ea709f` (+ tracker `b95617237`) are **committed locally, live-verified, and awaiting owner review**. After approval: push to the `fork` remote only (owner approval required at that moment; never origin, no force-push). The local instance is already running the milestone-2 code + migrations 0247→0249.
 
 **Known small gaps found during the sweep (non-blocking, fix opportunistically):**
 - `user.shared_books` is referenced in `directory/user_card.html` + `groups/suggested_users.html` but no longer exists on User — those "N films on your shelves" stats silently don't render. Implementing a `shared_films` annotate in the directory/group views is a small follow-up.
@@ -194,7 +217,7 @@ docker compose run --rm -v "$TMP:/src:z" -w /src web sh -c \
   "python manage.py check && python manage.py compile_themes && python manage.py collectstatic --no-input && pytest -n 3"
 ```
 - Skipping `compile_themes` + `collectstatic` causes ~237 spurious failures (manifest_strict ValueError on theme CSS).
-- **Green baseline:** 1332 passed / 1 skipped / 1 xfailed (~3 min with `-n 3`) — as of Phase 2 milestone 1 (2026-08-25; ~25 tests removed with the barcode/conduct/goal/custom-shelf features). ⚠️ **STALE as of milestone 2 commit 2 (2026-08-26):** the test suite is still book-based and will fail en masse until commit 3 reworks it. Don't treat a red run as a regression signal until then; record the new green baseline here when reached.
+- **Green baseline:** 975 passed / 1 skipped / 1 xfailed / 52 subtests (~3.5 min with `-n 3`) — as of Phase 2 milestone 2 test rework (2026-08-29; the drop from 1332 is removed-feature coverage: connectors, importers, book views, imports, readwise, ISNI, suggestion lists, series, cover jobs).
 
 ### After changing app code
 `docker compose up -d --build` (rebuilds the web image), then `docker compose restart nginx` (quirk #1), then wait for web healthy.
