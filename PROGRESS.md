@@ -30,6 +30,8 @@
 ## 3. Commit history (`main`)
 
 ```
+a00c7cd1e Mark Phase 2 milestone 2 as pushed in progress tracker
+edffe01bd Record milestone 2 completion: test rework baseline, fixes, live verification
 192ea709f Rework test suite onto the Film model; remove book-era tests                  ← Phase 2 milestone 2 (commit 3/3)
 dfa704781 Fix four book-to-film conversion artifacts found by the test rework           ← Phase 2 milestone 2 (fixes)
 b95617237 Update progress tracker with milestone 2 commit hashes
@@ -149,9 +151,23 @@ Owner design decisions for this milestone (see §8 #13–20): flat `Film` model,
 
 ### Milestone 2 — pushed ✅ (2026-08-30)
 
-Owner approved and the six milestone-2 commits went out to the `fork` remote (fast-forward, no force): fork main = `edffe01bd`. The local instance is already running this exact code + migrations 0247→0249.
+Owner approved and the milestone-2 commits went out to the `fork` remote (fast-forward, no force). Fork main = `a00c7cd1e`. The local instance is already running this exact code + migrations 0247→0249.
 
-**Next milestone: TMDB/OMDb film importer** (search → create-or-match Film → import into lists; replaces the deleted book-list import). Design decisions (API choice, key handling, matching/dedup UX) need owner input first.
+### NEXT SESSION — Phase 2 milestone 3: TMDB film importer
+
+Replaces the deleted book-list import: **search films → create-or-match Film → add to list**. Notes for the picking-up session:
+- The old Connector/importer machinery was removed in milestone 2 — this is a **fresh, simple build** (direct API client; no Connector model).
+- `Film.find_existing()` already dedups on tmdb_id/imdb_id/remote_id (decision log #19) — the importer plugs straight into it.
+- The UI chrome partly exists already: settings/pages say "Import Films" and describe a TMDB export — wire the real flow to it.
+- **DESIGN WITH THE OWNER FIRST** (decision log #7; Letterboxd is the loose UX template — flag comparisons explicitly). Decisions needed before code:
+  1. **API choice:** TMDB (REST, free key; genres/directors/cast/poster/year/runtime map 1:1 onto Film fields) vs OMDb.
+  2. **Key handling:** where the API key lives (site settings page vs `.env`), who can set it, graceful degradation when unset.
+  3. **Matching/dedup UX:** what the user sees when a search hit already exists locally (import-to-list directly? "already in your library"?), and whether importing backfills `tmdb_id` onto manually-created films.
+  4. **Scope cut:** core = search + create-or-match + add-to-list. Bulk "import my whole list" is OUT unless the owner wants it in.
+- Then implement with the usual discipline: commits per logical unit, CI-faithful test flow (§7) to green with the new baseline recorded here, live verification at :3030 (throwaway-user click-through pattern from milestone 2 works well), owner review gate before push (`fork` only, no force).
+- **Host resource note:** this machine runs local LLM inference — run at most ONE subagent at a time (six parallel agents OOM-crashed the host on 2026-08-27; serialized execution worked fine).
+
+**Optional if time permits:** the six flagged app nits in §4 (viewer_aware_objects Manager, Status.delete quotation attr, Quotation.pure_content regex, ShelfFilm.save latent crash, get_rating soft-delete count, link-domains "book pages" wording) — each is small and owner-blessed to fix opportunistically.
 
 **Known small gaps found during the sweep (non-blocking, fix opportunistically):**
 - `user.shared_books` is referenced in `directory/user_card.html` + `groups/suggested_users.html` but no longer exists on User — those "N films on your shelves" stats silently don't render. Implementing a `shared_films` annotate in the directory/group views is a small follow-up.
@@ -160,8 +176,8 @@ Owner approved and the six milestone-2 commits went out to the `fork` remote (fa
 - If the host's LAN IP changes again: update `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` in the live `.env`, then `docker compose up -d && docker compose restart nginx` (see §7 quirks).
 
 ### Phase 2 — remainder (DESIGN WITH THE OWNER FIRST; no solo design decisions)
-Milestones 1 and 2 (model + app layer) are done pending commit 3/verification. What remains, from PLAN.md §12 plus the owner's 13-item list:
-- **Build the TMDB import path** — the UI already says "Import Films" and describes a TMDB export; the actual importer + TMDB connector must be built to make it real (owner decision: rename now, build later). This is the next milestone after commit 3 lands.
+Milestones 1 and 2 are done, pushed, and live-verified. What remains, from PLAN.md §12 plus the owner's 13-item list:
+- **Build the TMDB import path** — milestone 3; see "NEXT SESSION" plan above (owner decision was: rename the UI now, build the importer later — the building is next).
 - Custom ReelTalk artwork replacing BookWyrm's placeholder/wyrm imagery.
 - Re-point `locale/**` at a ReelTalk Crowdin project (still contains BookWyrm strings).
 - Public instance deployment of the alpha (operator's own TLS proxy in front of :3030).
