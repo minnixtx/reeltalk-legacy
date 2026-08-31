@@ -26,7 +26,8 @@
 | Phase 2 — milestone 1 (UI rebrand books→films + binary film shelf model) | ✅ Done, committed, pushed, verified live (full test suite green: 1332 passed) |
 | Phase 2 — milestone 2 (film domain model + AP rework) | ✅ **Done, live-verified, PUSHED 2026-08-30** — `08af0c971` (model/AP/migrations), `2726a1067` (app layer), `dfa704781` (4 conversion-artifact fixes) + `192ea709f` (test rework, new baseline 975 passed). Migrations 0247→0249 applied to the live DB; full click-through green (37/37). Fork main = `a00c7cd1e` |
 | Phase 2 — milestone 3 (TMDB film importer) | ✅ **Done, live-verified, PUSHED 2026-08-31** — `e709614e2` (TMDB client), `e9bd0b007` (import page). Suite green: 998 passed. Fork main = `a0342a3c0`. Decisions #21–24 |
-| Phase 2 — remainder after m3 (artwork, Crowdin, public deploy) | ⬜ Not started |
+| Phase 2 — search UX rework (TMDB as primary catalog, "Watchlist" rename) | 🔄 **Planned 2026-08-31, not started** — owner redirect after reviewing m3; full plan in §5. Decision #25 |
+| Phase 2 — remainder after rework (artwork, Crowdin, public deploy, file-based import) | ⬜ Not started |
 
 ## 3. Commit history (`main`)
 
@@ -179,7 +180,27 @@ Owner approved and the milestone commits went out to the `fork` remote (fast-for
 
 All four design decisions were aligned with the owner up front (§8 #21–24); implementation is in `e709614e2` + `e9bd0b007` (details in §4).
 - **Live verification at :3030 (2026-08-30), throwaway user:** not-configured notice confirmed *before* the key was set; after adding `REELTALK_TMDB_API_KEY` to the live `.env` — search rendered 15 results with posters; add-new-film → Want to Watch (full metadata + poster populated); re-search showed the "In your library" badge linking to the film page; duplicate shelf add rejected ("is already on Want to Watch"); title/year backfill worked (manually created *The Godfather* 1972 got tmdb_id 238 + director/genres/poster, no duplicate row); list target added with correct ordering and duplicate list add rejected; both entry points render (preferences sidebar, list page); film page shows "View on TMDB". Throwaway user hard-deleted afterwards — live DB back to its original state (2 users / 0 films).
-- **Next milestone:** the remainder in §5 (artwork, Crowdin, public deploy) — pick with the owner.
+- **Next milestone:** the search UX rework below (owner-directed 2026-08-31), then the remainder (artwork, Crowdin, public deploy, file-based import).
+
+### NEXT SESSION — search UX rework: TMDB as primary catalog + "Watchlist" rename (planned 2026-08-31, not started)
+
+Owner redirect after reviewing milestone 3: TMDB should be the **primary film catalog** (Letterboxd model — the owner confirmed Letterboxd uses TMDB as the source of all its film data), reached from the **main search box**, not from a Settings→Import page. "Import" is reserved for actual file-based imports (e.g., a CSV exported from TMDB) — that's a future milestone, not this one.
+
+**Owner spec:** typing "Blade Runner" in the main search box at the top of the page should list films titled Blade Runner **from the TMDB database**. Each result offers an **"Add to Watchlist"** button next to the title, OR clicking the film opens its page with more info and an "Add to Watchlist" action there. Rename **"Want to Watch" → "Watchlist"** everywhere (the user's watchlist = films they want to watch later).
+
+**Design decisions (owner-approved 2026-08-31, decision log #25):**
+1. Global film search queries TMDB when `REELTALK_TMDB_API_KEY` is set; falls back to the existing local trigram search when unset (graceful degradation per #22). User/list search and the federated API endpoint (`api_film_search`) are unchanged — the API stays local-only.
+2. Result rows: TMDB poster + title + year. The title links to a click-through route that creates-or-matches the local Film on first click (reusing `ensure_local_film` / backfill logic) and redirects to the film page. "Add to Watchlist" is a one-click POST (create-or-match + shelve onto the TO_READ shelf), then re-renders the search with an "On your watchlist" state on that row. Anonymous users see results but no add button; shelves exist only for local users.
+3. The film page already has the shelf selector (`snippets/shelf_selector.html`) — its "Want to Watch" label simply becomes "Watchlist"; no new control needed there.
+4. **Remove** the `/import/` page, its URL, both entry points (preferences sidebar link, list-page "Or search TMDB…" link) and `tests/views/test_import_films.py`. Move the reusable logic (`find_local_film`, `ensure_local_film`, `backfill_film_from_tmdb`, `add_poster`) from `views/import_films.py` into `reeltalk/tmdb.py`; drop the list-target code (`get_target_choices`/`resolve_target`/`add_to_target`). The `set_list_item_order` extraction in `views/list/list.py` STAYS — `add_film` uses it.
+5. Rename scope: `create_shelves` default name → "Watchlist"; a **data migration** renaming existing shelves with identifier="to-read" from "Want to Watch" → "Watchlist" (the identifier is wire format — unchanged); template strings (`templates/user/user.html`, `snippets/shelf_selector.html`); tests asserting the old name (e.g. `tests/views/test_feed.py`). `views/helpers.py:159` ("wants to watch") is a status phrase, not a shelf name — leave it.
+
+**Implementation notes:**
+- `film_search()` in `views/search.py` currently does local trigram search via `book_search.search()`; swap the film branch for `tmdb.search_films()` with per-row local-match annotation (`find_local_film`) + watchlist state; pass `page` through to TMDB (it returns up to 20/page).
+- New routes: GET click-through (e.g. `/search/film/<tmdb_id>/` → ensure film → redirect to `film.local_path`) and a POST watchlist action (login required, local users only; hidden `return_to` field preserves the results grid after adding).
+- `templates/search/film.html` needs a TMDB-results branch (CDN posters — the Search view already has `@csp_update(IMG_SRC="*")`) alongside the legacy local-results markup for fallback mode.
+- Suggested commits: (1) Watchlist rename + data migration, (2) TMDB global search + click-through + watchlist action (+ tests), (3) import-page removal. Then: full suite green via the CI-faithful flow (§7; baseline 998), PROGRESS.md update, live rebuild + click-through per the owner spec above, push to `fork` after owner review.
+- Letterboxd reference points (confirmed with owner): catalog = TMDB with no user-created films on their side; search results carry a one-click Watchlist action; the film page shows all TMDB data with rating/diary/watchlist actions; "Import" is a separate file-based data feature (CSV export/import).
 
 **Optional if time permits:** the six flagged app nits in §4 (viewer_aware_objects Manager, Status.delete quotation attr, Quotation.pure_content regex, ShelfFilm.save latent crash, get_rating soft-delete count, link-domains "book pages" wording) — each is small and owner-blessed to fix opportunistically.
 
@@ -280,3 +301,4 @@ docker compose run --rm -v "$TMP:/src:z" -w /src web sh -c \
 22. **API key in `.env`** (2026-08-30): `REELTALK_TMDB_API_KEY`, operator-set, shared by all users; when unset the import page shows a not-configured notice (no SiteSettings field, no per-user keys).
 23. **Dedup = ID + title/year fallback** (2026-08-30): search hits already in the library get an "In your library" badge and add directly; manually created films matching normalized title + year get `tmdb_id` backfilled and empty metadata filled — no duplicate rows (Letterboxd disambiguates its search the same way).
 24. **Scope = core + shelf targets** (2026-08-30): one import page; destination = any of the user's lists OR the Want to Watch shelf (Letterboxd-style watchlist target); Watched is not a destination (rating required, #19); bulk TMDB-watchlist import is out.
+25. **TMDB as primary catalog via global search; "Watchlist" rename** (2026-08-31): the main search box queries TMDB (Letterboxd model — owner confirmed they use TMDB as the source of all film data); results offer one-click "Add to Watchlist" and click-through to the film page; the Settings→Import Films page is removed ("Import" reserved for future file-based imports, e.g. a CSV exported from TMDB); "Want to Watch" is renamed to "Watchlist" everywhere (display name only — the shelf identifier stays `to-read`). Supersedes the UX shape of #24 (the create-or-match/backfill mechanics survive in the search flow).
