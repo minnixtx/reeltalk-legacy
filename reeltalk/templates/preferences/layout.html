@@ -39,6 +39,10 @@
         <h2 class="menu-label">{% trans "Data" %}</h2>
         <ul class="menu-list">
             <li>
+                {% url 'import-films' as url %}
+                <a href="{{ url }}"{% if url in request.path %} class="is-active" aria-selected="true"{% endif %}>{% trans "Import Films" %}</a>
+            </li>
+            <li>
                 {% url 'prefs-export' as url %}
                 <a href="{{ url }}"{% if url in request.path %} class="is-active" aria-selected="true"{% endif %}>{% trans "Export Film List" %}</a>
             </li>

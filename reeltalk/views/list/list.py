@@ -217,20 +217,33 @@ def add_film(request):
     if request.user != film_list.user and film_list.curation == "closed":
         raise PermissionDenied()
 
-    is_group_member = models.GroupMember.objects.filter(
-        group=film_list.group, user=request.user
-    ).exists()
-
     form = forms.ListItemForm(request.POST)
     if not form.is_valid():
         return List().get(request, film_list.id, add_failed=True)
 
     item = form.save(request, commit=False)
+    set_list_item_order(item)
+
+    if item.notes:
+        item.raw_notes = item.notes
+        item.notes = convert_to_markdown(item.notes)
+
+    item.save()
+
+    return List().get(request, film_list.id, add_succeeded=True)
+
+
+def set_list_item_order(item):
+    """compute the order (and pending state for curated lists) of a new list item"""
+    film_list = item.film_list
+    is_group_member = models.GroupMember.objects.filter(
+        group=film_list.group, user=item.user
+    ).exists()
 
     if film_list.curation == "curated":
         # make a pending entry at the end of the list
         order_max = (film_list.listitem_set.aggregate(Max("order"))["order__max"]) or 0
-        item.approved = is_group_member or request.user == film_list.user
+        item.approved = is_group_member or item.user == film_list.user
     else:
         # add the film at the latest order of approved films, before pending films
         order_max = (
@@ -243,14 +256,6 @@ def add_film(request):
         )
         increment_order_in_reverse(film_list.id, order_max + 1)
     item.order = order_max + 1
-
-    if item.notes:
-        item.raw_notes = item.notes
-        item.notes = convert_to_markdown(item.notes)
-
-    item.save()
-
-    return List().get(request, film_list.id, add_succeeded=True)
 
 
 @require_POST

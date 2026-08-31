@@ -431,6 +431,8 @@ urlpatterns = [
     # search
     re_path(r"^search.json/?$", views.Search.as_view(), name="search"),
     re_path(r"^search/?$", views.Search.as_view(), name="search"),
+    # TMDB import
+    re_path(r"^import/?$", views.ImportFilms.as_view(), name="import-films"),
     # users
     re_path(rf"{USER_PATH}\.json$", views.User.as_view()),
     re_path(rf"{USER_PATH}/?$", views.User.as_view(), name="user-feed"),

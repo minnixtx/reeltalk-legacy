@@ -31,6 +31,11 @@ class MergedFilm(models.Model):
     )
 
 
+def normalize_sort_title(title):
+    """strip leading articles and lowercase, for sorting and matching"""
+    return re.sub(r"^(the|a|an) ", "", str(title).lower())
+
+
 class Film(ObjectMixin, ReelTalkModel):
     """a film — one object per title"""
 
@@ -143,7 +148,7 @@ class Film(ObjectMixin, ReelTalkModel):
 
     def guess_sort_title(self):
         """Get a best-guess sort title for the current film"""
-        return re.sub(r"^(the|a|an) ", "", str(self.title).lower())
+        return normalize_sort_title(self.title)
 
     @classmethod
     def viewer_aware_objects(cls, viewer):
