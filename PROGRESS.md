@@ -1,6 +1,6 @@
 # ReelTalk — Progress Tracker
 
-**Last updated:** 2026-08-29
+**Last updated:** 2026-08-30
 **Audience:** any new session picking up this project. Read this first, then `PLAN.md` (the historical Phase 1 execution plan) if you need the original reasoning.
 
 ---
@@ -24,12 +24,15 @@
 | CSRF trusted-origins fix | ✅ Done, pushed (2026-08-24) |
 | Local instance | ✅ Running, **migrated to 0249** (2026-08-29): `initdb` seeded, admin account via `/setup` wizard (2 users), `install_mode=false`. Reachable at **http://192.168.1.138:3030** |
 | Phase 2 — milestone 1 (UI rebrand books→films + binary film shelf model) | ✅ Done, committed, pushed, verified live (full test suite green: 1332 passed) |
-| Phase 2 — milestone 2 (film domain model + AP rework) | ✅ **Done, live-verified, PUSHED 2026-08-30** — `08af0c971` (model/AP/migrations), `2726a1067` (app layer), `dfa704781` (4 conversion-artifact fixes) + `192ea709f` (test rework, new baseline 975 passed). Migrations 0247→0249 applied to the live DB; full click-through green (37/37). Fork main = `edffe01bd` |
-| Phase 2 — remainder after m2 (TMDB importer/connector, artwork, Crowdin, public deploy) | ⬜ Not started |
+| Phase 2 — milestone 2 (film domain model + AP rework) | ✅ **Done, live-verified, PUSHED 2026-08-30** — `08af0c971` (model/AP/migrations), `2726a1067` (app layer), `dfa704781` (4 conversion-artifact fixes) + `192ea709f` (test rework, new baseline 975 passed). Migrations 0247→0249 applied to the live DB; full click-through green (37/37). Fork main = `a00c7cd1e` |
+| Phase 2 — milestone 3 (TMDB film importer) | 🔄 **Implemented + suite green (998 passed), awaiting live verification + owner review** (2026-08-30) — `e709614e2` (TMDB client), `e9bd0b007` (import page). Decisions #21–24 |
+| Phase 2 — remainder after m3 (artwork, Crowdin, public deploy) | ⬜ Not started |
 
 ## 3. Commit history (`main`)
 
 ```
+e9bd0b007 Add TMDB film import page: search, create-or-match, add to list or shelf   ← Phase 2 milestone 3 (commit 2/2)
+e709614e2 Add TMDB API client for the film importer                                   ← Phase 2 milestone 3 (commit 1/2)
 a00c7cd1e Mark Phase 2 milestone 2 as pushed in progress tracker
 edffe01bd Record milestone 2 completion: test rework baseline, fixes, live verification
 192ea709f Rework test suite onto the Film model; remove book-era tests                  ← Phase 2 milestone 2 (commit 3/3)
@@ -147,25 +150,34 @@ Owner design decisions for this milestone (see §8 #13–20): flat `Film` model,
 - `templatetags/rating_tags.py::get_rating` counts soft-deleted reviews in a film's average while `get_user_rating` excludes them.
 - `settings/link_domains/link_domains.html` still says "shown on book pages" (string-pass leftover).
 
+### Phase 2 — milestone 3 (in progress, 2026-08-30)
+
+Owner design decisions for this milestone (see §8 #21–24): **TMDB** API; key via `REELTALK_TMDB_API_KEY` in `.env` (operator-set, all users may import; unset → not-configured notice); dedup = exact ID match + **title/year fallback** that backfills `tmdb_id` and empty metadata onto manually created films; scope = core flow with destination = any of the user's lists **or the Want to Watch shelf** (bulk import out).
+
+Note: the §5 note "UI chrome partly exists already" was stale — milestone 2 removed the import routes/templates entirely, so this milestone builds its own page.
+
+**Commit 1/2 (`e709614e2`) — TMDB client:**
+- `reeltalk/tmdb.py`: v3 REST client — `search/movie`, `movie/{id}` with `credits,images` appended, poster download from the image CDN; `TmdbError` for user-facing failures (invalid key 401, rate limit 429, network); `film_fields_from_tmdb()` maps a details payload onto Film fields (cast capped at 10).
+- `settings.TMDB_API_KEY` from the optional `REELTALK_TMDB_API_KEY` env var; documented in `.env.example`.
+
+**Commit 2/2 (`e9bd0b007`) — import page:**
+- `/import/` (route `import-films`), reachable from the preferences sidebar ("Import Films" under Data) and each list page ("Or search TMDB for films to import", target preselected).
+- Flow: pick destination (own lists + group-member lists, or Want to Watch shelf for local users) → search TMDB → results grid with posters; hits already in the library get an "In your library" badge and link to the film page → per-row "Add to <destination>" button.
+- Create-or-match: exact `tmdb_id` match via `Film.find_existing()`; else title+year fallback (normalized sort_title + year) that backfills `tmdb_id` + empty fields onto the manual film; else creates a new Film with full TMDB metadata + poster.
+- Add: lists reuse ordering logic extracted from the list-add view (`set_list_item_order`, so curated-list pending state behaves identically); shelves create a ShelfFilm on Want to Watch (Watched is not a destination — decision #19). Duplicates rejected with a message; after adding, the results grid re-renders and the added row is marked.
+- **New green baseline: 998 passed / 1 skipped / 1 xfailed / 52 subtests** (was 975; +23 new tests: 10 client + 13 view).
+
 ## 5. What still needs to be done
 
 ### Milestone 2 — pushed ✅ (2026-08-30)
 
 Owner approved and the milestone-2 commits went out to the `fork` remote (fast-forward, no force). Fork main = `a00c7cd1e`. The local instance is already running this exact code + migrations 0247→0249.
 
-### NEXT SESSION — Phase 2 milestone 3: TMDB film importer
+### Milestone 3 — TMDB film importer: implemented ✅ (2026-08-30), live verification + owner review pending
 
-Replaces the deleted book-list import: **search films → create-or-match Film → add to list**. Notes for the picking-up session:
-- The old Connector/importer machinery was removed in milestone 2 — this is a **fresh, simple build** (direct API client; no Connector model).
-- `Film.find_existing()` already dedups on tmdb_id/imdb_id/remote_id (decision log #19) — the importer plugs straight into it.
-- The UI chrome partly exists already: settings/pages say "Import Films" and describe a TMDB export — wire the real flow to it.
-- **DESIGN WITH THE OWNER FIRST** (decision log #7; Letterboxd is the loose UX template — flag comparisons explicitly). Decisions needed before code:
-  1. **API choice:** TMDB (REST, free key; genres/directors/cast/poster/year/runtime map 1:1 onto Film fields) vs OMDb.
-  2. **Key handling:** where the API key lives (site settings page vs `.env`), who can set it, graceful degradation when unset.
-  3. **Matching/dedup UX:** what the user sees when a search hit already exists locally (import-to-list directly? "already in your library"?), and whether importing backfills `tmdb_id` onto manually-created films.
-  4. **Scope cut:** core = search + create-or-match + add-to-list. Bulk "import my whole list" is OUT unless the owner wants it in.
-- Then implement with the usual discipline: commits per logical unit, CI-faithful test flow (§7) to green with the new baseline recorded here, live verification at :3030 (throwaway-user click-through pattern from milestone 2 works well), owner review gate before push (`fork` only, no force).
-- **Host resource note:** this machine runs local LLM inference — run at most ONE subagent at a time (six parallel agents OOM-crashed the host on 2026-08-27; serialized execution worked fine).
+All four design decisions were aligned with the owner up front (§8 #21–24); implementation is in `e709614e2` + `e9bd0b007` (details in §4). Remaining steps for this milestone:
+- **Live verification at :3030** — needs a real TMDB key: add `REELTALK_TMDB_API_KEY=...` to the live `.env`, then `docker compose up -d --build && docker compose restart nginx`. Throwaway-user click-through: verify the not-configured notice *before* adding the key, then page render, search with posters, add-new-film → list (metadata + poster populated), re-search shows the "In your library" badge, duplicate add rejected, shelf target works.
+- **Owner review gate** → push to `fork` (fast-forward only, no force).
 
 **Optional if time permits:** the six flagged app nits in §4 (viewer_aware_objects Manager, Status.delete quotation attr, Quotation.pure_content regex, ShelfFilm.save latent crash, get_rating soft-delete count, link-domains "book pages" wording) — each is small and owner-blessed to fix opportunistically.
 
@@ -235,7 +247,7 @@ docker compose run --rm -v "$TMP:/src:z" -w /src web sh -c \
   "python manage.py check && python manage.py compile_themes && python manage.py collectstatic --no-input && pytest -n 3"
 ```
 - Skipping `compile_themes` + `collectstatic` causes ~237 spurious failures (manifest_strict ValueError on theme CSS).
-- **Green baseline:** 975 passed / 1 skipped / 1 xfailed / 52 subtests (~3.5 min with `-n 3`) — as of Phase 2 milestone 2 test rework (2026-08-29; the drop from 1332 is removed-feature coverage: connectors, importers, book views, imports, readwise, ISNI, suggestion lists, series, cover jobs).
+- **Green baseline:** 998 passed / 1 skipped / 1 xfailed / 52 subtests (~3.5 min with `-n 3`) — as of Phase 2 milestone 3 (2026-08-30; +23 TMDB importer tests over the 975 baseline from the milestone 2 test rework, where the drop from 1332 was removed-feature coverage: connectors, importers, book views, imports, readwise, ISNI, suggestion lists, series, cover jobs).
 
 ### After changing app code
 `docker compose up -d --build` (rebuilds the web image), then `docker compose restart nginx` (quirk #1), then wait for web healthy.
@@ -262,3 +274,7 @@ docker compose run --rm -v "$TMP:/src:z" -w /src web sh -c \
 18. **Silent watched** (2026-08-26): marking a film watched posts **no** auto-generated note ("Post to feed" checkbox removed from the finish modal). Sharing a watched film happens via reviews/ratings, which the finish flow creates.
 19. **Watched requires a rating** (2026-08-26): a film cannot be added to Watched without a star rating (out of 5); the written review is optional. Rating-only entries are stored as `ReviewRating`.
 20. **Letterboxd as loose design template** (2026-08-26): the owner models ReelTalk's UX loosely on Letterboxd; use it as the reference when aligning on future design decisions together.
+21. **TMDB as the import API** (2026-08-30): TMDB v3 REST over OMDb — genres/directors/cast/poster/year/runtime map 1:1 onto Film fields; tmdb_id is already the primary dedup field and the film page links out to themoviedb.org.
+22. **API key in `.env`** (2026-08-30): `REELTALK_TMDB_API_KEY`, operator-set, shared by all users; when unset the import page shows a not-configured notice (no SiteSettings field, no per-user keys).
+23. **Dedup = ID + title/year fallback** (2026-08-30): search hits already in the library get an "In your library" badge and add directly; manually created films matching normalized title + year get `tmdb_id` backfilled and empty metadata filled — no duplicate rows (Letterboxd disambiguates its search the same way).
+24. **Scope = core + shelf targets** (2026-08-30): one import page; destination = any of the user's lists OR the Want to Watch shelf (Letterboxd-style watchlist target); Watched is not a destination (rating required, #19); bulk TMDB-watchlist import is out.
