@@ -26,6 +26,9 @@ RELEASE_API = env(
     "https://api.github.com/repos/minnixtx/reeltalk/releases/latest",
 )
 
+# TMDB film import (optional; when unset the import page shows a notice)
+TMDB_API_KEY = env.str("REELTALK_TMDB_API_KEY", "")
+
 PAGE_LENGTH = env.int("PAGE_LENGTH", 15)
 DEFAULT_LANGUAGE = env("DEFAULT_LANGUAGE", "English")
 SESSION_COOKIE_AGE = env.int("SESSION_COOKIE_AGE", 3600 * 24 * 365)  # One year ...ish
