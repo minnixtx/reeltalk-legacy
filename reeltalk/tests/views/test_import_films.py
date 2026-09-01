@@ -69,7 +69,7 @@ class ImportFilmsViews(TestCase):
                 localname="mouse",
                 remote_id="https://example.com/users/mouse",
             )
-        # local users get their default shelves (incl. Want to Watch) on create
+        # local users get their default shelves (incl. Watchlist) on create
         cls.want_shelf = models.Shelf.objects.get(
             identifier=models.Shelf.TO_READ, user=cls.local_user
         )
@@ -111,6 +111,7 @@ class ImportFilmsViews(TestCase):
         self.assertEqual(result.status_code, 302)
         self.assertIn("login", result.url)
 
+    @override_settings(TMDB_API_KEY="")
     def test_get_unconfigured(self, *_):
         """without an API key the page shows a not-configured notice"""
         result = self.call_view()
@@ -119,11 +120,11 @@ class ImportFilmsViews(TestCase):
 
     @override_settings(TMDB_API_KEY="test-key")
     def test_get_configured(self, *_):
-        """the form lists the want-to-watch shelf and the user's lists"""
+        """the form lists the watchlist shelf and the user's lists"""
         result = self.call_view()
         validate_html(result.render())
         content = result.render().content.decode()
-        self.assertIn("Want to Watch", content)
+        self.assertIn("Watchlist", content)
         self.assertIn("Cult Classics", content)
 
     @override_settings(TMDB_API_KEY="test-key")
@@ -236,7 +237,7 @@ class ImportFilmsViews(TestCase):
     @override_settings(TMDB_API_KEY="test-key")
     @responses.activate
     def test_add_to_shelf(self, *_):
-        """a film can be imported straight onto Want to Watch"""
+        """a film can be imported straight onto the Watchlist"""
         responses.add(responses.GET, DETAILS_URL, json=DETAILS_PAYLOAD, status=200)
         responses.add(responses.GET, POSTER_URL, body=b"jpeg", status=200)
         responses.add(responses.GET, SEARCH_URL, json=SEARCH_PAYLOAD, status=200)
@@ -248,7 +249,7 @@ class ImportFilmsViews(TestCase):
             models.ShelfFilm.objects.filter(film=film, shelf=self.want_shelf).exists()
         )
         content = result.render().content.decode()
-        self.assertIn("Added “Blade Runner” to Want to Watch", content)
+        self.assertIn("Added “Blade Runner” to Watchlist", content)
 
     @override_settings(TMDB_API_KEY="test-key")
     @responses.activate

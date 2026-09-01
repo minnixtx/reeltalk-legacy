@@ -431,6 +431,16 @@ urlpatterns = [
     # search
     re_path(r"^search.json/?$", views.Search.as_view(), name="search"),
     re_path(r"^search/?$", views.Search.as_view(), name="search"),
+    re_path(
+        r"^search/film/(?P<tmdb_id>[0-9]+)/?$",
+        views.film_search_clickthrough,
+        name="search-film-clickthrough",
+    ),
+    re_path(
+        r"^search/film/(?P<tmdb_id>[0-9]+)/watchlist/?$",
+        views.FilmWatchlistAdd.as_view(),
+        name="search-film-watchlist",
+    ),
     # TMDB import
     re_path(r"^import/?$", views.ImportFilms.as_view(), name="import-films"),
     # users

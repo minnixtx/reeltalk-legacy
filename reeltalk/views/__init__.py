@@ -140,7 +140,7 @@ from .rss_feed import (
     RssQuotesOnlyFeed,
     RssCommentsOnlyFeed,
 )
-from .search import Search
+from .search import Search, FilmWatchlistAdd, film_search_clickthrough
 from .setup import InstanceConfig, CreateAdmin
 from .status import CreateStatus, EditStatus, DeleteStatus
 from .updates import get_notification_count, get_unread_status_string

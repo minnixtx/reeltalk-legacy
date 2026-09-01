@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
-from django.core.files.base import ContentFile
 from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -13,7 +12,6 @@ from django.utils.decorators import method_decorator
 from django.views import View
 
 from reeltalk import models, tmdb
-from reeltalk.models.film import normalize_sort_title
 from reeltalk.views.list.list import set_list_item_order
 
 
@@ -50,73 +48,6 @@ def resolve_target(user, target):
         film_list.raise_not_submittable(user)
         return "list", film_list
     raise Http404()
-
-
-def find_local_film(row):
-    """the local Film matching a TMDB search hit, if any"""
-    existing = models.Film.find_existing({"tmdbId": row.tmdb_id})
-    if existing:
-        return existing
-    if not row.year:
-        return None
-    sort_title = normalize_sort_title(row.title)
-    return models.Film.objects.filter(sort_title=sort_title, year=row.year).first()
-
-
-def ensure_local_film(tmdb_id, title, year):
-    """find or create the local Film for a TMDB search hit"""
-    existing = models.Film.find_existing({"tmdbId": tmdb_id})
-    if existing:
-        add_poster(existing)
-        return existing
-
-    film = None
-    if year:
-        sort_title = normalize_sort_title(title)
-        film = models.Film.objects.filter(sort_title=sort_title, year=year).first()
-    if film is not None:
-        # a manually created film matching title + year: backfill from TMDB
-        details = tmdb.get_film_details(tmdb_id)
-        backfill_film_from_tmdb(film, details)
-        return film
-
-    details = tmdb.get_film_details(tmdb_id)
-    film = models.Film.objects.create(
-        **tmdb.film_fields_from_tmdb(details), tmdb_id=tmdb_id
-    )
-    add_poster(film, details)
-    return film
-
-
-def backfill_film_from_tmdb(film, details):
-    """fill empty fields on a manually created film from TMDB data"""
-    updated = False
-    if not film.tmdb_id:
-        film.tmdb_id = str(details["id"])
-        updated = True
-    for key, value in tmdb.film_fields_from_tmdb(details).items():
-        if key == "title" or not value:
-            continue
-        if not getattr(film, key):
-            setattr(film, key, value)
-            updated = True
-    if updated:
-        film.save()
-    add_poster(film, details)
-
-
-def add_poster(film, details=None):
-    """download the TMDB poster onto a film that doesn't have one yet"""
-    if film.poster:
-        return
-    if details is None:
-        details = tmdb.get_film_details(film.tmdb_id)
-    content = tmdb.download_poster(details)
-    if content:
-        film.poster.save(
-            f"tmdb-{film.tmdb_id or 'unknown'}.jpg", ContentFile(content), save=False
-        )
-        film.save()
 
 
 def add_to_target(user, film, kind, target):
@@ -185,7 +116,10 @@ class ImportFilms(View):
             results = tmdb.search_films(query)
         except tmdb.TmdbError as err:
             return self.render(request, query=query, error=str(err))
-        rows = [{"result": row, "local_film": find_local_film(row)} for row in results]
+        rows = [
+            {"result": row, "local_film": tmdb.find_local_film(row)}
+            for row in results.rows
+        ]
         return self.render(request, query=query, rows=rows)
 
     def handle_add(self, request):
@@ -215,7 +149,7 @@ class ImportFilms(View):
             )
 
         try:
-            film = ensure_local_film(tmdb_id, title, year)
+            film = tmdb.ensure_local_film(tmdb_id, title, year)
             ok, message = add_to_target(request.user, film, kind, target_obj)
         except tmdb.TmdbError as err:
             return self.render(request, query=query, error=str(err))
@@ -226,8 +160,8 @@ class ImportFilms(View):
             try:
                 results = tmdb.search_films(query)
                 rows = [
-                    {"result": row, "local_film": find_local_film(row)}
-                    for row in results
+                    {"result": row, "local_film": tmdb.find_local_film(row)}
+                    for row in results.rows
                 ]
             except tmdb.TmdbError:
                 pass

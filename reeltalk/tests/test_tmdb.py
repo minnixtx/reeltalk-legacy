@@ -1,4 +1,4 @@
-"""tests for the TMDB client used by the film importer"""
+"""tests for the TMDB client used by global film search"""
 
 import responses
 from django.test import TestCase, override_settings
@@ -51,34 +51,37 @@ class TmdbClientTests(TestCase):
     @override_settings(TMDB_API_KEY="test-key")
     @responses.activate
     def test_search_films(self):
-        """search results parse into SearchResult rows"""
+        """search results parse into SearchResult rows with page metadata"""
         responses.add(
             responses.GET,
             "https://api.themoviedb.org/3/search/movie",
-            json=SEARCH_PAYLOAD,
+            json={**SEARCH_PAYLOAD, "total_results": 42, "total_pages": 3},
             status=200,
         )
         results = tmdb.search_films("blade runner")
-        self.assertEqual(len(results), 2)
-        self.assertEqual(results[0].tmdb_id, "78")
-        self.assertEqual(results[0].title, "Blade Runner")
-        self.assertEqual(results[0].year, 1982)
-        self.assertTrue(results[0].poster_url.startswith("https://image.tmdb.org/"))
-        self.assertIsNone(results[1].year)
-        self.assertIsNone(results[1].poster_url)
+        self.assertEqual(len(results.rows), 2)
+        self.assertEqual(results.total_results, 42)
+        self.assertEqual(results.total_pages, 3)
+        self.assertEqual(results.rows[0].tmdb_id, "78")
+        self.assertEqual(results.rows[0].title, "Blade Runner")
+        self.assertEqual(results.rows[0].year, 1982)
+        self.assertTrue(results.rows[0].poster_url.startswith("https://image.tmdb.org/"))
+        self.assertIsNone(results.rows[1].year)
+        self.assertIsNone(results.rows[1].poster_url)
 
     @override_settings(TMDB_API_KEY="test-key")
     @responses.activate
-    def test_search_sends_api_key(self):
-        """the instance's API key goes out with the request"""
+    def test_search_sends_api_key_and_page(self):
+        """the instance's API key and page number go out with the request"""
         responses.add(
             responses.GET,
             "https://api.themoviedb.org/3/search/movie",
             json=SEARCH_PAYLOAD,
             status=200,
         )
-        tmdb.search_films("blade runner")
+        tmdb.search_films("blade runner", page=2)
         self.assertIn("api_key=test-key", responses.calls[0].request.url)
+        self.assertIn("page=2", responses.calls[0].request.url)
 
     @override_settings(TMDB_API_KEY="bad-key")
     @responses.activate
