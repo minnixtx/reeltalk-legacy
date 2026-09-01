@@ -86,3 +86,17 @@ def get_header_template(status):
 def load_film(status):
     """load the film a status is about, or the first mentioned film"""
     return status.film if hasattr(status, "film") else status.mention_films.first()
+
+
+@register.simple_tag(takes_context=False)
+def get_user_review(film, user):
+    """the current user's existing review of a film, if any (one review per film)"""
+    if not user.is_authenticated:
+        return None
+    return film.review_set.filter(user=user, deleted=False).first()
+
+
+@register.simple_tag(takes_context=False)
+def show_review_header(status_type, content):
+    """whether a status shows its name+stars header (template ifs can't group with parens)"""
+    return status_type == "Review" or (status_type == "Rating" and bool(content))

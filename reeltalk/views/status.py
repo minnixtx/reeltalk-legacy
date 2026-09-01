@@ -37,7 +37,13 @@ class EditStatus(View):
             models.Status.objects.select_subclasses(), id=status_id
         )
 
-        status_type = "reply" if status.reply_parent else status.status_type.lower()
+        if status.reply_parent:
+            status_type = "reply"
+        elif isinstance(status, models.ReviewRating):
+            # a rating-only entry is still the user's review of the film
+            status_type = "review"
+        else:
+            status_type = status.status_type.lower()
         data = {
             "type": status_type,
             "film": getattr(status, "film", None),
@@ -82,6 +88,16 @@ class CreateStatus(View):
                 logger.exception(form.errors)
                 return HttpResponseBadRequest()
             return redirect_to_referer(request)
+
+        # one review per film: an existing review can only be edited
+        if status_type == "Review" and not existing_status:
+            film = form.cleaned_data.get("film")
+            if film and models.Review.objects.filter(
+                film=film, user=request.user, deleted=False
+            ).exists():
+                if is_api_request(request):
+                    return HttpResponseBadRequest()
+                return redirect_to_referer(request)
 
         status = form.save(request, commit=False)
         # save the plain, unformatted version of the status for future editing

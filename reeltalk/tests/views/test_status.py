@@ -3,6 +3,7 @@
 from unittest.mock import patch
 import dateutil
 from django.core.exceptions import PermissionDenied
+from django.http import HttpResponseBadRequest
 from django.test import TestCase, TransactionTestCase
 from django.test.client import RequestFactory
 from django.utils import timezone
@@ -164,6 +165,53 @@ class StatusViews(TestCase):
         self.assertEqual(status.rating, 4.0)
         self.assertIsNone(status.edited_date)
 
+    def test_create_second_review_rejected(self, *_):
+        """one review per film: a second review is not created"""
+        models.Review.objects.create(
+            user=self.local_user, film=self.film, content="first review"
+        )
+        view = views.CreateStatus.as_view()
+        form = forms.ReviewForm(
+            {
+                "content": "second review",
+                "user": self.local_user.id,
+                "film": self.film.id,
+                "privacy": "public",
+            }
+        )
+        request = self.factory.post("", form.data)
+        request.user = self.local_user
+
+        result = view(request, "review")
+
+        self.assertEqual(result.status_code, 302)
+        self.assertEqual(models.Review.objects.count(), 1)
+        self.assertEqual(models.Review.objects.get().content, "first review")
+
+    def test_create_second_review_rejected_api(self, *_):
+        """API requests get a 400 for a duplicate review"""
+        models.ReviewRating.objects.create(
+            user=self.local_user, film=self.film, rating=3
+        )
+        view = views.CreateStatus.as_view()
+        form = forms.ReviewForm(
+            {
+                "content": "a written review",
+                "user": self.local_user.id,
+                "film": self.film.id,
+                "privacy": "public",
+            }
+        )
+        request = self.factory.post("", form.data)
+        request.user = self.local_user
+
+        with patch("reeltalk.views.status.is_api_request") as is_api:
+            is_api.return_value = True
+            result = view(request, "review")
+
+        self.assertIsInstance(result, HttpResponseBadRequest)
+        self.assertEqual(models.Review.objects.count(), 1)
+
     def test_create_status_wrong_user(self, *_):
         """You can't compose statuses for someone else"""
         view = views.CreateStatus.as_view()
@@ -209,9 +257,13 @@ class StatusViews(TestCase):
 
         status = models.Status.objects.get()
         self.assertEqual(list(status.user_image_uploads.all()), [upload])
+        # the version filename can carry a random suffix if the media volume
+        # already holds a file with the same name, so build the expectation
+        # from the stored file
+        src = upload.versions.first().file.url
         self.assertEqual(
             status.content,
-            f'<p>pic <img srcset="/images/uploads/user_{user.id}/{upload.id}/240.jpg 240w" sizes="(width &lt;= 600px) 100vw, 60vw" src="/images/uploads/user_{user.id}/{upload.id}/240.jpg"></p>',
+            f'<p>pic <img srcset="{src} 240w" sizes="(width &lt;= 600px) 100vw, 60vw" src="{src}"></p>',
         )
 
     def test_create_status_reply(self, *_):
@@ -456,7 +508,11 @@ class StatusViews(TestCase):
         )
         img_path = upload.original_file.name
         text = f"!image({img_path})"
-        expected = f'<img srcset="/images/uploads/user_{user.id}/{upload.id}/240.jpg 240w, /images/uploads/user_{user.id}/{upload.id}/600.jpg 600w" sizes="(width <= 600px) 100vw, 60vw" src="/images/uploads/user_{user.id}/{upload.id}/600.jpg" />'
+        # the version filenames can carry random suffixes (see above), so
+        # build the expectation from the stored files
+        src_240 = upload.versions.get(max_dimension="240").file.url
+        src_600 = upload.versions.get(max_dimension="600").file.url
+        expected = f'<img srcset="{src_240} 240w, {src_600} 600w" sizes="(width <= 600px) 100vw, 60vw" src="{src_600}" />'
         self.assertEqual(
             views.status.format_images(
                 text, views.status.find_images(text, self.local_user)
@@ -705,3 +761,70 @@ http://www.fish.com/"""
 
         with self.assertRaises(PermissionDenied):
             view(request, "comment", existing_status_id=status.id)
+
+    def test_edit_status_get_rating(self, *_):
+        """the edit panel for a rating-only entry renders as a review edit"""
+        status = models.ReviewRating.objects.create(
+            user=self.local_user, film=self.film, rating=3.5
+        )
+        view = views.EditStatus.as_view()
+        request = self.factory.get("")
+        request.user = self.local_user
+
+        result = view(request, status.id)
+        html = result.render()
+        validate_html(html)
+        self.assertEqual(result.status_code, 200)
+        self.assertIn("Edit review", html.content.decode())
+
+    def test_edit_rating_updates_in_place(self, *_):
+        """editing a rating-only entry updates the same status"""
+        status = models.ReviewRating.objects.create(
+            user=self.local_user, film=self.film, rating=3.5
+        )
+        view = views.CreateStatus.as_view()
+        form = forms.ReviewForm(
+            {
+                "content": "actually quite good",
+                "user": self.local_user.id,
+                "film": self.film.id,
+                "rating": "4",
+                "privacy": "public",
+            }
+        )
+        request = self.factory.post("", form.data)
+        request.user = self.local_user
+
+        result = view(request, "review", existing_status_id=status.id)
+
+        self.assertEqual(result.status_code, 302)
+        status.refresh_from_db()
+        self.assertEqual(status.rating, 4.0)
+        self.assertEqual(status.content, "<p>actually quite good</p>")
+        self.assertIsNotNone(status.edited_date)
+        self.assertEqual(models.Review.objects.count(), 1)
+
+    def test_edit_rating_cleared_rejected(self, *_):
+        """a rating-only entry can't be saved without a rating"""
+        status = models.ReviewRating.objects.create(
+            user=self.local_user, film=self.film, rating=3.5
+        )
+        view = views.CreateStatus.as_view()
+        form = forms.ReviewForm(
+            {
+                "content": "changing my mind",
+                "user": self.local_user.id,
+                "film": self.film.id,
+                "rating": "",
+                "privacy": "public",
+            }
+        )
+        request = self.factory.post("", form.data)
+        request.user = self.local_user
+
+        result = view(request, "review", existing_status_id=status.id)
+
+        self.assertEqual(result.status_code, 302)
+        status.refresh_from_db()
+        self.assertEqual(status.rating, 3.5)
+        self.assertFalse(status.content)

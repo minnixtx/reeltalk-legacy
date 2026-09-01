@@ -149,6 +149,39 @@ class ReadingViews(TestCase):
         self.assertEqual(status.rating, 4.5)
         self.assertEqual(status.content, "<p>a fine film</p>")
 
+    def test_finish_updates_existing_review(self, *_):
+        """finishing a film that already has a review updates that review"""
+        models.Review.objects.create(
+            user=self.local_user, film=self.film, content="a fine film", rating=2.5
+        )
+
+        result = self.post_finish({"rating": "4"})
+        self.assertEqual(result.status_code, 302)
+
+        read = self.local_user.shelf_set.get(identifier=models.Shelf.READ_FINISHED)
+        self.assertEqual(read.films.get(), self.film)
+
+        status = models.Status.objects.select_subclasses().get()
+        self.assertIsInstance(status, models.Review)
+        self.assertNotIsInstance(status, models.ReviewRating)
+        self.assertEqual(status.rating, 4.0)
+        self.assertEqual(status.content, "<p>a fine film</p>")
+        self.assertIsNotNone(status.edited_date)
+
+    def test_finish_with_content_updates_existing_review(self, *_):
+        """new text in the finish modal replaces the existing review's content"""
+        models.Review.objects.create(
+            user=self.local_user, film=self.film, content="old thoughts"
+        )
+
+        result = self.post_finish({"rating": "3.5", "content": "new thoughts"})
+        self.assertEqual(result.status_code, 302)
+
+        status = models.Status.objects.select_subclasses().get()
+        self.assertEqual(status.rating, 3.5)
+        self.assertEqual(status.content, "<p>new thoughts</p>")
+        self.assertEqual(models.Review.objects.count(), 1)
+
     def test_finish_moves_from_to_read(self, *_):
         """a want-to-watch film moves to the read shelf on finish"""
         to_read = self.local_user.shelf_set.get(

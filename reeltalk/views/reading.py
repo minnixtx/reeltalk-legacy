@@ -94,6 +94,20 @@ class ReadingStatus(View):
         # marking a film as watched posts the review (rating is required,
         # written review optional); adding to want-to-watch posts optionally
         if status == "finish":
+            # one review per film: an existing review is updated instead of
+            # creating a second entry
+            existing_review = film.review_set.filter(
+                user=request.user, deleted=False
+            ).first()
+            if existing_review:
+                if not request.POST.get("content"):
+                    # an empty modal text keeps the review's current content
+                    post = request.POST.copy()
+                    post["content"] = (
+                        existing_review.raw_content or existing_review.content or ""
+                    )
+                    request.POST = post
+                return CreateStatus.as_view()(request, "review", existing_review.id)
             status_type = "review" if request.POST.get("content") else "rating"
             return CreateStatus.as_view()(request, status_type)
 

@@ -250,8 +250,9 @@ class Status(OrderedCollectionPageMixin, ReelTalkModel):
         """certain types of status aren't editable"""
         # first, the standard raise
         super().raise_not_editable(viewer)
-        # if it's an edit (not a create) you can only edit content statuses
-        if self.id and isinstance(self, (GeneratedNote, ReviewRating)):
+        # if it's an edit (not a create) generated notes can't be edited;
+        # rating-only entries are the user's review of the film and stay editable
+        if self.id and isinstance(self, GeneratedNote):
             raise PermissionDenied()
 
     @classmethod

@@ -163,3 +163,25 @@ class FilmViews(TestCase):
         self.assertIn(reverse("edit-film", args=[self.manual_film.id]), content)
         self.assertIn("Add Description", content)
         self.assertIn(f"add_poster_{self.manual_film.id}", content)
+
+    # --- one review per film: the review tab becomes an edit link ---
+
+    def test_film_page_review_tab_edit_only(self, *_):
+        """a user who reviewed a film gets an edit link, not a new review form"""
+        models.Review.objects.create(
+            user=self.local_user, film=self.manual_film, content="Good movie"
+        )
+        self.client.force_login(self.local_user)
+        response = self.client.get(self.manual_film.local_path)
+        validate_html(response)
+        content = response.content.decode()
+        self.assertIn("Edit your review", content)
+        self.assertNotIn(f'form_review_{self.manual_film.id}', content)
+
+    def test_film_page_review_tab_for_new_reviewer(self, *_):
+        """a user without a review still gets the review form"""
+        self.client.force_login(self.local_user)
+        response = self.client.get(self.manual_film.local_path)
+        validate_html(response)
+        content = response.content.decode()
+        self.assertIn(f'form_review_{self.manual_film.id}', content)

@@ -1,5 +1,7 @@
 """using django model forms"""
 
+from django.core.exceptions import ValidationError
+
 from reeltalk import models
 from .custom_form import CustomForm
 
@@ -23,6 +25,15 @@ class ReviewForm(CustomForm):
             "sensitive",
             "privacy",
         ]
+
+    def clean(self):
+        """a rating-only entry must keep its rating (it can't be saved without one)"""
+        cleaned_data = super().clean()
+        if isinstance(self.instance, models.ReviewRating) and not cleaned_data.get(
+            "rating"
+        ):
+            self.add_error("rating", ValidationError("A star rating is required."))
+        return cleaned_data
 
 
 class CommentForm(CustomForm):

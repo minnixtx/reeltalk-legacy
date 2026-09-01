@@ -18,7 +18,7 @@
         </button>
     </form>
 </li>
-{% if status.status_type != 'GeneratedNote' and status.status_type != 'Rating' %}
+{% if status.status_type != 'GeneratedNote' %}
 <li role="menuitem" class="dropdown-item p-0">
     <span class="control">
         <a href="{% url 'edit-status' status.id %}" class="button is-radiusless is-fullwidth is-small" type="submit">

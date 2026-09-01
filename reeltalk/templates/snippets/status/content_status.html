@@ -4,8 +4,10 @@
 {% load i18n %}
 {% load static %}
 {% load humanize %}
+{% load status_display %}
 
 {% with status_type=status.status_type %}
+{% show_review_header status_type status.content as review_header %}
     <div class="columns is-gapless">
         {% if not hide_film %}
             {% with film=status.film|default:status.mention_films.first %}
@@ -30,7 +32,7 @@
         {% endif %}
 
         <article class="column ml-3-tablet my-3-mobile is-clipped">
-            {% if status_type == 'Review' %}
+            {% if review_header %}
             <header class="mb-2">
                 {% if status.name %}
                 <h3
@@ -45,7 +47,7 @@
                 <h4 class="subtitle is-6">
                     <span
                         class="is-hidden"
-                        {% if status_type == "Review" %}
+                        {% if review_header %}
                             itemprop="reviewRating"
                             itemscope
                             itemtype="https://schema.org/Rating"

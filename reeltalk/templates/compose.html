@@ -3,7 +3,7 @@
 {% load utilities %}
 
 {% block title %}
-    {% if draft.status_type == "Review" %}
+    {% if draft.status_type == "Review" or draft.status_type == "Rating" %}
         {% trans "Edit review" %}
     {% elif draft.status_type == "Quotation" %}
         {% trans "Edit quote" %}
@@ -17,7 +17,7 @@
 {% block content %}
 <header class="block content">
     <h1>
-        {% if draft.status_type == "Review" %}
+        {% if draft.status_type == "Review" or draft.status_type == "Rating" %}
             {% trans "Edit review" %}
         {% elif draft.status_type == "Quotation" %}
             {% trans "Edit quote" %}
