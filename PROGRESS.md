@@ -1,6 +1,6 @@
 # ReelTalk — Progress Tracker
 
-**Last updated:** 2026-08-31
+**Last updated:** 2026-09-01
 **Audience:** any new session picking up this project. Read this first, then `PLAN.md` (the historical Phase 1 execution plan) if you need the original reasoning.
 
 ---
@@ -27,11 +27,15 @@
 | Phase 2 — milestone 2 (film domain model + AP rework) | ✅ **Done, live-verified, PUSHED 2026-08-30** — `08af0c971` (model/AP/migrations), `2726a1067` (app layer), `dfa704781` (4 conversion-artifact fixes) + `192ea709f` (test rework, new baseline 975 passed). Migrations 0247→0249 applied to the live DB; full click-through green (37/37). Fork main = `a00c7cd1e` |
 | Phase 2 — milestone 3 (TMDB film importer) | ✅ **Done, live-verified, PUSHED 2026-08-31** — `e709614e2` (TMDB client), `e9bd0b007` (import page). Suite green: 998 passed. Fork main = `a0342a3c0`. Decisions #21–24 |
 | Phase 2 — search UX rework (TMDB as primary catalog, "Watchlist" rename) | ✅ **Done, live-verified, pushed to fork 2026-09-01** after owner review (owner exercised the flow live; three follow-up issues reported — see §5 backlog). `c7c920737` (rename + migration 0250), `8832a5a8e` (TMDB global search + click-through + watchlist action), `710e18038` (import page removal). Suite green: 999 passed. Decision #25 |
+| Phase 2 — owner-reported issues 2+3 (TMDB metadata lock, one review per film) | ✅ **Done, suite + live-verified 2026-09-01, awaiting owner review before push.** `f98542481` (decision #26), `5acf6a3be` (decision #27). Suite green: **1017 passed / 1 skipped / 1 xfailed** |
+| Phase 2 — owner-reported issue 1 (search-as-you-type dropdown) | ⬜ **Needs design alignment with the owner first** (decision #7) — proposed approach in §5 |
 | Phase 2 — remainder after rework (artwork, Crowdin, public deploy, file-based import) | ⬜ Not started |
 
 ## 3. Commit history (`main`)
 
 ```
+5acf6a3be Enforce one review per film; make rating-only entries editable (decision 27)  ← owner-reported issue 3
+f98542481 Lock TMDB-sourced film details from user editing (decision 26)                ← owner-reported issue 2
 710e18038 Remove the TMDB import page                                                 ← search UX rework (commit 3/3)
 8832a5a8e Query TMDB from global film search with one-click Watchlist add             ← search UX rework (commit 2/3)
 c7c920737 Rename the Want to Watch shelf to Watchlist (display name only)             ← search UX rework (commit 1/3)
@@ -195,6 +199,25 @@ Owner redirect after reviewing milestone 3 (decision #25): TMDB becomes the **pr
 
 **Pushed to fork main on 2026-09-01** after owner review — including `baaa8f2bd` (the plan commit) that was sitting unpushed locally; fast-forward, no force. Owner exercised the flow live afterwards and reported three follow-up issues (search-as-you-type dropdown, TMDB metadata editability, duplicate reviews) — captured in §5 as the next session's backlog (decisions #26–#27).
 
+### Phase 2 — owner-reported issues 2+3 (executed 2026-09-01, awaiting owner review)
+
+The two settled issues from the owner's live use of the search rework (decision log #26–#27), in the suggested order. Issue 1 (search-as-you-type) is **not** started — it needs design alignment first (§5).
+
+**Commit `f98542481` — TMDB metadata lock (decision #26):**
+- Films with a `tmdb_id` are locked in the UI: the edit pencil, the "Add Description" block and the poster-upload control are hidden on the film page; `EditFilm` GET/POST, `upload_poster` and `add_description` redirect without saving. Manually created films (no `tmdb_id`) stay fully editable — scope confirmed by the owner.
+- New test file `tests/views/test_films.py` (first coverage of the film page + edit views). It surfaced two latent template bugs, fixed in-line: the add-description `<textarea>` rendered literal `rows="None" cols="None"`, and unescaped `&` in the create-status tab hrefs (tidy failures — the film page had never been rendered logged-in-with-edit-perms in the suite before).
+- Inbound federation updates to TMDB films are untouched (the decision is about the user-facing UI).
+
+**Commit `5acf6a3be` — one review per film (decision #27):**
+- **UI:** wherever the Review tab was offered (`snippets/create_status.html` — film page, Home "Your Films" panel, compose), a user who already has a review for that film gets an **"Edit review"** link instead; the review panel shows a notice + edit link. Comment/Quote tabs are unchanged (transient, multiple allowed). New `get_user_review` template tag (status_display) does one query per film.
+- **Guard:** `CreateStatus.post` rejects a *new* review when the user already has one for that film (web → redirect back, API → 400). "Already reviewed" = any `Review` instance, **including rating-only `ReviewRating` entries** — they are the user's review of the film in this data model.
+- **Finish flow:** finishing a film that already has a review now *updates* that review instead of creating a second entry (the submitted rating is applied; an empty modal text keeps the review's current content, re-fed through the markdown pipeline via `raw_content`). This closes the remaining duplicate path: written review first, then "Mark as watched" with a rating.
+- **Rating-only entries became editable** (they previously had no edit path at all — `raise_not_editable` blocked them, there was no `rating.html` create template, and the status dropdown hid Edit for `Rating` type): `EditStatus` renders them as a review edit ("Edit review" heading), the dropdown offers Edit again, `ReviewForm` requires the rating to stay set when editing one (clearing it is a form error, not a save-time crash), and a rating entry that gains content shows its stars header (`show_review_header` tag — Django template `{% if %}` can't group with parentheses).
+- **Test-environment fix:** two upload-URL assertions in `test_status.py` were made data-driven. The `media_volume` named volume persists between test runs, so Django suffixes version filenames on re-save (`240.jpg` → `240_MuQ6bzv.jpg`) and exact-path expectations break — see §7 quirk 6.
+- New tests: duplicate-review rejection (web + API), rating-entry edit panel/update/clear-rejected, finish-updates-existing-review (content kept / replaced), film-page edit-only vs new-reviewer markup.
+
+**Verification:** full CI-faithful suite green — **1017 passed / 1 skipped / 1 xfailed** (baseline 999 + 18 new). Live click-through at :3030 as the owner account: 20/20 checks green — TMDB film (*Camp Hideaway Massacre*) page has no edit controls, `/film/<id>/edit/` redirects, poster/description POSTs rejected with metadata intact; a manually created film kept all editing affordances and saved an edit; reviewed films show "Edit your review" on the film page **and** in the Your Films panel with no new-review form; duplicate review POST rejected (owner's review id 8 untouched); rating-only finish → entry editable in place (rating 4→4.5 + content added, cleared-rating rejected); finish on a reviewed film produced exactly one updated status (rating applied, text preserved). All disposable films/statuses hard-deleted afterwards — live DB back to its original state (2 users, films 16/17, reviews 8/10).
+
 ## 5. What still needs to be done
 
 ### Milestone 2 — pushed ✅ (2026-08-30)
@@ -246,13 +269,19 @@ Milestones 1–3 and the search UX rework are done and pushed. What remains, fro
 - Re-point `locale/**` at a ReelTalk Crowdin project (still contains BookWyrm strings).
 - Public instance deployment of the alpha (operator's own TLS proxy in front of :3030).
 
-### Owner-reported issues (2026-09-01, from live use of the search rework) — NEXT SESSION
+### Owner-reported issues (2026-09-01, from live use of the search rework)
 
-Owner exercised the new search flow on the live instance (added *Camp Hideaway Massacre* to Watched and reviewed it) and reported three issues. Design needs owner sign-off before implementation (decision log #7):
+Owner exercised the new search flow on the live instance (added *Camp Hideaway Massacre* to Watched and reviewed it) and reported three issues. Status 2026-09-01:
 
-1. **Search-as-you-type dropdown** (feature request): while typing in the main search box, show a dropdown of matching films so a partial title can be clicked instead of fully typed + submitted — Letterboxd model. Likely a lightweight suggest endpoint hitting TMDB's search API (debounced client-side JS), plus defined behavior for the no-key local-fallback mode.
-2. **TMDB metadata is not user-editable** (decision #26): TMDB is the source of truth for film details, but the film page currently exposes some TMDB-sourced fields to user editing — remove that. Only user-generated content stays editable: review title, review body, star rating, comments/interactions. **Scope confirmed by owner 2026-09-01: lock only films with a `tmdb_id`; manually created films stay fully editable.**
-3. **One review per film** (decision #27): the Home Timeline "Your Films" panel offered "review" on a film that already had a review and let the owner submit a second one. A film with an existing review should offer *edit* only, not a new review. Live duplicate of *Camp Hideaway Massacre* **cleaned up 2026-09-01** (later review id 11 deleted; earliest review id 8 "Good movie" kept) — the remaining data is intact for use as a live test case when the fix lands.
+1. **Search-as-you-type dropdown** (feature request) — ⬜ **NEXT, needs owner sign-off first** (decision log #7). Proposed approach below.
+2. **TMDB metadata is not user-editable** (decision #26) — ✅ Done, live-verified (`f98542481`, execution record in §4). Scope as confirmed: lock only films with a `tmdb_id`; manually created films stay fully editable. Only user-generated content remains editable (review title/body, star rating, comments/interactions).
+3. **One review per film** (decision #27) — ✅ Done, live-verified (`5acf6a3be`, execution record in §4). The live duplicate of *Camp Hideaway Massacre* had been cleaned up earlier (review id 11 deleted; earliest review id 8 kept), which served as the live test case.
+
+**Issue 1 — proposed design (Letterboxd model, for owner alignment):**
+- **Suggest endpoint:** `GET /search/suggest/?q=<term>&type=film` returning JSON. With `REELTALK_TMDB_API_KEY` set it queries TMDB's `search/movie` (reusing `tmdb.search_films()`, page 1, top ~8 hits); when unset it falls back to the local trigram search — same graceful degradation as decision #25. Each result: title, year, poster (TMDB CDN or local), and a link target — local matches go straight to the film page; TMDB-only hits reuse the existing click-through route `GET /search/film/<tmdb_id>/` (create-or-match + redirect).
+- **Client:** small vanilla-JS handler on the main search box (no new dependencies): ~300 ms debounce, minimum 2 characters, dropdown rendered under the input; clicking a row navigates to its target; Enter still submits the normal full search. Keyboard arrow-navigation is optional polish, not required for alpha.
+- **No-key local-fallback behavior:** the dropdown lists local-library matches only (there is no TMDB catalog to query); with zero local matches it shows nothing — no "no results" noise while typing. Consistent with how the full search page degrades.
+- **Open questions for the owner:** (a) keep the dropdown minimal (title + year + poster, no inline "Add to Watchlist")? (b) show suggestions to anonymous users too (they can already open film pages via click-through)? (c) is click-only acceptable for alpha, or do you want arrow-key navigation?
 
 ### Housekeeping / known items
 - The seed repo at `/home/minnix/reeltalk` holds stale local history (diverged from the remote after the force-push). Re-clone or delete if a clean copy is wanted.
@@ -297,6 +326,7 @@ docker compose logs -f web      # inspect a service
 3. **IPv6 docker-proxy quirk:** IPv6 `[::1]` through docker-proxy resets HTTP connections (raw TCP is fine, nginx never sees the request). Host networking issue, not app config — test with `curl -4`.
 4. Container writes to mounted dirs leave root-owned files (pycache) — clean up with sudo if they accumulate.
 5. **The live `.env` TMDB key leaks into test runs:** `docker compose run` inherits the project's `.env`, so `REELTALK_TMDB_API_KEY` is set inside the test container on this host. Global film search branches on that key, so tests asserting local-fallback behavior pin `TMDB_API_KEY=''` via `override_settings` (TMDB-mode tests set `'test-key'`). If a future session sees unmocked `api.themoviedb.org` calls in tests, that's why — GitHub CI has no key and behaves the same as the pinned tests.
+6. **The `media_volume` named volume persists between test runs:** uploads saved by one run (e.g. `/app/images/uploads/user_1/1/240.jpg`) are still there for the next, so Django's storage suffixes re-saved filenames (`240_MuQ6bzv.jpg`). Tests must never assert exact upload URLs — build expectations from the stored file's `.url` (done in `test_status.py` 2026-09-01). GitHub CI is unaffected (fresh volume per run).
 
 ### Running the test suite (CI-faithful flow)
 The Docker image **excludes tests** (upstream `.dockerignore` has `**/tests`). Use a temp source copy:
@@ -308,7 +338,7 @@ docker compose run --rm -v "$TMP:/src:z" -w /src web sh -c \
   "python manage.py check && python manage.py compile_themes && python manage.py collectstatic --no-input && pytest -n 3"
 ```
 - Skipping `compile_themes` + `collectstatic` causes ~237 spurious failures (manifest_strict ValueError on theme CSS).
-- **Green baseline:** 999 passed / 1 skipped / 1 xfailed (~3.5 min with `-n 3`) — as of the search UX rework (2026-08-31; −13 import-page tests, +14 TMDB search tests over the 998 milestone-3 baseline, which was itself +23 TMDB importer tests over the 975 milestone-2 baseline, where the drop from 1332 was removed-feature coverage: connectors, importers, book views, imports, readwise, ISNI, suggestion lists, series, cover jobs).
+- **Green baseline:** **1017 passed / 1 skipped / 1 xfailed** (~3.5 min with `-n 3`) — as of the owner-reported issues 2+3 (2026-09-01; +18 tests: 11 film page/edit, 5 status/review, 2 finish-flow). Previous baselines: 999 after the search UX rework (2026-08-31), 998 milestone 3, 975 milestone 2 (the drop from 1332 was removed-feature coverage: connectors, importers, book views, imports, readwise, ISNI, suggestion lists, series, cover jobs).
 
 ### After changing app code
 `docker compose up -d --build` (rebuilds the web image), then `docker compose restart nginx` (quirk #1), then wait for web healthy.
