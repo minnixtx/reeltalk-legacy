@@ -26,7 +26,7 @@
 | Phase 2 — milestone 1 (UI rebrand books→films + binary film shelf model) | ✅ Done, committed, pushed, verified live (full test suite green: 1332 passed) |
 | Phase 2 — milestone 2 (film domain model + AP rework) | ✅ **Done, live-verified, PUSHED 2026-08-30** — `08af0c971` (model/AP/migrations), `2726a1067` (app layer), `dfa704781` (4 conversion-artifact fixes) + `192ea709f` (test rework, new baseline 975 passed). Migrations 0247→0249 applied to the live DB; full click-through green (37/37). Fork main = `a00c7cd1e` |
 | Phase 2 — milestone 3 (TMDB film importer) | ✅ **Done, live-verified, PUSHED 2026-08-31** — `e709614e2` (TMDB client), `e9bd0b007` (import page). Suite green: 998 passed. Fork main = `a0342a3c0`. Decisions #21–24 |
-| Phase 2 — search UX rework (TMDB as primary catalog, "Watchlist" rename) | ✅ **Done, live-verified 2026-08-31, awaiting owner review before push** — `c7c920737` (rename + migration 0250), `8832a5a8e` (TMDB global search + click-through + watchlist action), `710e18038` (import page removal). Suite green: 999 passed. Decision #25 |
+| Phase 2 — search UX rework (TMDB as primary catalog, "Watchlist" rename) | ✅ **Done, live-verified, pushed to fork 2026-09-01** after owner review (owner exercised the flow live; three follow-up issues reported — see §5 backlog). `c7c920737` (rename + migration 0250), `8832a5a8e` (TMDB global search + click-through + watchlist action), `710e18038` (import page removal). Suite green: 999 passed. Decision #25 |
 | Phase 2 — remainder after rework (artwork, Crowdin, public deploy, file-based import) | ⬜ Not started |
 
 ## 3. Commit history (`main`)
@@ -193,7 +193,7 @@ Owner redirect after reviewing milestone 3 (decision #25): TMDB becomes the **pr
 
 **Live verification at :3030 (2026-08-31), throwaway user:** rebuild applied **migration 0250 cleanly** (both existing users' `to-read` shelves renamed, identifiers unchanged); new-user creation gets a "Watchlist" shelf. **15/15 click-through checks green:** anonymous search renders TMDB results with posters and no add button; logged-in rows carry "Add to Watchlist"; one-click POST → redirect back to the grid → "On your watchlist" state on that row; click-through on an unmatched hit created the local film (full metadata + poster) and opened its page, which shows the Watchlist action and "View on TMDB"; profile header and shelf page show "Watchlist"; `/import/` 404s. Throwaway user hard-deleted afterwards — live DB back to its original state (2 users / 0 films).
 
-**Not yet pushed:** owner review pending. Local `main` also carries `baaa8f2bd` (the plan commit) from before this session — push it together with the rework, fast-forward, no force.
+**Pushed to fork main on 2026-09-01** after owner review — including `baaa8f2bd` (the plan commit) that was sitting unpushed locally; fast-forward, no force. Owner exercised the flow live afterwards and reported three follow-up issues (search-as-you-type dropdown, TMDB metadata editability, duplicate reviews) — captured in §5 as the next session's backlog (decisions #26–#27).
 
 ## 5. What still needs to be done
 
@@ -209,7 +209,7 @@ All four design decisions were aligned with the owner up front (§8 #21–24); i
 - **Live verification at :3030 (2026-08-30), throwaway user:** not-configured notice confirmed *before* the key was set; after adding `REELTALK_TMDB_API_KEY` to the live `.env` — search rendered 15 results with posters; add-new-film → Want to Watch (full metadata + poster populated); re-search showed the "In your library" badge linking to the film page; duplicate shelf add rejected ("is already on Want to Watch"); title/year backfill worked (manually created *The Godfather* 1972 got tmdb_id 238 + director/genres/poster, no duplicate row); list target added with correct ordering and duplicate list add rejected; both entry points render (preferences sidebar, list page); film page shows "View on TMDB". Throwaway user hard-deleted afterwards — live DB back to its original state (2 users / 0 films).
 - **Next milestone:** the search UX rework below (owner-directed 2026-08-31), then the remainder (artwork, Crowdin, public deploy, file-based import).
 
-### Search UX rework — executed ✅ (2026-08-31), awaiting owner review
+### Search UX rework — executed ✅ (2026-08-31), pushed 2026-09-01
 
 Executed per the plan below in three commits (`c7c920737`, `8832a5a8e`, `710e18038`) — full execution record, test baseline and live verification results are in §4. The spec and design decisions are kept here as the decision record (decision log #25).
 
@@ -240,11 +240,19 @@ Owner redirect after reviewing milestone 3: TMDB should be the **primary film ca
 - If the host's LAN IP changes again: update `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` in the live `.env`, then `docker compose up -d && docker compose restart nginx` (see §7 quirks).
 
 ### Phase 2 — remainder (DESIGN WITH THE OWNER FIRST; no solo design decisions)
-Milestones 1–3 and the search UX rework are done (the rework awaits owner review before push). What remains, from PLAN.md §12 plus the owner's 13-item list:
+Milestones 1–3 and the search UX rework are done and pushed. What remains, from PLAN.md §12 plus the owner's 13-item list (plus the owner-reported backlog below):
 - **File-based film import** — "Import" was reserved for this by decision #25 (e.g., a CSV exported from TMDB); design with the owner.
 - Custom ReelTalk artwork replacing BookWyrm's placeholder/wyrm imagery.
 - Re-point `locale/**` at a ReelTalk Crowdin project (still contains BookWyrm strings).
 - Public instance deployment of the alpha (operator's own TLS proxy in front of :3030).
+
+### Owner-reported issues (2026-09-01, from live use of the search rework) — NEXT SESSION
+
+Owner exercised the new search flow on the live instance (added *Camp Hideaway Massacre* to Watched and reviewed it) and reported three issues. Design needs owner sign-off before implementation (decision log #7):
+
+1. **Search-as-you-type dropdown** (feature request): while typing in the main search box, show a dropdown of matching films so a partial title can be clicked instead of fully typed + submitted — Letterboxd model. Likely a lightweight suggest endpoint hitting TMDB's search API (debounced client-side JS), plus defined behavior for the no-key local-fallback mode.
+2. **TMDB metadata is not user-editable** (decision #26): TMDB is the source of truth for film details, but the film page currently exposes some TMDB-sourced fields to user editing — remove that. Only user-generated content stays editable: review title, review body, star rating, comments/interactions. Open scope question: manually created films (no `tmdb_id`) — stay editable or lock those too?
+3. **One review per film** (decision #27): the Home Timeline "Your Films" panel offered "review" on a film that already had a review and let the owner submit a second one. A film with an existing review should offer *edit* only, not a new review. Live evidence: the duplicate review of *Camp Hideaway Massacre* exists in the live DB (cleanup pending owner's call).
 
 ### Housekeeping / known items
 - The seed repo at `/home/minnix/reeltalk` holds stale local history (diverged from the remote after the force-push). Re-clone or delete if a clean copy is wanted.
@@ -332,3 +340,5 @@ docker compose run --rm -v "$TMP:/src:z" -w /src web sh -c \
 23. **Dedup = ID + title/year fallback** (2026-08-30): search hits already in the library get an "In your library" badge and add directly; manually created films matching normalized title + year get `tmdb_id` backfilled and empty metadata filled — no duplicate rows (Letterboxd disambiguates its search the same way).
 24. **Scope = core + shelf targets** (2026-08-30): one import page; destination = any of the user's lists OR the Want to Watch shelf (Letterboxd-style watchlist target); Watched is not a destination (rating required, #19); bulk TMDB-watchlist import is out.
 25. **TMDB as primary catalog via global search; "Watchlist" rename** (2026-08-31): the main search box queries TMDB (Letterboxd model — owner confirmed they use TMDB as the source of all film data); results offer one-click "Add to Watchlist" and click-through to the film page; the Settings→Import Films page is removed ("Import" reserved for future file-based imports, e.g. a CSV exported from TMDB); "Want to Watch" is renamed to "Watchlist" everywhere (display name only — the shelf identifier stays `to-read`). Supersedes the UX shape of #24 (the create-or-match/backfill mechanics survive in the search flow).
+26. **TMDB is the source of truth for film metadata; it is not user-editable in the UI** (2026-09-01): only user-generated content stays editable (review title/body, star rating, comments/interactions); TMDB-sourced fields on the film page must be locked. Open scope question: manually created films (no `tmdb_id`) — stay editable or lock too?
+27. **One review per film** (2026-09-01): if a user has already reviewed a film, the UI offers editing that review only — no second review. (Reported live: the Home Timeline "Your Films" panel allowed a duplicate review of *Camp Hideaway Massacre*.)
