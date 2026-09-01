@@ -33,6 +33,9 @@ class EditFilm(View):
     def get(self, request, film_id):
         """info about a film"""
         film = get_mergeable_object_or_404(models.Film, id=film_id)
+        if film.tmdb_id:
+            # TMDB is the source of truth for this film's details
+            return redirect(film.local_path)
         data = {
             "film": film,
             "form": forms.FilmForm(instance=film),
@@ -42,6 +45,9 @@ class EditFilm(View):
     def post(self, request, film_id):
         """edit a film"""
         film = get_mergeable_object_or_404(models.Film, id=film_id)
+        if film.tmdb_id:
+            # TMDB is the source of truth for this film's details
+            return redirect(film.local_path)
 
         form = forms.FilmForm(request.POST, request.FILES, instance=film)
         if not form.is_valid():

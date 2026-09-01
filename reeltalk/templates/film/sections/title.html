@@ -31,7 +31,7 @@
     {% endif %}
 </div>
 
-{% if user_authenticated and can_edit_film %}
+{% if user_authenticated and can_edit_film and not film.tmdb_id %}
 <div class="column is-narrow">
     <a href="{% url 'edit-film' film.id %}">
         <span class="icon icon-pencil" title="{% trans "Edit Film" %}" aria-hidden="true"></span>

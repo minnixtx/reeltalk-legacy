@@ -3,7 +3,7 @@
 {% load utilities %}
 
 {% if not film.poster %}
-    {% if user_authenticated %}
+    {% if user_authenticated and not film.tmdb_id %}
         <button
             type="button"
             class="cover-container no-cover is-h-m-mobile"

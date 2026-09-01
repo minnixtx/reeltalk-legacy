@@ -31,7 +31,7 @@
     {% include 'snippets/trimmed_text.html' with trim_length=90 %}
 {% endwith %}
 
-{% if user_authenticated and can_edit_film and not film|film_description %}
+{% if user_authenticated and can_edit_film and not film.tmdb_id and not film|film_description %}
 {% trans 'Add Description' as button_text %}
 {% include 'snippets/toggle/open_button.html' with class="mb-2 is-small" text=button_text controls_text="add_description" controls_uid=film.id focus="id_description" hide_active=True id="hide_description" %}
 
@@ -40,7 +40,7 @@
         {% csrf_token %}
         <div class="field">
             <label class="label" for="id_description_{{ film.id }}">{% trans "Description:" %}</label>
-            <textarea name="description" cols="None" rows="None" class="textarea" id="id_description_{{ film.id }}"></textarea>
+            <textarea name="description" rows="4" class="textarea" id="id_description_{{ film.id }}"></textarea>
         </div>
         <div class="field">
             <button class="button is-primary" type="submit">{% trans "Save" %}</button>

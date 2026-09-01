@@ -105,6 +105,9 @@ class Film(View):
 def upload_poster(request, film_id):
     """upload a new poster"""
     film = get_mergeable_object_or_404(models.Film, id=film_id)
+    if film.tmdb_id:
+        # TMDB is the source of truth for this film's details
+        return redirect(film.local_path)
     film.last_edited_by = request.user
 
     url = request.POST.get("poster-url")
@@ -131,6 +134,9 @@ def upload_poster(request, film_id):
 def add_description(request, film_id):
     """add a description to a film"""
     film = get_mergeable_object_or_404(models.Film, id=film_id)
+    if film.tmdb_id:
+        # TMDB is the source of truth for this film's details
+        return redirect("film", film.id)
 
     description = request.POST.get("description")
 
