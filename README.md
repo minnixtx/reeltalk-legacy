@@ -6,7 +6,7 @@ ReelTalk is a fork of [BookWyrm](https://github.com/bookwyrm-social/bookwyrm) �
 
 ## Status
 
-🚧 **Alpha.** Phase 1 (rebrand + simplified Docker self-hosting) is complete; the codebase currently runs BookWyrm's book-centric feature set under the ReelTalk name. The film domain model (titles, years, cast, ratings — replacing books/editions/authors) is the next phase and will be designed with the community.
+🚧 **Alpha.** Phase 1 (rebrand + simplified Docker self-hosting) and the film domain rework are complete: books/editions/authors have been replaced by a flat film model (title, year, runtime, cast, directors, genres, poster), the UI is fully film-first with binary watch state (Watchlist / Watched — marking a film watched requires a star rating), and TMDB is the primary film catalog: the main search box queries TMDB directly, with one-click "Add to Watchlist" and click-through to film pages. Federation runs over a new `Film` ActivityPub wire type between ReelTalk instances. Next up: polish items from live use, file-based film import, custom ReelTalk artwork, and a first public instance. See [PROGRESS.md](PROGRESS.md) for the full milestone history and owner decision log.
 
 ## What ReelTalk will be
 
@@ -44,8 +44,9 @@ docker compose up -d --build
 
 - [x] Project seed
 - [x] Full fork + rebrand of BookWyrm (Phase 1)
-- [ ] Film domain model (titles, years, cast, ratings)
-- [ ] Metadata integration (TMDB)
+- [x] Film domain model (titles, years, cast, ratings)
+- [x] Metadata integration (TMDB as the primary film catalog via global search)
+- [ ] File-based film import (e.g. a CSV exported from TMDB)
 - [ ] Custom ReelTalk artwork
 - [ ] First public instance
 
