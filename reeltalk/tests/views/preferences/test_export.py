@@ -67,7 +67,7 @@ class ExportViews(TestCase):
         self.assertEqual(
             export.content,
             b"title,director_text,remote_id,tmdb_id,imdb_id,year,runtime,rating,review_name,review_cw,review_content,review_published,shelf,shelf_name,shelf_date\r\n"
-            + b"Test Film,,%b,42,,,,,,,,,to-read,Want to Watch,%b\r\n"
+            + b"Test Film,,%b,42,,,,,,,,,to-read,Watchlist,%b\r\n"
             % (self.film.remote_id.encode("utf-8"), film_date),
         )
 
@@ -96,7 +96,7 @@ class ExportViews(TestCase):
         self.assertEqual(
             export.content,
             b"title,director_text,remote_id,tmdb_id,imdb_id,year,runtime,rating,review_name,review_cw,review_content,review_published,shelf,shelf_name,shelf_date\r\n"
-            + b"Test Film,,%b,42,,,,3.00,review title,,content here,%b,to-read,Want to Watch,%b\r\n"
+            + b"Test Film,,%b,42,,,,3.00,review title,,content here,%b,to-read,Watchlist,%b\r\n"
             % (self.film.remote_id.encode("utf-8"), review_date, film_date),
         )
 

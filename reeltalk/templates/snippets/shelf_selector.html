@@ -26,7 +26,7 @@
 
 {% elif shelf.identifier == 'to-read' %}
 
-{% trans "Want to Watch" as button_text %}
+{% trans "Watchlist" as button_text %}
 {% url 'reading-status' 'want' film.id as fallback_url %}
 {% join "want_to_read" uuid as modal_id %}
 {% include 'snippets/shelve_button/modal_button.html' with class=button_class fallback_url=fallback_url %}

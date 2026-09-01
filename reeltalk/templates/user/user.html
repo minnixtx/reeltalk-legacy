@@ -48,7 +48,7 @@
         {% for shelf in shelves %}
         <div class="column is-narrow">
             <h3>
-                {% if shelf.identifier == 'to-read' %}{% trans "Want to Watch" %}
+                {% if shelf.identifier == 'to-read' %}{% trans "Watchlist" %}
                 {% elif shelf.identifier == 'read' %}{% trans "Watched" %}
                 {% else %}{{ shelf.name }}{% endif %}
                 {% if shelf.size > 4 %}<small>(<a href="{{ shelf.local_path }}">{% blocktrans with size=shelf.size %}View all {{ size }}{% endblocktrans %}</a>)</small>{% endif %}

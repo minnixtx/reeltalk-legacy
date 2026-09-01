@@ -231,7 +231,7 @@ class FeedViews(TestCase):
             shelf=self.local_user.shelf_set.get(identifier="to-read"),
         )
         suggestions = views.feed.get_suggested_films(self.local_user)
-        self.assertEqual(suggestions[0]["name"], "Want to Watch")
+        self.assertEqual(suggestions[0]["name"], "Watchlist")
         self.assertEqual(suggestions[0]["films"][0], self.film)
 
     def test_get_suggested_film_filters_blocked(self, *_):
@@ -257,6 +257,6 @@ class FeedViews(TestCase):
         )
 
         suggestions = views.feed.get_suggested_films(self.local_user)
-        self.assertEqual(suggestions[0]["name"], "Want to Watch")
+        self.assertEqual(suggestions[0]["name"], "Watchlist")
         self.assertEqual(suggestions[0]["films"][0], self.film)
         self.assertTrue(awful_film not in list(suggestions[0]["films"]))

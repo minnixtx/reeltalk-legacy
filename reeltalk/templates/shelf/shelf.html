@@ -66,7 +66,7 @@
     <div class="block columns is-mobile">
         <div class="column">
             <h2 class="title is-3">
-                {% if shelf.identifier == 'to-read' %}{% trans "Want to Watch" %}
+                {% if shelf.identifier == 'to-read' %}{% trans "Watchlist" %}
                 {% elif shelf.identifier == 'read' %}{% trans "Watched" %}
                 {% else %}{{ shelf.name }}{% endif %}
                 <span class="subtitle">

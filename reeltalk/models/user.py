@@ -491,7 +491,7 @@ class User(OrderedCollectionPageMixin, AbstractUser):
         """default shelves for a new user"""
         shelves = [
             {
-                "name": "Want to Watch",
+                "name": "Watchlist",
                 "identifier": "to-read",
             },
             {

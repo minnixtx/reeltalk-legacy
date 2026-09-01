@@ -12,7 +12,7 @@ register = template.Library()
 
 SHELF_NAMES = {
     "all": _("All films"),
-    "to-read": _("Want to Watch"),
+    "to-read": _("Watchlist"),
     "read": _("Watched"),
 }
 
