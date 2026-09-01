@@ -22,16 +22,19 @@
 | Phase 1 (rebrand + deployment simplification) | ✅ Done, pushed, verified (full test suite green ×2) |
 | Pre-Phase-2 changes (no HTTPS, no anubis, :3030 endpoint, no CONTRIBUTING) | ✅ Done, pushed (owner-directed, 2026-08-23) |
 | CSRF trusted-origins fix | ✅ Done, pushed (2026-08-24) |
-| Local instance | ✅ Running, **migrated to 0249** (2026-08-29): `initdb` seeded, admin account via `/setup` wizard (2 users), `install_mode=false`. Reachable at **http://192.168.1.138:3030** |
+| Local instance | ✅ Running, **migrated to 0250** (2026-08-31): `initdb` seeded, admin account via `/setup` wizard (2 users), `install_mode=false`. Reachable at **http://192.168.1.138:3030** |
 | Phase 2 — milestone 1 (UI rebrand books→films + binary film shelf model) | ✅ Done, committed, pushed, verified live (full test suite green: 1332 passed) |
 | Phase 2 — milestone 2 (film domain model + AP rework) | ✅ **Done, live-verified, PUSHED 2026-08-30** — `08af0c971` (model/AP/migrations), `2726a1067` (app layer), `dfa704781` (4 conversion-artifact fixes) + `192ea709f` (test rework, new baseline 975 passed). Migrations 0247→0249 applied to the live DB; full click-through green (37/37). Fork main = `a00c7cd1e` |
 | Phase 2 — milestone 3 (TMDB film importer) | ✅ **Done, live-verified, PUSHED 2026-08-31** — `e709614e2` (TMDB client), `e9bd0b007` (import page). Suite green: 998 passed. Fork main = `a0342a3c0`. Decisions #21–24 |
-| Phase 2 — search UX rework (TMDB as primary catalog, "Watchlist" rename) | 🔄 **Planned 2026-08-31, not started** — owner redirect after reviewing m3; full plan in §5. Decision #25 |
+| Phase 2 — search UX rework (TMDB as primary catalog, "Watchlist" rename) | ✅ **Done, live-verified 2026-08-31, awaiting owner review before push** — `c7c920737` (rename + migration 0250), `8832a5a8e` (TMDB global search + click-through + watchlist action), `710e18038` (import page removal). Suite green: 999 passed. Decision #25 |
 | Phase 2 — remainder after rework (artwork, Crowdin, public deploy, file-based import) | ⬜ Not started |
 
 ## 3. Commit history (`main`)
 
 ```
+710e18038 Remove the TMDB import page                                                 ← search UX rework (commit 3/3)
+8832a5a8e Query TMDB from global film search with one-click Watchlist add             ← search UX rework (commit 2/3)
+c7c920737 Rename the Want to Watch shelf to Watchlist (display name only)             ← search UX rework (commit 1/3)
 e9bd0b007 Add TMDB film import page: search, create-or-match, add to list or shelf   ← Phase 2 milestone 3 (commit 2/2)
 e709614e2 Add TMDB API client for the film importer                                   ← Phase 2 milestone 3 (commit 1/2)
 a00c7cd1e Mark Phase 2 milestone 2 as pushed in progress tracker
@@ -151,7 +154,7 @@ Owner design decisions for this milestone (see §8 #13–20): flat `Film` model,
 - `templatetags/rating_tags.py::get_rating` counts soft-deleted reviews in a film's average while `get_user_rating` excludes them.
 - `settings/link_domains/link_domains.html` still says "shown on book pages" (string-pass leftover).
 
-### Phase 2 — milestone 3 (in progress, 2026-08-30)
+### Phase 2 — milestone 3 (executed 2026-08-30/31)
 
 Owner design decisions for this milestone (see §8 #21–24): **TMDB** API; key via `REELTALK_TMDB_API_KEY` in `.env` (operator-set, all users may import; unset → not-configured notice); dedup = exact ID match + **title/year fallback** that backfills `tmdb_id` and empty metadata onto manually created films; scope = core flow with destination = any of the user's lists **or the Want to Watch shelf** (bulk import out).
 
@@ -168,6 +171,30 @@ Note: the §5 note "UI chrome partly exists already" was stale — milestone 2 r
 - Add: lists reuse ordering logic extracted from the list-add view (`set_list_item_order`, so curated-list pending state behaves identically); shelves create a ShelfFilm on Want to Watch (Watched is not a destination — decision #19). Duplicates rejected with a message; after adding, the results grid re-renders and the added row is marked.
 - **New green baseline: 998 passed / 1 skipped / 1 xfailed / 52 subtests** (was 975; +23 new tests: 10 client + 13 view).
 
+### Phase 2 — search UX rework (executed 2026-08-31, awaiting owner review)
+
+Owner redirect after reviewing milestone 3 (decision #25): TMDB becomes the **primary film catalog** reached from the main search box (Letterboxd model), with one-click "Add to Watchlist" and click-through to film pages; "Want to Watch" is renamed to "Watchlist" everywhere (display name only); the `/import/` page is removed ("Import" reserved for future file-based imports). The create-or-match/backfill mechanics from m3 survive in the search flow.
+
+**Commit 1/3 (`c7c920737`) — Watchlist rename:**
+- `create_shelves` default name → "Watchlist"; **data migration 0250** renames existing `to-read` shelves ("Want to Watch" → "Watchlist"). The identifier stays `to-read` — it's wire format, unchanged.
+- Display strings updated: profile header (`user/user.html`), shelf page title, shelf selector, both shelve-button variants, get-started film picker. Status phrases ("wants to watch") and sentence copy ("Want to watch 'X'?") intentionally untouched.
+
+**Commit 2/3 (`8832a5a8e`) — TMDB global search:**
+- `film_search()` in `views/search.py` queries TMDB when `REELTALK_TMDB_API_KEY` is set; falls back to the local trigram search when unset (graceful degradation per #22). User/list search and the federated API endpoint (`api_film_search`) are unchanged — the API stays local-only.
+- Result rows: CDN poster + title + year. Local matches link straight to the film page with an "In your library" tag; unmatched hits link to a new click-through route `GET /search/film/<tmdb_id>/` that runs create-or-match (exact `tmdb_id` → normalized title+year backfill → create with full metadata + poster) and redirects to the film page.
+- One-click "Add to Watchlist" per row: `POST /search/film/<tmdb_id>/watchlist/` (login required, local users only; a hidden `return_to` field preserves the results grid). Create-or-match + shelve onto the `to-read` shelf, then redirect back; the row re-renders with an "On your watchlist" state. Anonymous users see results without the action; locally blocked films are excluded from TMDB results (with the usual notice).
+- `tmdb.search_films()` now returns page metadata (`total_results`/`total_pages`) and passes `page` through to the API; a small `TmdbPaginator` feeds the standard pagination markup.
+- Reusable helpers moved from `views/import_films.py` into `reeltalk/tmdb.py`: `find_local_film`, `ensure_local_film` (now also handles missing title/year by fetching details once), `backfill_film_from_tmdb`, `add_poster`.
+
+**Commit 3/3 (`710e18038`) — import page removal:**
+- Removed the `/import/` URL, view module, template and tests; removed both entry points (preferences sidebar "Import Films", list-page "Or search TMDB…"). `set_list_item_order` in `views/list/list.py` stays — `add_film` uses it.
+
+**New green baseline: 999 passed / 1 skipped / 1 xfailed** (was 998; −13 import-page tests, +14 TMDB search tests). The local-fallback search tests pin `TMDB_API_KEY=''` via `override_settings` so the suite is deterministic on hosts where the live `.env` sets a real key (see §7 quirk 5).
+
+**Live verification at :3030 (2026-08-31), throwaway user:** rebuild applied **migration 0250 cleanly** (both existing users' `to-read` shelves renamed, identifiers unchanged); new-user creation gets a "Watchlist" shelf. **15/15 click-through checks green:** anonymous search renders TMDB results with posters and no add button; logged-in rows carry "Add to Watchlist"; one-click POST → redirect back to the grid → "On your watchlist" state on that row; click-through on an unmatched hit created the local film (full metadata + poster) and opened its page, which shows the Watchlist action and "View on TMDB"; profile header and shelf page show "Watchlist"; `/import/` 404s. Throwaway user hard-deleted afterwards — live DB back to its original state (2 users / 0 films).
+
+**Not yet pushed:** owner review pending. Local `main` also carries `baaa8f2bd` (the plan commit) from before this session — push it together with the rework, fast-forward, no force.
+
 ## 5. What still needs to be done
 
 ### Milestone 2 — pushed ✅ (2026-08-30)
@@ -182,7 +209,9 @@ All four design decisions were aligned with the owner up front (§8 #21–24); i
 - **Live verification at :3030 (2026-08-30), throwaway user:** not-configured notice confirmed *before* the key was set; after adding `REELTALK_TMDB_API_KEY` to the live `.env` — search rendered 15 results with posters; add-new-film → Want to Watch (full metadata + poster populated); re-search showed the "In your library" badge linking to the film page; duplicate shelf add rejected ("is already on Want to Watch"); title/year backfill worked (manually created *The Godfather* 1972 got tmdb_id 238 + director/genres/poster, no duplicate row); list target added with correct ordering and duplicate list add rejected; both entry points render (preferences sidebar, list page); film page shows "View on TMDB". Throwaway user hard-deleted afterwards — live DB back to its original state (2 users / 0 films).
 - **Next milestone:** the search UX rework below (owner-directed 2026-08-31), then the remainder (artwork, Crowdin, public deploy, file-based import).
 
-### NEXT SESSION — search UX rework: TMDB as primary catalog + "Watchlist" rename (planned 2026-08-31, not started)
+### Search UX rework — executed ✅ (2026-08-31), awaiting owner review
+
+Executed per the plan below in three commits (`c7c920737`, `8832a5a8e`, `710e18038`) — full execution record, test baseline and live verification results are in §4. The spec and design decisions are kept here as the decision record (decision log #25).
 
 Owner redirect after reviewing milestone 3: TMDB should be the **primary film catalog** (Letterboxd model — the owner confirmed Letterboxd uses TMDB as the source of all its film data), reached from the **main search box**, not from a Settings→Import page. "Import" is reserved for actual file-based imports (e.g., a CSV exported from TMDB) — that's a future milestone, not this one.
 
@@ -211,8 +240,8 @@ Owner redirect after reviewing milestone 3: TMDB should be the **primary film ca
 - If the host's LAN IP changes again: update `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` in the live `.env`, then `docker compose up -d && docker compose restart nginx` (see §7 quirks).
 
 ### Phase 2 — remainder (DESIGN WITH THE OWNER FIRST; no solo design decisions)
-Milestones 1 and 2 are done, pushed, and live-verified. What remains, from PLAN.md §12 plus the owner's 13-item list:
-- **Build the TMDB import path** — milestone 3; see "NEXT SESSION" plan above (owner decision was: rename the UI now, build the importer later — the building is next).
+Milestones 1–3 and the search UX rework are done (the rework awaits owner review before push). What remains, from PLAN.md §12 plus the owner's 13-item list:
+- **File-based film import** — "Import" was reserved for this by decision #25 (e.g., a CSV exported from TMDB); design with the owner.
 - Custom ReelTalk artwork replacing BookWyrm's placeholder/wyrm imagery.
 - Re-point `locale/**` at a ReelTalk Crowdin project (still contains BookWyrm strings).
 - Public instance deployment of the alpha (operator's own TLS proxy in front of :3030).
@@ -259,6 +288,7 @@ docker compose logs -f web      # inspect a service
 2. **SELinux:** ad-hoc docker bind mounts on this Fedora host MUST use the `:z` label or containers get Permission denied even as root.
 3. **IPv6 docker-proxy quirk:** IPv6 `[::1]` through docker-proxy resets HTTP connections (raw TCP is fine, nginx never sees the request). Host networking issue, not app config — test with `curl -4`.
 4. Container writes to mounted dirs leave root-owned files (pycache) — clean up with sudo if they accumulate.
+5. **The live `.env` TMDB key leaks into test runs:** `docker compose run` inherits the project's `.env`, so `REELTALK_TMDB_API_KEY` is set inside the test container on this host. Global film search branches on that key, so tests asserting local-fallback behavior pin `TMDB_API_KEY=''` via `override_settings` (TMDB-mode tests set `'test-key'`). If a future session sees unmocked `api.themoviedb.org` calls in tests, that's why — GitHub CI has no key and behaves the same as the pinned tests.
 
 ### Running the test suite (CI-faithful flow)
 The Docker image **excludes tests** (upstream `.dockerignore` has `**/tests`). Use a temp source copy:
@@ -270,7 +300,7 @@ docker compose run --rm -v "$TMP:/src:z" -w /src web sh -c \
   "python manage.py check && python manage.py compile_themes && python manage.py collectstatic --no-input && pytest -n 3"
 ```
 - Skipping `compile_themes` + `collectstatic` causes ~237 spurious failures (manifest_strict ValueError on theme CSS).
-- **Green baseline:** 998 passed / 1 skipped / 1 xfailed / 52 subtests (~3.5 min with `-n 3`) — as of Phase 2 milestone 3 (2026-08-30; +23 TMDB importer tests over the 975 baseline from the milestone 2 test rework, where the drop from 1332 was removed-feature coverage: connectors, importers, book views, imports, readwise, ISNI, suggestion lists, series, cover jobs).
+- **Green baseline:** 999 passed / 1 skipped / 1 xfailed (~3.5 min with `-n 3`) — as of the search UX rework (2026-08-31; −13 import-page tests, +14 TMDB search tests over the 998 milestone-3 baseline, which was itself +23 TMDB importer tests over the 975 milestone-2 baseline, where the drop from 1332 was removed-feature coverage: connectors, importers, book views, imports, readwise, ISNI, suggestion lists, series, cover jobs).
 
 ### After changing app code
 `docker compose up -d --build` (rebuilds the web image), then `docker compose restart nginx` (quirk #1), then wait for web healthy.
