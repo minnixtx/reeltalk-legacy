@@ -441,8 +441,6 @@ urlpatterns = [
         views.FilmWatchlistAdd.as_view(),
         name="search-film-watchlist",
     ),
-    # TMDB import
-    re_path(r"^import/?$", views.ImportFilms.as_view(), name="import-films"),
     # users
     re_path(rf"{USER_PATH}\.json$", views.User.as_view()),
     re_path(rf"{USER_PATH}/?$", views.User.as_view(), name="user-feed"),

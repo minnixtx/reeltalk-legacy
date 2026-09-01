@@ -93,11 +93,6 @@
             {% endif %}
         </h2>
         {% include "lists/suggestion_search.html" with query_param="q" search_url=request.path %}
-        <p class="mt-4">
-            <a href="{% url 'import-films' %}?target=list:{{ list.id }}">
-                {% trans "Or search TMDB for films to import" %}
-            </a>
-        </p>
     {% endif %}
 
         {% block emded_link %}

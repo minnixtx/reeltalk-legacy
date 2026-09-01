@@ -84,9 +84,6 @@ from .landing.password import PasswordResetRequest, PasswordReset, ForcePassword
 from .shelf.shelf import Shelf
 from .shelf.shelf_actions import shelve, unshelve
 
-# TMDB import
-from .import_films import ImportFilms
-
 # lists
 from .list.curate import Curate
 from .list.embed import unsafe_embed_list
