@@ -47,7 +47,8 @@
                     const img = document.createElement("img");
                     img.src = row.poster;
                     img.alt = "";
-                    img.loading = "lazy";
+                    // No loading="lazy": it is unreliable inside the scrollable
+                    // menu (rows are capped at 8, so eager load is cheap).
                     img.decoding = "async";
                     poster.appendChild(img);
                 } else {
