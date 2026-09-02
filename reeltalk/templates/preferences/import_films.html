@@ -1,0 +1,67 @@
+{% extends 'preferences/layout.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Import Film List" %}{% endblock %}
+
+{% block header %}
+{% trans "Import Film List" %}
+{% endblock %}
+
+{% block panel %}
+<div class="block content">
+    {% if request.user.local %}
+        <p class="notification">
+            {% trans "Upload a CSV export from TMDB — the same format as your ReelTalk film list export. Films are added to your Watchlist; rows that carry your rating are added to Watched with that rating instead. Existing films are matched by TMDB ID, then title and year, so nothing is duplicated." %}
+        </p>
+        {% if error %}
+        <div class="notification is-danger">
+            {{ error }}
+        </div>
+        {% endif %}
+        <form name="import-films" method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="field">
+                <label class="label" for="csv_file">{% trans "CSV file" %}</label>
+                <div class="control">
+                    <input class="input" type="file" name="csv_file" id="csv_file" accept=".csv,text/csv" required>
+                </div>
+            </div>
+            <button type="submit" class="button">
+                <span class="icon icon-upload" aria-hidden="true"></span>
+                <span>{% trans "Import films" %}</span>
+            </button>
+        </form>
+
+        {% if results %}
+        <h2 class="title is-5">{% trans "Results" %}</h2>
+        <p>
+            {% blocktrans with total=summary.total created=summary.created matched=summary.matched skipped=summary.skipped %}Imported {{ total }} rows: {{ created }} films created, {{ matched }} matched to existing films, {{ skipped }} skipped.{% endblocktrans %}
+        </p>
+        <table class="table is-striped is-fullwidth">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>{% trans "Film" %}</th>
+                    <th>{% trans "Status" %}</th>
+                    <th>{% trans "Details" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in results %}
+                <tr>
+                    <td>{{ row.line }}</td>
+                    <td>{{ row.name }}</td>
+                    <td>{{ row.status }}</td>
+                    <td>{{ row.note }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    {% else %}
+        <p class="notification">
+            {% trans "Film import is only available on your home instance." %}
+        </p>
+    {% endif %}
+</div>
+{% endblock %}

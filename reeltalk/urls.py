@@ -613,6 +613,9 @@ urlpatterns = [
         views.Prompt2FA.as_view(),
         name="prompt-2fa",
     ),
+    re_path(
+        r"^preferences/import/?$", views.ImportFilms.as_view(), name="prefs-import"
+    ),
     re_path(r"^preferences/export/?$", views.Export.as_view(), name="prefs-export"),
     re_path(
         r"^preferences/user-export/?$",

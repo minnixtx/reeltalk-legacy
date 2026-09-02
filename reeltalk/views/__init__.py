@@ -44,6 +44,7 @@ from .admin.user_admin import ForcePasswordResetAdmin
 from .preferences.change_password import ChangePassword
 from .preferences.edit_user import EditUser
 from .preferences.export import Export, ExportUser, ExportArchive
+from .preferences.import_films import ImportFilms
 from .preferences.move_user import MoveUser, AliasUser, remove_alias, unmove
 from .preferences.delete_user import DeleteUser, DeactivateUser, ReactivateUser
 from .preferences.block import Block, unblock
