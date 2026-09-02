@@ -16,6 +16,21 @@ API_BASE = "https://api.themoviedb.org/3"
 IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 REQUEST_TIMEOUT = 10
 
+# the canonical film-list CSV shape: TMDB's own export format, which ReelTalk's
+# "Export Film List" emits and "Import Film List" accepts (decisions #29-31)
+TMDB_EXPORT_HEADER = [
+    "TMDb ID",
+    "IMDb ID",
+    "Type",
+    "Name",
+    "Release Date",
+    "Season Number",
+    "Episode Number",
+    "Rating",
+    "Your Rating",
+    "Date Rated",
+]
+
 
 class TmdbError(Exception):
     """user-facing failure talking to TMDB (bad key, rate limit, etc.)"""

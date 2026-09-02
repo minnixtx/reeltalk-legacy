@@ -1,18 +1,18 @@
 {% extends 'preferences/layout.html' %}
 {% load i18n %}
 
-{% block title %}{% trans "Export Book List" %}{% endblock %}
+{% block title %}{% trans "Export Film List" %}{% endblock %}
 
 {% block header %}
-{% trans "Export Book List" %}
+{% trans "Export Film List" %}
 {% endblock %}
 
 {% block panel %}
 <div class="block content">
     <p class="notification">
-        {% trans "Your CSV export file will include all the books on your shelves, books you have reviewed, and books with reading activity. <br/>Use this to import into a service like Goodreads." %}
+        {% trans "Your CSV export file follows the same format as a TMDB export: every film on your shelves, reviewed, commented on or quoted, with your rating where you have one. Use it to import your film list back into ReelTalk (or another service that reads TMDB exports)." %}
     </p>
-    <form name="export" method="POST" href="{% url 'prefs-export' %}">
+    <form name="export" method="POST" action="{% url 'prefs-export' %}">
         {% csrf_token %}
         <button type="submit" class="button">
             <span class="icon icon-download" aria-hidden="true"></span>

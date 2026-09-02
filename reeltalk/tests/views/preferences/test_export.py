@@ -1,12 +1,13 @@
 """test for app action functionality"""
 
+from datetime import UTC
 from unittest.mock import patch
 
 from django.http import HttpResponse
 from django.test import TestCase
 from django.test.client import RequestFactory
 
-from reeltalk import models, views
+from reeltalk import models, tmdb, views
 from reeltalk.tests.validate_html import validate_html
 
 
@@ -16,7 +17,7 @@ from reeltalk.tests.validate_html import validate_html
 @patch("reeltalk.suggested_users.rerank_suggestions_task.delay")
 @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
 class ExportViews(TestCase):
-    """viewing and creating statuses"""
+    """exporting a user's film list as a TMDB-format CSV"""
 
     @classmethod
     def setUpTestData(cls):
@@ -37,11 +38,18 @@ class ExportViews(TestCase):
             title="Test Film",
             remote_id="https://example.com/film/1",
             tmdb_id="42",
+            year=1976,
         )
 
     def setUp(self):
         """individual test setup"""
         self.factory = RequestFactory()
+
+    def parse_export(self, response):
+        """the exported CSV as (header, list of row dicts)"""
+        lines = response.content.decode("utf-8").strip().split("\r\n")
+        header = lines[0].split(",")
+        return header, [dict(zip(header, line.split(","))) for line in lines[1:]]
 
     def test_export_get(self, *_):
         """request export"""
@@ -51,29 +59,40 @@ class ExportViews(TestCase):
         validate_html(result.render())
 
     def test_export_file(self, *_):
-        """simple export"""
-        shelf_film = models.ShelfFilm.objects.create(
+        """a shelved film exports as one TMDB-format row"""
+        models.ShelfFilm.objects.create(
             shelf=self.local_user.shelf_set.first(),
             user=self.local_user,
             film=self.film,
         )
-        film_date = str.encode(f"{shelf_film.shelved_date.date()}")
         request = self.factory.post("")
         request.user = self.local_user
         export = views.Export.as_view()(request)
         self.assertIsInstance(export, HttpResponse)
         self.assertEqual(export.status_code, 200)
 
+        header, rows = self.parse_export(export)
+        self.assertEqual(header, tmdb.TMDB_EXPORT_HEADER)
+        self.assertEqual(len(rows), 1)
         self.assertEqual(
-            export.content,
-            b"title,director_text,remote_id,tmdb_id,imdb_id,year,runtime,rating,review_name,review_cw,review_content,review_published,shelf,shelf_name,shelf_date\r\n"
-            + b"Test Film,,%b,42,,,,,,,,,to-read,Watchlist,%b\r\n"
-            % (self.film.remote_id.encode("utf-8"), film_date),
+            rows[0],
+            {
+                "TMDb ID": "42",
+                "IMDb ID": "",
+                "Type": "movie",
+                "Name": "Test Film",
+                "Release Date": "1976-01-01T00:00:00Z",
+                "Season Number": "",
+                "Episode Number": "",
+                "Rating": "",
+                "Your Rating": "",
+                "Date Rated": "",
+            },
         )
 
     def test_export_file_with_review(self, *_):
-        """simple export"""
-        shelf_film = models.ShelfFilm.objects.create(
+        """a rated review exports as Your Rating (TMDB's 1-10 scale) + Date Rated"""
+        models.ShelfFilm.objects.create(
             shelf=self.local_user.shelf_set.first(),
             user=self.local_user,
             film=self.film,
@@ -85,23 +104,22 @@ class ExportViews(TestCase):
             content="content here",
             rating=3,
         )
-        review_date = str.encode(f"{review.published_date.date()}")
-        film_date = str.encode(f"{shelf_film.shelved_date.date()}")
         request = self.factory.post("")
         request.user = self.local_user
         export = views.Export.as_view()(request)
         self.assertIsInstance(export, HttpResponse)
         self.assertEqual(export.status_code, 200)
 
+        _, rows = self.parse_export(export)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["Your Rating"], "6")
         self.assertEqual(
-            export.content,
-            b"title,director_text,remote_id,tmdb_id,imdb_id,year,runtime,rating,review_name,review_cw,review_content,review_published,shelf,shelf_name,shelf_date\r\n"
-            + b"Test Film,,%b,42,,,,3.00,review title,,content here,%b,to-read,Watchlist,%b\r\n"
-            % (self.film.remote_id.encode("utf-8"), review_date, film_date),
+            rows[0]["Date Rated"],
+            review.published_date.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         )
 
     def test_export_file_with_rating_only(self, *_):
-        """export a rating-only entry"""
+        """a rating-only entry exports like any other rating"""
         models.ReviewRating.objects.create(
             film=self.film,
             user=self.local_user,
@@ -111,11 +129,9 @@ class ExportViews(TestCase):
         request.user = self.local_user
         export = views.Export.as_view()(request)
         self.assertIsInstance(export, HttpResponse)
-        self.assertEqual(export.status_code, 200)
 
-        lines = export.content.decode("utf-8").strip().split("\r\n")
-        self.assertEqual(len(lines), 2)
-        values = dict(zip(lines[0].split(","), lines[1].split(",")))
-        self.assertEqual(values["title"], "Test Film")
-        self.assertEqual(values["rating"], "4.50")
-        self.assertEqual(values["shelf"], "")
+        _, rows = self.parse_export(export)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["TMDb ID"], "42")
+        self.assertEqual(rows[0]["Name"], "Test Film")
+        self.assertEqual(rows[0]["Your Rating"], "9")

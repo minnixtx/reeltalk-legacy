@@ -1,6 +1,6 @@
 """Let users export their film data"""
 
-from datetime import timedelta
+from datetime import UTC, timedelta
 import csv
 import datetime
 import io
@@ -19,7 +19,7 @@ from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.shortcuts import redirect
 
-from reeltalk import models, settings
+from reeltalk import models, settings, tmdb
 from reeltalk.models.reeltalk_export_job import ReeltalkExportJob
 from reeltalk.utils.cache import get_or_set
 
@@ -35,7 +35,7 @@ class Export(View):
         return TemplateResponse(request, "preferences/export.html")
 
     def post(self, request):
-        """Download the csv file of a user's film data"""
+        """Download the user's film list as a TMDB-format CSV"""
         films = models.Film.viewer_aware_objects(request.user)
         films_shelves = films.filter(Q(shelffilm__user=request.user)).distinct()
         films_review = films.filter(Q(review__user=request.user)).distinct()
@@ -48,72 +48,37 @@ class Export(View):
 
         csv_string = io.StringIO()
         writer = csv.writer(csv_string)
-
-        deduplication_fields = [
-            f.name
-            for f in models.Film._meta.get_fields()
-            if getattr(f, "deduplication_field", False)
-        ]
-        fields = (
-            ["title", "director_text"]
-            + deduplication_fields
-            + [
-                "year",
-                "runtime",
-                "rating",
-                "review_name",
-                "review_cw",
-                "review_content",
-                "review_published",
-                "shelf",
-                "shelf_name",
-                "shelf_date",
-            ]
-        )
-        writer.writerow(fields)
+        writer.writerow(tmdb.TMDB_EXPORT_HEADER)
 
         for film in films:
-            # I think this is more efficient than doing a subquery in the view? but idk
-            review_rating = (
+            # the user's most recent rated review provides Your Rating / Date Rated
+            review = (
                 models.Review.objects.filter(
                     user=request.user, film=film, rating__isnull=False
                 )
                 .order_by("-published_date")
                 .first()
             )
-
-            film.rating = review_rating.rating if review_rating else None
-
-            review = (
-                models.Review.objects.filter(
-                    user=request.user, film=film, content__isnull=False
-                )
-                .order_by("-published_date")
-                .first()
+            writer.writerow(
+                [
+                    film.tmdb_id or "",
+                    film.imdb_id or "",
+                    "movie",
+                    film.title,
+                    # only the year is stored: emit it as a Jan 1 date so a
+                    # round-trip import can read it back
+                    f"{film.year}-01-01T00:00:00Z" if film.year else "",
+                    "",  # Season Number
+                    "",  # Episode Number
+                    "",  # Rating (TMDB community score — not stored)
+                    int(review.rating * 2) if review else "",
+                    review.published_date.astimezone(UTC).strftime(
+                        "%Y-%m-%dT%H:%M:%SZ"
+                    )
+                    if review and review.published_date
+                    else "",
+                ]
             )
-            if review:
-                film.review_published = (
-                    review.published_date.date() if review.published_date else None
-                )
-                film.review_name = review.name
-                film.review_cw = review.content_warning
-                film.review_content = (
-                    review.raw_content if review.raw_content else review.content
-                )
-
-            shelffilm = (
-                models.ShelfFilm.objects.filter(user=request.user, film=film)
-                .order_by("-shelved_date", "-created_date", "-updated_date")
-                .last()
-            )
-            if shelffilm:
-                film.shelf = shelffilm.shelf.identifier
-                film.shelf_name = shelffilm.shelf.name
-                film.shelf_date = (
-                    shelffilm.shelved_date.date() if shelffilm.shelved_date else None
-                )
-
-            writer.writerow([getattr(film, field, "") or "" for field in fields])
 
         return HttpResponse(
             csv_string.getvalue(),
