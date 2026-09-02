@@ -441,6 +441,11 @@ urlpatterns = [
         views.FilmWatchlistAdd.as_view(),
         name="search-film-watchlist",
     ),
+    re_path(
+        r"^search/suggest/?$",
+        views.film_search_suggest,
+        name="search-suggest",
+    ),
     # users
     re_path(rf"{USER_PATH}\.json$", views.User.as_view()),
     re_path(rf"{USER_PATH}/?$", views.User.as_view(), name="user-feed"),

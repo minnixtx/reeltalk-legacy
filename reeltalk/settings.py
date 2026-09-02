@@ -566,6 +566,9 @@ else:
         },
     }
 
+# the search suggest dropdown shows TMDB CDN posters from the navbar on every page
+CSP_IMG_SRC = ["'self'", "https://image.tmdb.org"] + CSP_ADDITIONAL_HOSTS
+
 CSP_INCLUDE_NONCE_IN = ["script-src"]
 
 OTEL_EXPORTER_OTLP_ENDPOINT = env("OTEL_EXPORTER_OTLP_ENDPOINT", None)

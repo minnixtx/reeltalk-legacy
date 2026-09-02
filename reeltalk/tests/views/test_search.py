@@ -521,3 +521,190 @@ class TmdbSearchViews(TestCase):
         self.assertIn("error=", response.url)
         follow = self.client.get(response.url)
         self.assertIn("rate limit", follow.content.decode())
+
+
+@patch("reeltalk.activitystreams.add_status_task.delay")
+@patch("reeltalk.suggested_users.rerank_suggestions_task.delay")
+@patch("reeltalk.activitystreams.populate_stream_task.delay")
+@patch("reeltalk.activitystreams.add_film_statuses_task.delay")
+class FilmSuggestViews(TestCase):
+    """search-as-you-type JSON suggestions (decision 28)"""
+
+    @classmethod
+    def setUpTestData(cls):
+        with (
+            patch("reeltalk.suggested_users.rerank_suggestions_task.delay"),
+            patch("reeltalk.activitystreams.populate_stream_task.delay"),
+            patch("reeltalk.lists_stream.populate_lists_task.delay"),
+        ):
+            cls.local_user = models.User.objects.create_user(
+                "mouse@local.com",
+                "mouse@mouse.com",
+                "mouseword",
+                local=True,
+                localname="mouse",
+                remote_id="https://example.com/users/mouse",
+            )
+
+    def suggest_get(self, q, search_type="film"):
+        return self.client.get("/search/suggest/", {"q": q, "type": search_type})
+
+    @override_settings(TMDB_API_KEY="test-key")
+    def test_suggest_anonymous_empty(self, *_):
+        """anonymous users get no suggestions and no TMDB call"""
+        with patch("reeltalk.views.search.tmdb.search_films") as search_films:
+            response = self.suggest_get("blade")
+
+        data = json.loads(response.content)
+        self.assertEqual(data["results"], [])
+        search_films.assert_not_called()
+
+    @override_settings(TMDB_API_KEY="test-key")
+    def test_suggest_short_query_empty(self, *_):
+        """queries under two characters return nothing without calling TMDB"""
+        self.client.force_login(self.local_user)
+        with patch("reeltalk.views.search.tmdb.search_films") as search_films:
+            response = self.suggest_get("b")
+
+        data = json.loads(response.content)
+        self.assertEqual(data["results"], [])
+        search_films.assert_not_called()
+
+    @override_settings(TMDB_API_KEY="test-key")
+    def test_suggest_wrong_type_empty(self, *_):
+        """only film suggestions are supported"""
+        self.client.force_login(self.local_user)
+        with patch("reeltalk.views.search.tmdb.search_films") as search_films:
+            response = self.suggest_get("blade", search_type="user")
+
+        data = json.loads(response.content)
+        self.assertEqual(data["results"], [])
+        search_films.assert_not_called()
+
+    @override_settings(TMDB_API_KEY="test-key")
+    def test_suggest_remote_user_empty(self, *_):
+        """federated users get no suggestions and no TMDB call"""
+        with patch("reeltalk.models.user.set_remote_server"):
+            remote = models.User.objects.create_user(
+                "rat",
+                "rat@email.com",
+                "ratword",
+                local=False,
+                remote_id="https://example.com/users/rat",
+                inbox="https://example.com/users/rat/inbox",
+                outbox="https://example.com/users/rat/outbox",
+            )
+        self.client.force_login(remote)
+        with patch("reeltalk.views.search.tmdb.search_films") as search_films:
+            response = self.suggest_get("blade")
+
+        data = json.loads(response.content)
+        self.assertEqual(data["results"], [])
+        search_films.assert_not_called()
+
+    @override_settings(TMDB_API_KEY="test-key")
+    @responses.activate
+    def test_suggest_tmdb_rows(self, *_):
+        """configured instances suggest TMDB hits with the right link targets"""
+        responses.add(responses.GET, TMDB_SEARCH_URL, json=TMDB_SEARCH_PAYLOAD, status=200)
+        film = models.Film.objects.create(title="Blade Runner", tmdb_id="78")
+        self.client.force_login(self.local_user)
+        response = self.suggest_get("blade runner")
+
+        data = json.loads(response.content)
+        self.assertEqual(len(data["results"]), 2)
+        first, second = data["results"]
+        # a local match links straight to the film page
+        self.assertEqual(first["title"], "Blade Runner")
+        self.assertEqual(first["year"], 1982)
+        self.assertEqual(first["poster"], TMDB_POSTER_URL)
+        self.assertEqual(first["url"], film.local_path)
+        # an unmatched hit links to the click-through route
+        self.assertEqual(second["title"], "Blade Runner 2049")
+        self.assertIsNone(second["poster"])
+        self.assertEqual(second["url"], "/search/film/335984")
+
+    @override_settings(TMDB_API_KEY="test-key")
+    @responses.activate
+    def test_suggest_tmdb_caps_at_eight(self, *_):
+        """only the top eight hits of page one are suggested"""
+        payload = {
+            "results": [
+                {
+                    "id": i,
+                    "title": f"Film {i}",
+                    "release_date": "2000-01-01",
+                    "poster_path": None,
+                }
+                for i in range(10)
+            ],
+            "total_results": 10,
+            "total_pages": 1,
+        }
+        responses.add(responses.GET, TMDB_SEARCH_URL, json=payload, status=200)
+        self.client.force_login(self.local_user)
+        response = self.suggest_get("film")
+
+        data = json.loads(response.content)
+        self.assertEqual(len(data["results"]), 8)
+
+    @override_settings(TMDB_API_KEY="test-key")
+    @responses.activate
+    def test_suggest_tmdb_error_empty(self, *_):
+        """a TMDB failure degrades to no suggestions"""
+        responses.add(responses.GET, TMDB_SEARCH_URL, json={}, status=429)
+        self.client.force_login(self.local_user)
+        response = self.suggest_get("blade runner")
+
+        data = json.loads(response.content)
+        self.assertEqual(data["results"], [])
+
+    @override_settings(TMDB_API_KEY="test-key")
+    @responses.activate
+    def test_suggest_tmdb_blocked_local_match_excluded(self, *_):
+        """a locally blocked film is dropped from the suggestions"""
+        responses.add(responses.GET, TMDB_SEARCH_URL, json=TMDB_SEARCH_PAYLOAD, status=200)
+        film = models.Film.objects.create(title="Blade Runner", tmdb_id="78")
+        self.local_user.blocked_films.add(film)
+        self.client.force_login(self.local_user)
+        response = self.suggest_get("blade runner")
+
+        data = json.loads(response.content)
+        titles = [row["title"] for row in data["results"]]
+        self.assertNotIn("Blade Runner", titles)
+        self.assertIn("Blade Runner 2049", titles)
+
+    @override_settings(TMDB_API_KEY="")
+    def test_suggest_local_fallback(self, *_):
+        """without a key the suggestions list local trigram matches"""
+        film = models.Film.objects.create(title="Test Film", year=1999)
+        self.client.force_login(self.local_user)
+        response = self.suggest_get("test film")
+
+        data = json.loads(response.content)
+        self.assertEqual(len(data["results"]), 1)
+        row = data["results"][0]
+        self.assertEqual(row["title"], "Test Film")
+        self.assertEqual(row["year"], 1999)
+        self.assertIsNone(row["poster"])
+        self.assertEqual(row["url"], film.local_path)
+
+    @override_settings(TMDB_API_KEY="")
+    def test_suggest_local_fallback_zero_matches(self, *_):
+        """zero local matches return nothing while typing"""
+        self.client.force_login(self.local_user)
+        response = self.suggest_get("zzz nothing here")
+
+        data = json.loads(response.content)
+        self.assertEqual(data["results"], [])
+
+    @override_settings(TMDB_API_KEY="")
+    def test_suggest_local_fallback_blocked_excluded(self, *_):
+        """blocked films are dropped from the local fallback"""
+        film = models.Film.objects.create(title="Test Film")
+        self.local_user.blocked_films.add(film)
+        self.client.force_login(self.local_user)
+        response = self.suggest_get("test film")
+
+        data = json.loads(response.content)
+        self.assertEqual(data["results"], [])

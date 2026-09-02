@@ -12,6 +12,7 @@ from django.db.models.functions import Greatest
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
+from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
@@ -21,7 +22,7 @@ from csp.decorators import csp_update
 
 from reeltalk import models, tmdb
 from reeltalk.book_search import search, format_search_result
-from reeltalk.settings import PAGE_LENGTH, INSTANCE_ACTOR_USERNAME
+from reeltalk.settings import PAGE_LENGTH, INSTANCE_ACTOR_USERNAME, MEDIA_FULL_URL
 from reeltalk.utils import regex
 from .helpers import is_api_request
 from .helpers import handle_remote_webfinger
@@ -196,6 +197,62 @@ def film_search_clickthrough(request, tmdb_id):
             {"query": "", "type": "film", "source": "tmdb", "error": str(err)},
         )
     return redirect(film.local_path)
+
+
+def film_search_suggest(request):
+    """JSON suggestions for the main search box; local users only"""
+    user = request.user
+    if not user.is_authenticated or not user.local:
+        return JsonResponse({"results": []})
+
+    query = (request.GET.get("q") or "").strip()
+    if len(query) < 2 or request.GET.get("type") != "film":
+        return JsonResponse({"results": []})
+
+    blocked_ids = set(user.blocked_films.values_list("id", flat=True))
+
+    if tmdb.is_configured():
+        try:
+            rows = tmdb.search_films(query).rows[:8]
+        except tmdb.TmdbError:
+            # a TMDB failure degrades to no suggestions, not an error page
+            rows = []
+        results = []
+        for row in rows:
+            local_film = tmdb.find_local_film(row)
+            if local_film and local_film.id in blocked_ids:
+                continue
+            url = (
+                local_film.local_path
+                if local_film
+                else reverse("search-film-clickthrough", args=[row.tmdb_id])
+            )
+            results.append(
+                {
+                    "title": row.title,
+                    "year": row.year,
+                    "poster": row.poster_url,
+                    "url": url,
+                }
+            )
+        return JsonResponse({"results": results})
+
+    # no TMDB key: local trigram fallback only; nothing when there are no matches
+    results = []
+    for film in search(query, min_confidence=0.1):
+        if film.id in blocked_ids:
+            continue
+        results.append(
+            {
+                "title": film.title,
+                "year": film.year,
+                "poster": f"{MEDIA_FULL_URL}{film.poster}" if film.poster else None,
+                "url": film.local_path,
+            }
+        )
+        if len(results) == 8:
+            break
+    return JsonResponse({"results": results})
 
 
 @method_decorator(login_required, name="dispatch")
