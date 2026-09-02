@@ -14,9 +14,12 @@ gzip_disable "msie6";
 proxy_read_timeout 1800s;
 chunked_transfer_encoding on;
 
-# store responses to anonymous users for up to 1 minute
+# store successful anonymous responses for up to 1 minute. Never cache errors:
+# the cache key ignores the client Host header, so a transient error (e.g. a
+# DisallowedHost 400 from a probe with an unexpected host) would otherwise be
+# served to other hosts for a full minute.
 proxy_cache reeltalk_cache;
-proxy_cache_valid any 1m;
+proxy_cache_valid 200 1m;
 add_header X-Cache-Status $upstream_cache_status;
 
 # ignore the set cookie header when deciding to
