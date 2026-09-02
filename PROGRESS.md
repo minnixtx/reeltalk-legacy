@@ -28,12 +28,16 @@
 | Phase 2 — milestone 3 (TMDB film importer) | ✅ **Done, live-verified, PUSHED 2026-08-31** — `e709614e2` (TMDB client), `e9bd0b007` (import page). Suite green: 998 passed. Fork main = `a0342a3c0`. Decisions #21–24 |
 | Phase 2 — search UX rework (TMDB as primary catalog, "Watchlist" rename) | ✅ **Done, live-verified, pushed to fork 2026-09-01** after owner review (owner exercised the flow live; three follow-up issues reported — see §5 backlog). `c7c920737` (rename + migration 0250), `8832a5a8e` (TMDB global search + click-through + watchlist action), `710e18038` (import page removal). Suite green: 999 passed. Decision #25 |
 | Phase 2 — owner-reported issues 2+3 (TMDB metadata lock, one review per film) | ✅ **Done, suite + live-verified, PUSHED to fork 2026-09-01** after owner review. `f98542481` (decision #26), `5acf6a3be` (decision #27). Suite green: **1017 passed / 1 skipped / 1 xfailed** |
-| Phase 2 — owner-reported issue 1 (search-as-you-type dropdown) | ⬜ Design aligned with the owner 2026-09-01 (**decision #28**); implementation is the next session's task — spec in §5 |
+| Phase 2 — owner-reported issue 1 (search-as-you-type dropdown) | ✅ **Done, suite + live-verified 2026-09-01; AWAITING OWNER REVIEW (not pushed).** `de929e896` (suggest endpoint), `6c7658b8c` (client dropdown), `2a112670f` + `607cad2fa` (test-env + poster-URL fixes). Suite green: **1029 passed / 1 skipped / 1 xfailed** |
 | Phase 2 — remainder after rework (artwork, Crowdin, public deploy, file-based import) | ⬜ Not started |
 
 ## 3. Commit history (`main`)
 
 ```
+607cad2fa Use relative media URLs for fallback suggest posters; works on any origin     ← owner-reported issue 1 (fix)
+2a112670f Make poster URL assertion data-driven; media dir persists between test runs   ← owner-reported issue 1 (test env)
+6c7658b8c Add search-as-you-type dropdown to the main search box (decision 28)          ← owner-reported issue 1 (client)
+de929e896 Add JSON suggest endpoint for search-as-you-type (decision 28)                ← owner-reported issue 1 (endpoint)
 5acf6a3be Enforce one review per film; make rating-only entries editable (decision 27)  ← owner-reported issue 3
 f98542481 Lock TMDB-sourced film details from user editing (decision 26)                ← owner-reported issue 2
 710e18038 Remove the TMDB import page                                                 ← search UX rework (commit 3/3)
@@ -218,6 +222,31 @@ The two settled issues from the owner's live use of the search rework (decision 
 
 **Verification:** full CI-faithful suite green — **1017 passed / 1 skipped / 1 xfailed** (baseline 999 + 18 new). Live click-through at :3030 as the owner account: 20/20 checks green — TMDB film (*Camp Hideaway Massacre*) page has no edit controls, `/film/<id>/edit/` redirects, poster/description POSTs rejected with metadata intact; a manually created film kept all editing affordances and saved an edit; reviewed films show "Edit your review" on the film page **and** in the Your Films panel with no new-review form; duplicate review POST rejected (owner's review id 8 untouched); rating-only finish → entry editable in place (rating 4→4.5 + content added, cleared-rating rejected); finish on a reviewed film produced exactly one updated status (rating applied, text preserved). All disposable films/statuses hard-deleted afterwards — live DB back to its original state (2 users, films 16/17, reviews 8/10).
 
+### Phase 2 — owner-reported issue 1: search-as-you-type dropdown (executed 2026-09-01, awaiting owner review)
+
+Executed per the agreed spec in §5 (decision #28). Four commits:
+
+**Commit `de929e896` — suggest endpoint:**
+- `GET /search/suggest/?q=<term>&type=film` → JSON `{"results": [{title, year, poster, url}]}`. Local users only: anonymous **and federated** users get an empty list (and no TMDB call); queries under 2 chars and non-film types return empty without calling out.
+- With `REELTALK_TMDB_API_KEY` set: `tmdb.search_films()` page 1, top 8 rows. Each row is annotated with its local match (`tmdb.find_local_film`) — a match links straight to the film page, an unmatched hit links to the existing click-through route `/search/film/<tmdb_id>/`. Locally blocked films are dropped from the rows (consistent with the full TMDB search). A `TmdbError` degrades to no suggestions rather than an error.
+- Without the key: local trigram fallback (`book_search.search`, min_confidence 0.1), top 8, blocked films excluded, nothing when there are zero matches.
+- `CSP_IMG_SRC = ['self', https://image.tmdb.org]` added globally in settings — the dropdown shows TMDB CDN posters from the navbar on **every** page, but the default CSP only allowed `'self'` (the Search view's per-page `IMG_SRC="*"` didn't cover the rest of the site).
+- 12 new tests in `tests/views/test_search.py::FilmSuggestViews`.
+
+**Commit `6c7658b8c` — client dropdown:**
+- New vanilla-JS file `static/js/search_suggest.js` (IIFE, no dependencies): binds to the navbar input `#tour-search`, ~300 ms debounce, min 2 chars, renders rows (poster + title + year) into a dropdown under the input; **click-only** — clicking a row navigates (local match → film page; TMDB-only hit → click-through route); Enter still submits the normal search form. Closes on outside mousedown / new results / submit. Rows without a poster get a CSS no-cover placeholder (no static-image URL in JS — manifest storage hashes filenames).
+- `layout.html`: dropdown div + script include, both gated `{% if request.user.is_authenticated and request.user.local %}` — anonymous/remote users get no dropdown DOM at all. New SCSS component `_search_suggest.scss` (imported in `_all.scss`).
+
+**Commits `2a112670f` + `607cad2fa` — fixes found during verification:**
+- `test_film.py::test_serialize_model_with_poster` asserted the exact upload path `posters/test-poster.jpg`; when the media directory persists between runs (quirk 6, via the bind-mounted `images/` in the CI-faithful flow) Django suffixes the re-saved filename and the second run fails. Made data-driven (`endswith(film.poster.name)`), same rule as the `test_status.py` fix.
+- Fallback-mode posters were returned as `{MEDIA_FULL_URL}…` — with `DOMAIN=localhost` that's `http://localhost:80/images/…`, a broken absolute URL for browsers reaching the instance on :3030/LAN. Now `film.poster.url` (relative, like the rest of the UI); regression test added.
+
+**Verification:** full CI-faithful suite green **twice in a row** — **1029 passed / 1 skipped / 1 xfailed** (baseline 1017 + 12 suggest tests + 1 poster-URL regression). Live click-through at :3030 with a throwaway local user (hard-deleted afterwards; live DB back to 2 users, films 16/17):
+- **TMDB mode (live key):** anonymous `/search/suggest/` → `{"results": []}`; logged-in "blade runner" → 8 rows, local *Blade Runner* (film 17) linked to its film page, unmatched hits linked to `/search/film/<tmdb_id>/`; click-through on *Blade Runner 2049* (335984) created the local film (full metadata + poster, no duplicate on re-click) and opened its page; dropdown markup + hashed `search_suggest.*.js` present for the logged-in local user, absent for anonymous; CSP header carries `img-src 'self' https://image.tmdb.org`.
+- **No-key mode** (throwaway web container with `REELTALK_TMDB_API_KEY=` unset on :3031, same DB): "blade" → local trigram matches only, posters as relative `/images/…` URLs; zero-match query → empty list.
+
+**Testing gotcha found (for future sessions):** asserting "no HTTP call was made" via `responses.RequestsMock()` + `rsps.calls == []` proved flaky under pytest-xdist (a call from elsewhere in the worker process occasionally lands in the fresh mock's CallList; 4/4 → 3/4 → 0/4 across runs, never reproducible in-process or in later xdist runs). The deterministic replacement — `patch("reeltalk.views.search.tmdb.search_films")` + `assert_not_called()` — is what the no-call tests use now.
+
 ## 5. What still needs to be done
 
 ### Milestone 2 — pushed ✅ (2026-08-30)
@@ -273,7 +302,7 @@ Milestones 1–3 and the search UX rework are done and pushed. What remains, fro
 
 Owner exercised the new search flow on the live instance (added *Camp Hideaway Massacre* to Watched and reviewed it) and reported three issues. Status 2026-09-01:
 
-1. **Search-as-you-type dropdown** (feature request) — ⬜ **NEXT SESSION: implement per decision #28** (design aligned with the owner 2026-09-01). Spec below.
+1. **Search-as-you-type dropdown** (feature request) — ✅ **Done, suite + live-verified; AWAITING OWNER REVIEW before push.** Implemented per decision #28 (`de929e896` + `6c7658b8c`, fixes in `2a112670f`/`607cad2fa` — execution record in §4). Spec below.
 2. **TMDB metadata is not user-editable** (decision #26) — ✅ Done, live-verified (`f98542481`, execution record in §4). Scope as confirmed: lock only films with a `tmdb_id`; manually created films stay fully editable. Only user-generated content remains editable (review title/body, star rating, comments/interactions).
 3. **One review per film** (decision #27) — ✅ Done, live-verified (`5acf6a3be`, execution record in §4). The live duplicate of *Camp Hideaway Massacre* had been cleaned up earlier (review id 11 deleted; earliest review id 8 kept), which served as the live test case.
 
@@ -339,7 +368,7 @@ docker compose run --rm -v "$TMP:/src:z" -w /src web sh -c \
   "python manage.py check && python manage.py compile_themes && python manage.py collectstatic --no-input && pytest -n 3"
 ```
 - Skipping `compile_themes` + `collectstatic` causes ~237 spurious failures (manifest_strict ValueError on theme CSS).
-- **Green baseline:** **1017 passed / 1 skipped / 1 xfailed** (~3.5 min with `-n 3`) — as of the owner-reported issues 2+3 (2026-09-01; +18 tests: 11 film page/edit, 5 status/review, 2 finish-flow). Previous baselines: 999 after the search UX rework (2026-08-31), 998 milestone 3, 975 milestone 2 (the drop from 1332 was removed-feature coverage: connectors, importers, book views, imports, readwise, ISNI, suggestion lists, series, cover jobs).
+- **Green baseline:** **1029 passed / 1 skipped / 1 xfailed** (~3.5 min with `-n 3`) — as of owner-reported issue 1 (2026-09-01; +12 suggest tests + 1 poster-URL regression). Previous baselines: 1017 after issues 2+3 (+18 tests: 11 film page/edit, 5 status/review, 2 finish-flow), 999 after the search UX rework (2026-08-31), 998 milestone 3, 975 milestone 2 (the drop from 1332 was removed-feature coverage: connectors, importers, book views, imports, readwise, ISNI, suggestion lists, series, cover jobs).
 
 ### After changing app code
 `docker compose up -d --build` (rebuilds the web image), then `docker compose restart nginx` (quirk #1), then wait for web healthy.
