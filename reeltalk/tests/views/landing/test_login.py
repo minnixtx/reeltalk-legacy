@@ -154,6 +154,27 @@ class LoginViews(TestCase):
             "Username or password are incorrect",
         )
 
+    def test_login_post_missing_localname(self, *_):
+        """a POST with no localname field at all renders a login error, not a 500"""
+        view = views.Login.as_view()
+        form = forms.LoginForm()
+        form.data["password"] = "password"
+        request = self.factory.post("", form.data)
+        middleware = SessionMiddleware(lambda x: None)
+        middleware.process_request(request)
+        request.session["session_key"] = "1234abcd"
+        request.session.save()
+        request.user = self.anonymous_user
+
+        with patch("reeltalk.views.landing.login.login"):
+            result = view(request)
+        validate_html(result.render())
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(
+            result.context_data["login_form"].non_field_errors,
+            "Username or password are incorrect",
+        )
+
     def test_login_post_no_2fa_set(self, *_):
         """test user with 2FA null value is redirected to 2FA prompt page"""
         view = views.Login.as_view()

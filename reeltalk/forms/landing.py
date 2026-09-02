@@ -24,7 +24,7 @@ class LoginForm(CustomForm):
 
     def infer_username(self):
         """Users may enter their localname, username, or email"""
-        localname = self.data.get("localname")
+        localname = self.data.get("localname") or ""
         if "@" in localname:  # looks like an email address to me
             try:
                 return models.User.objects.get(email=localname).username
