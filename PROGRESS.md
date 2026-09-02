@@ -247,6 +247,23 @@ Executed per the agreed spec in §5 (decision #28). Four commits:
 
 **Testing gotcha found (for future sessions):** asserting "no HTTP call was made" via `responses.RequestsMock()` + `rsps.calls == []` proved flaky under pytest-xdist (a call from elsewhere in the worker process occasionally lands in the fresh mock's CallList; 4/4 → 3/4 → 0/4 across runs, never reproducible in-process or in later xdist runs). The deterministic replacement — `patch("reeltalk.views.search.tmdb.search_films")` + `assert_not_called()` — is what the no-call tests use now.
 
+### Phase 2 — owner-reported issue 4: suggest-dropdown poster display (executed 2026-09-02, awaiting owner review)
+
+Fixed per the §5 bug report. Two distinct root causes behind the two symptoms; CSS/JS only, no endpoint change, no test changes (no test touches these files). Reproduced in headless Chromium against the exact served assets before touching anything (harness: real compiled theme CSS + real `search_suggest.*.js` + real `/search/suggest/?q=blad` payload; computed-style logging via console → stderr).
+
+**Commit `5397f486a` — posters filled only the top ~55–60% of their cell, `$no-cover-color` band below:**
+- Root cause: Bulma's stock `.navbar-item img { max-height: $navbar-item-img-max-height }` (1.75rem = 28px) exists to cap the navbar **logo**, but the search *form* is itself a `.navbar-item` (`layout.html`), so the rule also matched every dropdown poster `img`. The component rule set `height: 100%` but nothing reset `max-height`, so posters were clamped to 28px inside their 54px cells (repro: span computed 36×54, img computed 36×28).
+- Fix: `max-height: none` on `.search-suggest-poster img` (`_search_suggest.scss`). Same specificity as the Bulma rule and later in source order, so it wins; scoped to the component, so the logo cap is untouched (logo still renders under the theme's own `.navbar .logo { max-height: 50px }` override).
+
+**Commit `fb4cf48b7` — some queries showed no posters at all:**
+- Root cause: `img.loading = "lazy"` inside the absolute-positioned `max-height:420px; overflow-y:auto` menu. Real-time headless-Chromium repro with 8 poster rows: only the first ~5 loaded and the rest never did — including one row *inside* the menu's scroll area (known Chromium flakiness for lazy images in small scrollable containers).
+- Fix: dropped `loading="lazy"` in `search_suggest.js` (rows are capped at 8, so eager load is cheap); kept `decoding="async"`.
+
+**Verification:** CI-faithful suite green — **1029 passed / 1 skipped / 1 xfailed** (baseline unchanged). Live re-check at :3030 on a real logged-in session driven over CDP (query "blad", TMDB mode):
+- All 5 poster rows: img box = cell box (36×54), computed `max-height:none; object-fit:cover`, all images loaded — including the below-the-fold row that lazy loading had been deferring.
+- All 3 no-poster rows: flat `$no-cover-color` cells, unchanged.
+- Navbar logo unaffected (still capped by the theme's 50px rule).
+
 ## 5. What still needs to be done
 
 ### Milestone 2 — pushed ✅ (2026-08-30)
@@ -305,17 +322,7 @@ Owner exercised the new search flow on the live instance (added *Camp Hideaway M
 1. **Search-as-you-type dropdown** (feature request) — ✅ **Done, suite + live-verified, PUSHED to fork 2026-09-02** after owner review. Implemented per decision #28 (`de929e896` + `6c7658b8c`, fixes in `2a112670f`/`607cad2fa` — execution record in §4). Spec below. Owner then reported a poster-display defect → issue 4 below.
 2. **TMDB metadata is not user-editable** (decision #26) — ✅ Done, live-verified (`f98542481`, execution record in §4). Scope as confirmed: lock only films with a `tmdb_id`; manually created films stay fully editable. Only user-generated content remains editable (review title/body, star rating, comments/interactions).
 3. **One review per film** (decision #27) — ✅ Done, live-verified (`5acf6a3be`, execution record in §4). The live duplicate of *Camp Hideaway Massacre* had been cleaned up earlier (review id 11 deleted; earliest review id 8 kept), which served as the live test case.
-4. **Suggest-dropdown posters render only half / sometimes not at all** (bug, reported by owner 2026-09-02) — ⬜ **NEXT SESSION: fix.** Screenshot at `/home/minnix/search_box.jpg` (query "blad", TMDB mode): every row shows the poster art filling only the top ~55–60% of its cell, with a flat dark-blue (`$no-cover-color`) band underneath; on other queries some posters don't display at all.
-
-   **Already ruled out (verified 2026-09-02):** the compiled theme CSS served by :3030 *does* contain the intended rules — `.search-suggest-poster{flex-shrink:0;width:2.25em;height:3.375em;margin-right:0.75rem;overflow:hidden;background-color:#002549}` and `.search-suggest-poster img{width:100%;height:100%;object-fit:cover}` (checked `reeltalk-dark.cfbf48611638.css`). The dropdown's own styling (menu background/border, flex rows) is visibly applied, so the stylesheet is loaded and the component compiled. It is a runtime rendering bug in `reeltalk/static/js/search_suggest.js` + `reeltalk/static/css/reeltalk/components/_search_suggest.scss`, not a build/serve/CSP problem (CSP img-src includes image.tmdb.org — posters do load, just mis-sized).
-
-   **Hypotheses to check (in order):**
-   - The poster container is a `<span>` (inline) built in JS; although flex items are blockified, verify the *computed* styles on `.search-suggest-poster` and its `img` in devtools — if `height:100%` isn't resolving, make the span `display:block`/`flex` explicitly or switch to a `<div>`.
-   - The `img` is left `display:inline`; an inline replaced element can leave line-box slack — try `display:block` on `.search-suggest-poster img`.
-   - "Not at all" cases: `img.loading="lazy"` inside the scrollable `max-height:420px; overflow-y:auto` menu — known flaky in some browsers for images just outside a small scroll viewport; consider dropping `loading="lazy"` (rows are capped at 8) and/or check the Network tab for failed/deferred poster requests.
-   - Reproduce locally: log in as any local user on :3030, type "blad" in the navbar search box, devtools → Elements + Computed on a `.search-suggest-poster img`.
-
-   **Fix discipline:** CSS/JS only (no endpoint change expected); no new tests unless behavior changes; rebuild + live re-check the dropdown (TMDB-mode rows *and* a no-poster row) before stopping for owner review.
+4. **Suggest-dropdown posters render only half / sometimes not at all** (bug, reported by owner 2026-09-02; screenshot `/home/minnix/search_box.jpg`) — ✅ **Done, suite + live-verified, awaiting owner review.** Two root causes, both fixed CSS/JS-only (`5397f486a` + `fb4cf48b7`, execution record in §4): (a) Bulma's `.navbar-item img { max-height: 1.75rem }` logo cap was clamping the posters because the search form is a `.navbar-item` → `max-height: none` on `.search-suggest-poster img`; (b) `loading="lazy"` inside the scrollable menu left some posters unloaded in Chromium → dropped (rows capped at 8).
 
 **Issue 1 — agreed spec (decision #28, owner-aligned 2026-09-01; Letterboxd model):**
 - **Suggest endpoint:** `GET /search/suggest/?q=<term>&type=film` returning JSON. With `REELTALK_TMDB_API_KEY` set it queries TMDB's `search/movie` (reusing `tmdb.search_films()`, page 1, top ~8 hits); when unset it falls back to the local trigram search — same graceful degradation as decision #25. Each result: title, year, poster (TMDB CDN or local), and a link target — local matches go straight to the film page; TMDB-only hits reuse the existing click-through route `GET /search/film/<tmdb_id>/` (create-or-match + redirect).
