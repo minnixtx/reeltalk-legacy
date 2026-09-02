@@ -73,9 +73,9 @@ class Film(TestCase):
         activity = self.film.to_activity()
 
         self.assertEqual(activity["poster"]["type"], "Image")
-        self.assertTrue(
-            activity["poster"]["url"].endswith("posters/test-poster.jpg")
-        )
+        # the media directory persists between runs, so Django may suffix the
+        # stored filename; build the expectation from the saved file (§7 quirk 6)
+        self.assertTrue(activity["poster"]["url"].endswith(self.film.poster.name))
         self.assertEqual(
             activity["poster"]["name"], "Jane Doe: Example Film (1999)"
         )
