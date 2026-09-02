@@ -22,7 +22,7 @@ from csp.decorators import csp_update
 
 from reeltalk import models, tmdb
 from reeltalk.book_search import search, format_search_result
-from reeltalk.settings import PAGE_LENGTH, INSTANCE_ACTOR_USERNAME, MEDIA_FULL_URL
+from reeltalk.settings import PAGE_LENGTH, INSTANCE_ACTOR_USERNAME
 from reeltalk.utils import regex
 from .helpers import is_api_request
 from .helpers import handle_remote_webfinger
@@ -246,7 +246,8 @@ def film_search_suggest(request):
             {
                 "title": film.title,
                 "year": film.year,
-                "poster": f"{MEDIA_FULL_URL}{film.poster}" if film.poster else None,
+                # relative URL so the dropdown works however the instance is reached
+                "poster": film.poster.url if film.poster else None,
                 "url": film.local_path,
             }
         )

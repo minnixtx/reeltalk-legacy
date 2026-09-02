@@ -1,10 +1,12 @@
 """test for app action functionality"""
 
 import json
+import pathlib
 from unittest.mock import patch
 
 import responses
 from django.contrib.auth.models import AnonymousUser
+from django.core.files.base import ContentFile
 from django.http import JsonResponse
 from django.template.response import TemplateResponse
 from django.test import TestCase, override_settings
@@ -546,6 +548,14 @@ class FilmSuggestViews(TestCase):
                 remote_id="https://example.com/users/mouse",
             )
 
+    def setUp(self):
+        """per-test data"""
+        image_path = pathlib.Path(__file__).parent.joinpath(
+            "../../static/images/default_avi.jpg"
+        )
+        with open(image_path, "rb") as image_file:
+            self.image_data = image_file.read()
+
     def suggest_get(self, q, search_type="film"):
         return self.client.get("/search/suggest/", {"q": q, "type": search_type})
 
@@ -688,6 +698,20 @@ class FilmSuggestViews(TestCase):
         self.assertEqual(row["year"], 1999)
         self.assertIsNone(row["poster"])
         self.assertEqual(row["url"], film.local_path)
+
+    @override_settings(TMDB_API_KEY="")
+    def test_suggest_local_fallback_poster_url(self, *_):
+        """local fallback posters use relative media URLs (any origin works)"""
+        film = models.Film.objects.create(title="Test Film", year=1999)
+        film.poster.save("test-poster.jpg", ContentFile(self.image_data), save=False)
+        film.save(broadcast=False)
+        self.client.force_login(self.local_user)
+        response = self.suggest_get("test film")
+
+        data = json.loads(response.content)
+        row = next(r for r in data["results"] if r["title"] == "Test Film")
+        self.assertEqual(row["poster"], film.poster.url)
+        self.assertTrue(row["poster"].startswith("/images/"))
 
     @override_settings(TMDB_API_KEY="")
     def test_suggest_local_fallback_zero_matches(self, *_):
