@@ -28,7 +28,7 @@
 | Phase 2 — milestone 3 (TMDB film importer) | ✅ **Done, live-verified, PUSHED 2026-08-31** — `e709614e2` (TMDB client), `e9bd0b007` (import page). Suite green: 998 passed. Fork main = `a0342a3c0`. Decisions #21–24 |
 | Phase 2 — search UX rework (TMDB as primary catalog, "Watchlist" rename) | ✅ **Done, live-verified, pushed to fork 2026-09-01** after owner review (owner exercised the flow live; three follow-up issues reported — see §5 backlog). `c7c920737` (rename + migration 0250), `8832a5a8e` (TMDB global search + click-through + watchlist action), `710e18038` (import page removal). Suite green: 999 passed. Decision #25 |
 | Phase 2 — owner-reported issues 2+3 (TMDB metadata lock, one review per film) | ✅ **Done, suite + live-verified, PUSHED to fork 2026-09-01** after owner review. `f98542481` (decision #26), `5acf6a3be` (decision #27). Suite green: **1017 passed / 1 skipped / 1 xfailed** |
-| Phase 2 — owner-reported issue 1 (search-as-you-type dropdown) | ✅ **Done, suite + live-verified 2026-09-01; AWAITING OWNER REVIEW (not pushed).** `de929e896` (suggest endpoint), `6c7658b8c` (client dropdown), `2a112670f` + `607cad2fa` (test-env + poster-URL fixes). Suite green: **1029 passed / 1 skipped / 1 xfailed** |
+| Phase 2 — owner-reported issue 1 (search-as-you-type dropdown) | ✅ **Done, suite + live-verified 2026-09-01, PUSHED to fork 2026-09-02** after owner review. `de929e896` (suggest endpoint), `6c7658b8c` (client dropdown), `2a112670f` + `607cad2fa` (test-env + poster-URL fixes). Suite green: **1029 passed / 1 skipped / 1 xfailed**. Owner then reported a poster-display bug → **issue 4 in §5, next session's task** |
 | Phase 2 — remainder after rework (artwork, Crowdin, public deploy, file-based import) | ⬜ Not started |
 
 ## 3. Commit history (`main`)
@@ -302,9 +302,20 @@ Milestones 1–3 and the search UX rework are done and pushed. What remains, fro
 
 Owner exercised the new search flow on the live instance (added *Camp Hideaway Massacre* to Watched and reviewed it) and reported three issues. Status 2026-09-01:
 
-1. **Search-as-you-type dropdown** (feature request) — ✅ **Done, suite + live-verified; AWAITING OWNER REVIEW before push.** Implemented per decision #28 (`de929e896` + `6c7658b8c`, fixes in `2a112670f`/`607cad2fa` — execution record in §4). Spec below.
+1. **Search-as-you-type dropdown** (feature request) — ✅ **Done, suite + live-verified, PUSHED to fork 2026-09-02** after owner review. Implemented per decision #28 (`de929e896` + `6c7658b8c`, fixes in `2a112670f`/`607cad2fa` — execution record in §4). Spec below. Owner then reported a poster-display defect → issue 4 below.
 2. **TMDB metadata is not user-editable** (decision #26) — ✅ Done, live-verified (`f98542481`, execution record in §4). Scope as confirmed: lock only films with a `tmdb_id`; manually created films stay fully editable. Only user-generated content remains editable (review title/body, star rating, comments/interactions).
 3. **One review per film** (decision #27) — ✅ Done, live-verified (`5acf6a3be`, execution record in §4). The live duplicate of *Camp Hideaway Massacre* had been cleaned up earlier (review id 11 deleted; earliest review id 8 kept), which served as the live test case.
+4. **Suggest-dropdown posters render only half / sometimes not at all** (bug, reported by owner 2026-09-02) — ⬜ **NEXT SESSION: fix.** Screenshot at `/home/minnix/search_box.jpg` (query "blad", TMDB mode): every row shows the poster art filling only the top ~55–60% of its cell, with a flat dark-blue (`$no-cover-color`) band underneath; on other queries some posters don't display at all.
+
+   **Already ruled out (verified 2026-09-02):** the compiled theme CSS served by :3030 *does* contain the intended rules — `.search-suggest-poster{flex-shrink:0;width:2.25em;height:3.375em;margin-right:0.75rem;overflow:hidden;background-color:#002549}` and `.search-suggest-poster img{width:100%;height:100%;object-fit:cover}` (checked `reeltalk-dark.cfbf48611638.css`). The dropdown's own styling (menu background/border, flex rows) is visibly applied, so the stylesheet is loaded and the component compiled. It is a runtime rendering bug in `reeltalk/static/js/search_suggest.js` + `reeltalk/static/css/reeltalk/components/_search_suggest.scss`, not a build/serve/CSP problem (CSP img-src includes image.tmdb.org — posters do load, just mis-sized).
+
+   **Hypotheses to check (in order):**
+   - The poster container is a `<span>` (inline) built in JS; although flex items are blockified, verify the *computed* styles on `.search-suggest-poster` and its `img` in devtools — if `height:100%` isn't resolving, make the span `display:block`/`flex` explicitly or switch to a `<div>`.
+   - The `img` is left `display:inline`; an inline replaced element can leave line-box slack — try `display:block` on `.search-suggest-poster img`.
+   - "Not at all" cases: `img.loading="lazy"` inside the scrollable `max-height:420px; overflow-y:auto` menu — known flaky in some browsers for images just outside a small scroll viewport; consider dropping `loading="lazy"` (rows are capped at 8) and/or check the Network tab for failed/deferred poster requests.
+   - Reproduce locally: log in as any local user on :3030, type "blad" in the navbar search box, devtools → Elements + Computed on a `.search-suggest-poster img`.
+
+   **Fix discipline:** CSS/JS only (no endpoint change expected); no new tests unless behavior changes; rebuild + live re-check the dropdown (TMDB-mode rows *and* a no-poster row) before stopping for owner review.
 
 **Issue 1 — agreed spec (decision #28, owner-aligned 2026-09-01; Letterboxd model):**
 - **Suggest endpoint:** `GET /search/suggest/?q=<term>&type=film` returning JSON. With `REELTALK_TMDB_API_KEY` set it queries TMDB's `search/movie` (reusing `tmdb.search_films()`, page 1, top ~8 hits); when unset it falls back to the local trigram search — same graceful degradation as decision #25. Each result: title, year, poster (TMDB CDN or local), and a link target — local matches go straight to the film page; TMDB-only hits reuse the existing click-through route `GET /search/film/<tmdb_id>/` (create-or-match + redirect).
