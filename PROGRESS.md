@@ -1,6 +1,6 @@
 # ReelTalk — Progress Tracker
 
-**Last updated:** 2026-09-02
+**Last updated:** 2026-09-03
 **Audience:** any new session picking up this project. Read this first, then `PLAN.md` (the historical Phase 1 execution plan) if you need the original reasoning.
 
 ---
@@ -30,14 +30,15 @@
 | Phase 2 — owner-reported issues 2+3 (TMDB metadata lock, one review per film) | ✅ **Done, suite + live-verified, PUSHED to fork 2026-09-01** after owner review. `f98542481` (decision #26), `5acf6a3be` (decision #27). Suite green: **1017 passed / 1 skipped / 1 xfailed** |
 | Phase 2 — owner-reported issue 1 (search-as-you-type dropdown) | ✅ **Done, suite + live-verified 2026-09-01, PUSHED to fork 2026-09-02** after owner review. `de929e896` (suggest endpoint), `6c7658b8c` (client dropdown), `2a112670f` + `607cad2fa` (test-env + poster-URL fixes). Suite green: **1029 passed / 1 skipped / 1 xfailed**. Owner then reported a poster-display bug → issue 4 |
 | Phase 2 — owner-reported issue 4 (suggest-dropdown poster display) | ✅ **Done, suite + live-verified, PUSHED to fork 2026-09-02** after owner review. `5397f486a` (Bulma navbar img max-height clamp), `fb4cf48b7` (lazy loading in the scrollable menu). Suite green: **1029 passed / 1 skipped / 1 xfailed** |
-| Phase 2 — file-based film import + export rework (decisions #29–31) | ✅ **Done, suite + live-verified 2026-09-02, awaiting owner review** — `aea3e497c` (import), `01e179539` (export to TMDB format). Live-verified with the owner's real 1,670-row TMDB watchlist export. Suite green: **1043 passed / 1 skipped / 1 xfailed** |
-| Phase 2 — async TMDB backfill for imported films (decision #32) | ✅ **Done, suite + live-verified 2026-09-02, awaiting owner review** — `694c621eb`. Owner reported no posters/metadata on their imported films (a design gap in #29–31: the import makes no API calls and left ID stubs); a background task now fetches TMDB details + poster after each import. Live-verified: 1,372 of the owner's 1,378 stubs backfilled; the 6 remaining confirmed poster-less on TMDB. Suite green: **1050 passed / 1 skipped / 1 xfailed** |
-| Phase 2 — housekeeping fixes (login 500 on missing field, nginx error caching) | ✅ Done 2026-09-02, awaiting owner review — `0c840369d`, `802e3a658` (both live-verified) |
+| Phase 2 — file-based film import + export rework (decisions #29–31) | ✅ **Done, suite + live-verified 2026-09-02, PUSHED to fork 2026-09-03** — `aea3e497c` (import), `01e179539` (export to TMDB format). Live-verified with the owner's real 1,670-row TMDB watchlist export. Suite green: **1043 passed / 1 skipped / 1 xfailed** |
+| Phase 2 — async TMDB backfill for imported films (decision #32) | ✅ **Done, suite + live-verified 2026-09-02, PUSHED to fork 2026-09-03** — `694c621eb`. Owner reported no posters/metadata on their imported films (a design gap in #29–31: the import makes no API calls and left ID stubs); a background task now fetches TMDB details + poster after each import. Live-verified: 1,372 of the owner's 1,378 stubs backfilled; the 6 remaining confirmed poster-less on TMDB. Suite green: **1050 passed / 1 skipped / 1 xfailed** |
+| Phase 2 — housekeeping fixes (login 500 on missing field, nginx error caching) | ✅ Done 2026-09-02, PUSHED to fork 2026-09-03 — `0c840369d`, `802e3a658` (both live-verified) |
 | Phase 2 — remainder after rework (artwork, Crowdin, public deploy) | ⬜ Not started |
 
 ## 3. Commit history (`main`)
 
 ```
+42887fe1f Record async TMDB backfill for imported films (decision 32); note per-service image gotcha
 694c621eb Backfill TMDB metadata + posters for imported films in the background (decision 32)  ← file-based import: poster/metadata gap
 01e179539 Rework Export Film List to the canonical TMDB CSV format (decision 31)          ← file-based import (commit 2/2)
 aea3e497c Add file-based film import from a TMDB-style CSV export (decision 29)           ← file-based import (commit 1/2)
@@ -287,7 +288,7 @@ Fixed per the §5 bug report. Two distinct root causes behind the two symptoms; 
 - All 3 no-poster rows: flat `$no-cover-color` cells, unchanged.
 - Navbar logo unaffected (still capped by the theme's 50px rule).
 
-### Phase 2 — housekeeping fixes: login 500 on missing field + nginx error caching (executed 2026-09-02, awaiting owner review)
+### Phase 2 — housekeeping fixes: login 500 on missing field + nginx error caching (executed 2026-09-02, PUSHED to fork 2026-09-03)
 
 Two observations from this session's live probing; both fixed with the narrowest change that works.
 
@@ -302,7 +303,7 @@ Two observations from this session's live probing; both fixed with the narrowest
 
 **Verification:** scoped tests green (`tests/views/landing/test_login.py`, 10 passed); the full-suite run below includes both fixes. Live at :3030: login POST with a missing `localname` → 200 + generic error (no more 500); a DisallowedHost probe on `127.0.0.1` no longer poisons subsequent `localhost` requests, and the normal cache path is intact (MISS→HIT).
 
-### Phase 2 — file-based film import + export rework (decisions #29–31; executed 2026-09-02, awaiting owner review)
+### Phase 2 — file-based film import + export rework (decisions #29–31; executed 2026-09-02, PUSHED to fork 2026-09-03)
 
 Design settled with the owner first (§8, decisions #29–31): **TMDB-style CSVs only** — the canonical ten-column header is TMDB's own export shape (the owner's watchlist export is the reference), and ReelTalk's "Export Film List" now emits the same format so exports round-trip. No TMDB API calls during import; a synchronous single-page flow with a per-row results table + summary.
 
@@ -324,7 +325,7 @@ Design settled with the owner first (§8, decisions #29–31): **TMDB-style CSVs
 - A film page renders correctly (year + "View on TMDB" link); celery worker logs clean.
 - Cleanup: throwaway user hard-deleted in PROTECT order (ShelfFilm → Shelf → Films → User); live DB back to its original state (2 users, films 16/17/22).
 
-### Phase 2 — async TMDB backfill for imported films (decision #32; executed 2026-09-02, awaiting owner review)
+### Phase 2 — async TMDB backfill for imported films (decision #32; executed 2026-09-02, PUSHED to fork 2026-09-03)
 
 After importing their own watchlist into the live instance, the owner reported that every imported film showed only a blue placeholder box — no poster on the watchlist or the film page. Investigation: the imports were ID stubs (title/year/TMDb+IMDb IDs only — no description, directors, genres, runtime, cast either). That is by design per decision #30 (no API calls during import), but there was no path to fill the data afterwards. Design aligned with the owner (decision #32): **async backfill after import** — a background job fetches TMDB details + poster for every imported film so the list looks complete without any user action (Letterboxd model: every film has its poster immediately).
 
