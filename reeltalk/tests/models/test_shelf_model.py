@@ -128,3 +128,20 @@ class Shelf(TestCase):
         self.assertEqual(activity["object"]["id"], shelf_film.remote_id)
         self.assertEqual(activity["target"], shelf.remote_id)
         self.assertFalse(shelf.films.exists())
+
+    def test_save_inherits_user_from_shelf(self, *_):
+        """an instance without an explicit user gets the shelf's user"""
+        with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
+            shelf = models.Shelf.objects.create(
+                name="Test Shelf", identifier="test-shelf", user=self.local_user
+            )
+
+        shelf_film = models.ShelfFilm(shelf=shelf, film=self.film)
+        shelf_film.save(broadcast=False)
+        self.assertEqual(shelf_film.user, self.local_user)
+
+    def test_save_without_user_or_shelf(self, *_):
+        """a bare instance fails with a clear error, not an obscure one"""
+        shelf_film = models.ShelfFilm(film=self.film)
+        with self.assertRaises(ValueError):
+            shelf_film.save(broadcast=False)

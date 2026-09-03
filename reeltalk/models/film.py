@@ -153,10 +153,10 @@ class Film(ObjectMixin, ReelTalkModel):
     @classmethod
     def viewer_aware_objects(cls, viewer):
         """filter blocked films and annotate a film query with metadata related to the user"""
-        queryset = cls.objects
-
         if not viewer or not viewer.is_authenticated:
-            return queryset
+            return cls.objects.all()
+
+        queryset = cls.objects
 
         queryset = queryset.exclude(
             id__in=viewer.blocked_films.values_list("id", flat=True)

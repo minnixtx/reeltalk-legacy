@@ -16,7 +16,7 @@ def get_rating(film, user):
     return cache.get_or_set(
         f"film-rating-{film.id}",
         lambda u, f: models.Review.objects.filter(
-            film=f, rating__gt=0
+            film=f, rating__gt=0, deleted=False
         ).aggregate(Avg("rating"))["rating__avg"]
         or 0,
         user,

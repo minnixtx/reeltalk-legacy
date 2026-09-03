@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from django.contrib.auth.models import AnonymousUser
+from django.db.models import QuerySet
 from django.test import TestCase
 
 from reeltalk import models, settings
@@ -245,9 +246,9 @@ class Film(TestCase):
         # the prefetch of current shelves is attached
         self.assertTrue(hasattr(queryset.first(), "current_shelves"))
 
-        # anonymous viewers see everything (the app returns the bare
-        # manager in this branch; .all() normalizes it to a queryset)
-        queryset = models.Film.viewer_aware_objects(AnonymousUser()).all()
+        # anonymous viewers see everything, as a plain queryset
+        queryset = models.Film.viewer_aware_objects(AnonymousUser())
+        self.assertIsInstance(queryset, QuerySet)
         self.assertIn(blocked_film, queryset)
 
     @pytest.mark.skipif(

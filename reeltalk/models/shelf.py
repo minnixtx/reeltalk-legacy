@@ -112,9 +112,12 @@ class ShelfFilm(CollectionItemMixin, ReelTalkModel):
         update_fields: Optional[Iterable[str]] = None,
         **kwargs,
     ):
-        if not self.user:
+        # _id accessors: touching an unset non-null FK raises instead of returning None
+        if not self.user_id and self.shelf_id:
             self.user = self.shelf.user
             update_fields = add_update_fields(update_fields, "user")
+        if not self.user_id:
+            raise ValueError("ShelfFilm requires a user")
 
         is_update = self.id is not None
         super().save(*args, priority=priority, update_fields=update_fields, **kwargs)

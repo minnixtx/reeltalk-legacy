@@ -74,6 +74,20 @@ class RatingTags(TestCase):
         )
         self.assertEqual(rating_tags.get_rating(self.film, self.local_user), 4.5)
 
+    @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
+    def test_get_rating_excludes_soft_deleted(self, *_):
+        """deleted reviews don't count toward the film's average"""
+        first = models.Review.objects.create(
+            content="meh", user=self.local_user, film=self.film, rating=2
+        )
+        models.Review.objects.create(
+            content="great", user=self.local_user, film=self.film, rating=4
+        )
+        self.assertEqual(rating_tags.get_rating(self.film, self.local_user), 3)
+
+        first.delete()
+        self.assertEqual(rating_tags.get_rating(self.film, self.local_user), 4)
+
     def test_get_user_rating(self, *_):
         """get a user's most recent rating of a film"""
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
