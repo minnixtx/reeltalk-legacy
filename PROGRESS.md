@@ -31,12 +31,14 @@
 | Phase 2 — owner-reported issue 1 (search-as-you-type dropdown) | ✅ **Done, suite + live-verified 2026-09-01, PUSHED to fork 2026-09-02** after owner review. `de929e896` (suggest endpoint), `6c7658b8c` (client dropdown), `2a112670f` + `607cad2fa` (test-env + poster-URL fixes). Suite green: **1029 passed / 1 skipped / 1 xfailed**. Owner then reported a poster-display bug → issue 4 |
 | Phase 2 — owner-reported issue 4 (suggest-dropdown poster display) | ✅ **Done, suite + live-verified, PUSHED to fork 2026-09-02** after owner review. `5397f486a` (Bulma navbar img max-height clamp), `fb4cf48b7` (lazy loading in the scrollable menu). Suite green: **1029 passed / 1 skipped / 1 xfailed** |
 | Phase 2 — file-based film import + export rework (decisions #29–31) | ✅ **Done, suite + live-verified 2026-09-02, awaiting owner review** — `aea3e497c` (import), `01e179539` (export to TMDB format). Live-verified with the owner's real 1,670-row TMDB watchlist export. Suite green: **1043 passed / 1 skipped / 1 xfailed** |
+| Phase 2 — async TMDB backfill for imported films (decision #32) | ✅ **Done, suite + live-verified 2026-09-02, awaiting owner review** — `694c621eb`. Owner reported no posters/metadata on their imported films (a design gap in #29–31: the import makes no API calls and left ID stubs); a background task now fetches TMDB details + poster after each import. Live-verified: 1,372 of the owner's 1,378 stubs backfilled; the 6 remaining confirmed poster-less on TMDB. Suite green: **1050 passed / 1 skipped / 1 xfailed** |
 | Phase 2 — housekeeping fixes (login 500 on missing field, nginx error caching) | ✅ Done 2026-09-02, awaiting owner review — `0c840369d`, `802e3a658` (both live-verified) |
 | Phase 2 — remainder after rework (artwork, Crowdin, public deploy) | ⬜ Not started |
 
 ## 3. Commit history (`main`)
 
 ```
+694c621eb Backfill TMDB metadata + posters for imported films in the background (decision 32)  ← file-based import: poster/metadata gap
 01e179539 Rework Export Film List to the canonical TMDB CSV format (decision 31)          ← file-based import (commit 2/2)
 aea3e497c Add file-based film import from a TMDB-style CSV export (decision 29)           ← file-based import (commit 1/2)
 802e3a658 Stop nginx from caching anonymous error responses                               ← housekeeping: cache poisoning fix
@@ -322,6 +324,17 @@ Design settled with the owner first (§8, decisions #29–31): **TMDB-style CSVs
 - A film page renders correctly (year + "View on TMDB" link); celery worker logs clean.
 - Cleanup: throwaway user hard-deleted in PROTECT order (ShelfFilm → Shelf → Films → User); live DB back to its original state (2 users, films 16/17/22).
 
+### Phase 2 — async TMDB backfill for imported films (decision #32; executed 2026-09-02, awaiting owner review)
+
+After importing their own watchlist into the live instance, the owner reported that every imported film showed only a blue placeholder box — no poster on the watchlist or the film page. Investigation: the imports were ID stubs (title/year/TMDb+IMDb IDs only — no description, directors, genres, runtime, cast either). That is by design per decision #30 (no API calls during import), but there was no path to fill the data afterwards. Design aligned with the owner (decision #32): **async backfill after import** — a background job fetches TMDB details + poster for every imported film so the list looks complete without any user action (Letterboxd model: every film has its poster immediately).
+
+**Commit `694c621eb`:**
+- New Celery task `backfill_imported_films_task` (`reeltalk/tmdb.py`, `imports` queue): walks the given film IDs; skips films without a `tmdb_id` and films that already have a poster + description (idempotent — safe to re-queue); fetches details via `get_film_details()` and fills all empty fields via `backfill_film_from_tmdb()` + `add_poster()`. 0.25 s spacing between fetches keeps a large import under TMDB's 50-requests-per-10-seconds rate limit (1,378 films ≈ 15 min). A per-film `TmdbError` is logged and skipped — one failure never stops the batch; no-op when the instance has no API key.
+- Import view: after the transaction commits (`transaction.on_commit`), queues every non-skipped film — created **and** matched, so re-importing a previously imported list backfills any stubs it left behind. Only when TMDB is configured; in that case the results page shows a note that posters/details are being fetched in the background.
+- 7 new tests (5 task: unconfigured no-op, skip complete films, skip non-TMDB films, fill stub fields + poster, continue past per-film errors; 2 view: queue after commit with the right IDs, no queue when unconfigured).
+
+**Verification:** full CI-faithful suite green — **1050 passed / 1 skipped / 1 xfailed** (baseline 1043 + 7). Live at :3030: rebuilt web **and** the celery worker/beat onto the new image (the worker's per-service image is separate — an un-rebuilt worker silently drops the new task as "unregistered"), then queued a one-off backfill of the owner's existing 1,378 stubs. Task succeeded in 925 s, zero failures: 1,372 films now have poster + description + directors (sampled rows verified); the 6 remaining were confirmed genuinely poster-less on TMDB (`poster_path: None` for all six — obscure titles). A film page renders with its poster (`/images/posters/tmdb-*.jpg`, 200 image/jpeg).
+
 ## 5. What still needs to be done
 
 ### Milestone 2 — pushed ✅ (2026-08-30)
@@ -368,7 +381,7 @@ Owner redirect after reviewing milestone 3: TMDB should be the **primary film ca
 
 ### Phase 2 — remainder (DESIGN WITH THE OWNER FIRST; no solo design decisions)
 Milestones 1–3 and the search UX rework are done and pushed. What remains, from PLAN.md §12 plus the owner's 13-item list (plus the owner-reported backlog below):
-- **File-based film import** — ✅ **Done 2026-09-02, awaiting owner review.** "Import" was reserved for this by decision #25; design settled with the owner (decisions #29–31): TMDB-style CSVs only, no API calls during import, synchronous per-row results, export round-trips. `aea3e497c` + `01e179539` — execution record in §4.
+- **File-based film import** — ✅ **Done 2026-09-02, awaiting owner review.** "Import" was reserved for this by decision #25; design settled with the owner (decisions #29–32): TMDB-style CSVs only, no API calls during import, synchronous per-row results, export round-trips, async TMDB backfill of posters/details after import. `aea3e497c` + `01e179539` + `694c621eb` — execution records in §4.
 - Custom ReelTalk artwork replacing BookWyrm's placeholder/wyrm imagery.
 - Re-point `locale/**` at a ReelTalk Crowdin project (still contains BookWyrm strings).
 - Public instance deployment of the alpha (operator's own TLS proxy in front of :3030).
@@ -444,10 +457,11 @@ docker compose run --rm -v "$TMP:/src:z" -w /src web sh -c \
   "python manage.py check && python manage.py compile_themes && python manage.py collectstatic --no-input && pytest -n 3"
 ```
 - Skipping `compile_themes` + `collectstatic` causes ~237 spurious failures (manifest_strict ValueError on theme CSS).
-- **Green baseline:** **1043 passed / 1 skipped / 1 xfailed** (~3.5 min with `-n 3`) — as of the file-based film import (2026-09-02; +1 login regression + 13 import tests, export tests rewritten in place). Previous baselines: 1029 after owner-reported issue 1 (2026-09-01; +12 suggest tests + 1 poster-URL regression), 1017 after issues 2+3 (+18 tests: 11 film page/edit, 5 status/review, 2 finish-flow), 999 after the search UX rework (2026-08-31), 998 milestone 3, 975 milestone 2 (the drop from 1332 was removed-feature coverage: connectors, importers, book views, imports, readwise, ISNI, suggestion lists, series, cover jobs).
+- **Green baseline:** **1050 passed / 1 skipped / 1 xfailed** (~3.5 min with `-n 3`) — as of the async TMDB backfill (2026-09-02; +7 tests). Previous baselines: 1043 after the file-based film import (2026-09-02; +1 login regression + 13 import tests, export tests rewritten in place), 1029 after owner-reported issue 1 (2026-09-01; +12 suggest tests + 1 poster-URL regression), 1017 after issues 2+3 (+18 tests: 11 film page/edit, 5 status/review, 2 finish-flow), 999 after the search UX rework (2026-08-31), 998 milestone 3, 975 milestone 2 (the drop from 1332 was removed-feature coverage: connectors, importers, book views, imports, readwise, ISNI, suggestion lists, series, cover jobs).
 
 ### After changing app code
-`docker compose up -d --build` (rebuilds the web image), then `docker compose restart nginx` (quirk #1), then wait for web healthy.
+`docker compose up -d --build` (rebuilds all app images), then `docker compose restart nginx` (quirk #1), then wait for web healthy.
+- **Per-service images:** web, celery_worker and celery_beat each have their own image tag (`reeltalk-work-web`, `reeltalk-work-celery_worker`, …). `up -d --build <one service>` does NOT update the others — a worker on the old image silently drops new tasks as "unregistered" (hit this with the backfill task, 2026-09-02). When adding or changing Celery tasks, rebuild web + celery_worker + celery_beat.
 
 ## 8. Owner decision log (do not re-litigate)
 
@@ -482,3 +496,4 @@ docker compose run --rm -v "$TMP:/src:z" -w /src web sh -c \
 29. **File-based import format and entry point** (2026-09-02): "Import" (reserved by #25) accepts **TMDB-style CSVs only** — the canonical ten-column header is TMDB's own export shape (the owner's watchlist export is the reference), and ReelTalk's "Export Film List" emits the same format so exports round-trip. Entry point: Preferences → Data → "Import Film List" (`/preferences/import/`), local users only; synchronous single-transaction import with a per-row results table + summary (no background job).
 30. **File-based import semantics** (2026-09-02): **no TMDB API calls** during import — the CSV is self-sufficient. Per row: create-or-match ID-first (TMDb ID, then IMDb ID), then normalized title + year (#23); on match, empty local IDs/year backfilled. Unrated row → film added to Watchlist; rated row → TMDB's 1–10 `Your Rating` mapped ÷2 onto the 5-star scale (nearest half star) → Watched + `ReviewRating` (#19). Existing reviews are never touched (#27); non-movie rows (`Type` ≠ movie) and missing-name rows are skipped with a note. All saves use `broadcast=False` — importing your own data is not federation.
 31. **Export Film List mapping** (2026-09-02): one row per film the user has a relationship with (shelved / reviewed / commented / quoted), in the canonical TMDB ten-column format: TMDb + IMDb IDs from the film, `Type` = "movie", Release Date = stored year as `YYYY-01-01T00:00:00Z`, Your Rating = most recent rated review ×2, Date Rated from that review's published date (UTC); season/episode and community-score columns empty; review text drops out (the format carries ratings, not reviews).
+32. **Async TMDB backfill for imported films** (2026-09-02): the file import creates ID stubs (no API calls, #30), so a background Celery task now runs after each import and fetches TMDB details + poster for every imported film (created **and** matched — re-importing self-heals leftover stubs). Rate-limit-friendly pacing (~15 min for 1,378 films), idempotent (skips films that already have a poster + description), per-film failures skipped and logged, no-op without an API key. Result: the watchlist looks complete without any user action (Letterboxd model). Triggered by the owner reporting blue placeholder boxes on their imported films.
