@@ -1,6 +1,6 @@
 # ReelTalk — Progress Tracker
 
-**Last updated:** 2026-09-01
+**Last updated:** 2026-09-02
 **Audience:** any new session picking up this project. Read this first, then `PLAN.md` (the historical Phase 1 execution plan) if you need the original reasoning.
 
 ---
@@ -28,18 +28,39 @@
 | Phase 2 — milestone 3 (TMDB film importer) | ✅ **Done, live-verified, PUSHED 2026-08-31** — `e709614e2` (TMDB client), `e9bd0b007` (import page). Suite green: 998 passed. Fork main = `a0342a3c0`. Decisions #21–24 |
 | Phase 2 — search UX rework (TMDB as primary catalog, "Watchlist" rename) | ✅ **Done, live-verified, pushed to fork 2026-09-01** after owner review (owner exercised the flow live; three follow-up issues reported — see §5 backlog). `c7c920737` (rename + migration 0250), `8832a5a8e` (TMDB global search + click-through + watchlist action), `710e18038` (import page removal). Suite green: 999 passed. Decision #25 |
 | Phase 2 — owner-reported issues 2+3 (TMDB metadata lock, one review per film) | ✅ **Done, suite + live-verified, PUSHED to fork 2026-09-01** after owner review. `f98542481` (decision #26), `5acf6a3be` (decision #27). Suite green: **1017 passed / 1 skipped / 1 xfailed** |
-| Phase 2 — owner-reported issue 1 (search-as-you-type dropdown) | ✅ **Done, suite + live-verified 2026-09-01, PUSHED to fork 2026-09-02** after owner review. `de929e896` (suggest endpoint), `6c7658b8c` (client dropdown), `2a112670f` + `607cad2fa` (test-env + poster-URL fixes). Suite green: **1029 passed / 1 skipped / 1 xfailed**. Owner then reported a poster-display bug → **issue 4 in §5, next session's task** |
-| Phase 2 — remainder after rework (artwork, Crowdin, public deploy, file-based import) | ⬜ Not started |
+| Phase 2 — owner-reported issue 1 (search-as-you-type dropdown) | ✅ **Done, suite + live-verified 2026-09-01, PUSHED to fork 2026-09-02** after owner review. `de929e896` (suggest endpoint), `6c7658b8c` (client dropdown), `2a112670f` + `607cad2fa` (test-env + poster-URL fixes). Suite green: **1029 passed / 1 skipped / 1 xfailed**. Owner then reported a poster-display bug → issue 4 |
+| Phase 2 — owner-reported issue 4 (suggest-dropdown poster display) | ✅ **Done, suite + live-verified, PUSHED to fork 2026-09-02** after owner review. `5397f486a` (Bulma navbar img max-height clamp), `fb4cf48b7` (lazy loading in the scrollable menu). Suite green: **1029 passed / 1 skipped / 1 xfailed** |
+| Phase 2 — file-based film import + export rework (decisions #29–31) | ✅ **Done, suite + live-verified 2026-09-02, awaiting owner review** — `aea3e497c` (import), `01e179539` (export to TMDB format). Live-verified with the owner's real 1,670-row TMDB watchlist export. Suite green: **1043 passed / 1 skipped / 1 xfailed** |
+| Phase 2 — housekeeping fixes (login 500 on missing field, nginx error caching) | ✅ Done 2026-09-02, awaiting owner review — `0c840369d`, `802e3a658` (both live-verified) |
+| Phase 2 — remainder after rework (artwork, Crowdin, public deploy) | ⬜ Not started |
 
 ## 3. Commit history (`main`)
 
 ```
+01e179539 Rework Export Film List to the canonical TMDB CSV format (decision 31)          ← file-based import (commit 2/2)
+aea3e497c Add file-based film import from a TMDB-style CSV export (decision 29)           ← file-based import (commit 1/2)
+802e3a658 Stop nginx from caching anonymous error responses                               ← housekeeping: cache poisoning fix
+0c840369d Harden login form against a missing localname field                             ← housekeeping: login 500
+b95efd658 Record issue 4 push; note login-form missing-field 500 as known item
+d98904b53 Record issue 4 fix: dropdown poster display (max-height clamp + lazy loading)
+fb4cf48b7 Drop lazy loading from suggest dropdown posters; unreliable in the scrollable menu
+5397f486a Unclamp suggest dropdown posters from Bulma's navbar img max-height             ← owner-reported issue 4 (CSS)
+b9108d869 Record issue 1 push; log dropdown poster-display bug as issue 4 for next session
+4ffd8f878 Record issue 1 execution: search-as-you-type dropdown, awaiting owner review
 607cad2fa Use relative media URLs for fallback suggest posters; works on any origin     ← owner-reported issue 1 (fix)
 2a112670f Make poster URL assertion data-driven; media dir persists between test runs   ← owner-reported issue 1 (test env)
 6c7658b8c Add search-as-you-type dropdown to the main search box (decision 28)          ← owner-reported issue 1 (client)
 de929e896 Add JSON suggest endpoint for search-as-you-type (decision 28)                ← owner-reported issue 1 (endpoint)
+45b8fd544 Record decision 28: search-as-you-type design aligned with owner
+e625d8fe3 Record owner-reported issues 2+3 execution; propose issue 1 design
 5acf6a3be Enforce one review per film; make rating-only entries editable (decision 27)  ← owner-reported issue 3
 f98542481 Lock TMDB-sourced film details from user editing (decision 26)                ← owner-reported issue 2
+111d9b830 Note that live DB contents are disposable test data (owner confirmed)
+99ca8adc9 Update README status and roadmap to reflect Phase 2 progress
+0498860c0 Remove repo-root CODE_OF_CONDUCT.md
+095310d0d Record owner's scope answers: lock TMDB films only; live duplicate review cleaned up
+d79e0104c Record owner review of search rework; queue three follow-up issues (decisions 26-27)
+31728fbfc Record search UX rework execution: commits, new baseline, live verification
 710e18038 Remove the TMDB import page                                                 ← search UX rework (commit 3/3)
 8832a5a8e Query TMDB from global film search with one-click Watchlist add             ← search UX rework (commit 2/3)
 c7c920737 Rename the Want to Watch shelf to Watchlist (display name only)             ← search UX rework (commit 1/3)
@@ -264,6 +285,43 @@ Fixed per the §5 bug report. Two distinct root causes behind the two symptoms; 
 - All 3 no-poster rows: flat `$no-cover-color` cells, unchanged.
 - Navbar logo unaffected (still capped by the theme's 50px rule).
 
+### Phase 2 — housekeeping fixes: login 500 on missing field + nginx error caching (executed 2026-09-02, awaiting owner review)
+
+Two observations from this session's live probing; both fixed with the narrowest change that works.
+
+**Commit `0c840369d` — login POST 500 when the `localname` field is missing:**
+- Root cause: `LoginForm.infer_username` did `"@" in self.data.get("localname")` — a `TypeError` on `None`. Any POST that omits the field entirely (malformed clients; browsers always send it) 500'd before form validation could run. Covers both call sites (`Login.post` and `ReactivateUser.post`).
+- Fix: one line — `localname = self.data.get("localname") or ""`, so a missing field behaves like an empty one and the request falls through to the usual generic invalid-credentials response.
+- Regression test: `tests/views/landing/test_login.py::test_login_post_missing_localname` (POST with only `password` → 200 + "Username or password are incorrect").
+
+**Commit `802e3a658` — nginx caching anonymous error responses:**
+- Root cause: this session's first live probe hit `127.0.0.1`, which is not in `ALLOWED_HOSTS` → Django DisallowedHost 400. Nginx's `proxy_cache_valid any 1m` plus a cache key that ignores the client's `Host` header stored that 400 and served it to `localhost` requests for up to a minute — a transient error on one host poisoned every other host.
+- Fix: `proxy_cache_valid 200 1m;` in `nginx/locations` (only successful responses are cached). The config is bind-mounted, so `docker compose restart nginx` was enough — no rebuild.
+
+**Verification:** scoped tests green (`tests/views/landing/test_login.py`, 10 passed); the full-suite run below includes both fixes. Live at :3030: login POST with a missing `localname` → 200 + generic error (no more 500); a DisallowedHost probe on `127.0.0.1` no longer poisons subsequent `localhost` requests, and the normal cache path is intact (MISS→HIT).
+
+### Phase 2 — file-based film import + export rework (decisions #29–31; executed 2026-09-02, awaiting owner review)
+
+Design settled with the owner first (§8, decisions #29–31): **TMDB-style CSVs only** — the canonical ten-column header is TMDB's own export shape (the owner's watchlist export is the reference), and ReelTalk's "Export Film List" now emits the same format so exports round-trip. No TMDB API calls during import; a synchronous single-page flow with a per-row results table + summary.
+
+**Commit `aea3e497c` — Import Film List (`/preferences/import/`, Preferences → Data):**
+- New view `reeltalk/views/preferences/import_films.py`: header validation against the canonical ten columns ("Not a recognized TMDB export — missing column(s): …"), 20,000-row cap, `utf-8-sig` decode (TMDB exports carry a BOM), the whole import in one transaction.
+- Per row: **create-or-match** — TMDb ID first, then IMDb ID (`Film.find_existing`), then normalized sort-title + year; on match, empty local `tmdb_id`/`imdb_id`/`year` are backfilled from the row. Non-movie rows (`Type` ≠ movie) and missing-name rows are skipped with a note.
+- **Rating mapping (decision #30):** TMDB's 1–10 `Your Rating` is mapped ÷2 onto ReelTalk's 5-star scale (nearest half star). Unrated row → film added to Watchlist; rated row → film shelved as Watched + a `ReviewRating` at the mapped value. Existing reviews are never touched (decision #27). All saves use `broadcast=False` — importing your own data is not federation.
+- UI: `templates/preferences/import_films.html` — file picker, then a per-row results table (line number / name / status / note) + summary counts; "Import Film List" link added to the Data section of the preferences layout, above Export.
+- 13 new tests in `tests/views/preferences/test_import_films.py` (header rejection, row cap, create+watchlist, rating mapping, ID match + backfill, title+year match, TV skip, missing-name skip, watchlist no-op, existing-review untouched, summary counts/line numbers).
+
+**Commit `01e179539` — Export Film List reworked to the canonical TMDB CSV (decision #31):**
+- `Export.post` now writes the same ten-column header (`tmdb.TMDB_EXPORT_HEADER`, a shared constant in `reeltalk/tmdb.py`) with one row per film the user has a relationship with (shelved / reviewed / commented / quoted): TMDb + IMDb IDs from the film, `Type` = "movie", Release Date = stored year as `YYYY-01-01T00:00:00Z`, Your Rating = most recent rated review ×2, Date Rated from that review's published date (UTC); season/episode and community-score columns empty. Review text drops out by design — the format carries ratings, not reviews.
+- `templates/preferences/export.html` copy rewritten (was book-era "Export Book List"/Goodreads); the form tag was also fixed (`action=`, was an invalid `href=`).
+- `tests/views/preferences/test_export.py` rewritten in place: header equality + row values + rating/date mapping (4 tests).
+
+**Verification:** full CI-faithful suite green — **1043 passed / 1 skipped / 1 xfailed** (baseline 1029 + 1 login regression + 13 import tests; export tests rewritten in place, net zero). Live at :3030 with the owner's real 1,670-row TMDB watchlist export:
+- Import as a throwaway local user: **1,378 films created → Watchlist**, 292 rows skipped ("not a movie (tv)" — by design), 0 matched. The zero is correct: none of the three pre-existing films (16 *Camp Hideaway Massacre*, tmdb 516695; 17 *Blade Runner*, tmdb 78; 22 *The Wolverine: Path of a Ronin*, tmdb 447158) appear in the file. Film count reconciles exactly (3 + 1,378 = 1,381).
+- Export round-trip is byte-exact for an unrated film (e.g. `102938,tt0075344,movie,Trackdown,1976-01-01T00:00:00Z,,,,,`); re-importing that export is a pure no-op (all 1,378 matched, nothing created).
+- A film page renders correctly (year + "View on TMDB" link); celery worker logs clean.
+- Cleanup: throwaway user hard-deleted in PROTECT order (ShelfFilm → Shelf → Films → User); live DB back to its original state (2 users, films 16/17/22).
+
 ## 5. What still needs to be done
 
 ### Milestone 2 — pushed ✅ (2026-08-30)
@@ -310,7 +368,7 @@ Owner redirect after reviewing milestone 3: TMDB should be the **primary film ca
 
 ### Phase 2 — remainder (DESIGN WITH THE OWNER FIRST; no solo design decisions)
 Milestones 1–3 and the search UX rework are done and pushed. What remains, from PLAN.md §12 plus the owner's 13-item list (plus the owner-reported backlog below):
-- **File-based film import** — "Import" was reserved for this by decision #25 (e.g., a CSV exported from TMDB); design with the owner.
+- **File-based film import** — ✅ **Done 2026-09-02, awaiting owner review.** "Import" was reserved for this by decision #25; design settled with the owner (decisions #29–31): TMDB-style CSVs only, no API calls during import, synchronous per-row results, export round-trips. `aea3e497c` + `01e179539` — execution record in §4.
 - Custom ReelTalk artwork replacing BookWyrm's placeholder/wyrm imagery.
 - Re-point `locale/**` at a ReelTalk Crowdin project (still contains BookWyrm strings).
 - Public instance deployment of the alpha (operator's own TLS proxy in front of :3030).
@@ -333,7 +391,6 @@ Owner exercised the new search flow on the live instance (added *Camp Hideaway M
 
 ### Housekeeping / known items
 - The seed repo at `/home/minnix/reeltalk` holds stale local history (diverged from the remote after the force-push). Re-clone or delete if a clean copy is wanted.
-- Login POST 500s when the `localname` field is missing entirely (`LoginForm.infer_username` in `forms/landing.py` does `"@" in self.data.get("localname")` → TypeError on None; observed with a malformed curl during issue-4 repro). Browsers always submit the field, so user impact ≈ 0 — harden opportunistically (default to empty string / let form validation handle it).
 - With `DOMAIN=localhost`, `BASE_URL` computes to `http://localhost:80` — cosmetic oddity (shown in instance settings, used in the outbound user agent). Setting a real `DOMAIN` when deploying for real fixes it; update `ALLOWED_HOSTS`/`CSRF_TRUSTED_ORIGINS` accordingly.
 - Real-domain deployment checklist: set `DOMAIN`, point your TLS proxy at `<host>:3030` forwarding `X-Forwarded-Proto: https`, keep `WEB_PORT` in mind for firewall rules.
 
@@ -387,7 +444,7 @@ docker compose run --rm -v "$TMP:/src:z" -w /src web sh -c \
   "python manage.py check && python manage.py compile_themes && python manage.py collectstatic --no-input && pytest -n 3"
 ```
 - Skipping `compile_themes` + `collectstatic` causes ~237 spurious failures (manifest_strict ValueError on theme CSS).
-- **Green baseline:** **1029 passed / 1 skipped / 1 xfailed** (~3.5 min with `-n 3`) — as of owner-reported issue 1 (2026-09-01; +12 suggest tests + 1 poster-URL regression). Previous baselines: 1017 after issues 2+3 (+18 tests: 11 film page/edit, 5 status/review, 2 finish-flow), 999 after the search UX rework (2026-08-31), 998 milestone 3, 975 milestone 2 (the drop from 1332 was removed-feature coverage: connectors, importers, book views, imports, readwise, ISNI, suggestion lists, series, cover jobs).
+- **Green baseline:** **1043 passed / 1 skipped / 1 xfailed** (~3.5 min with `-n 3`) — as of the file-based film import (2026-09-02; +1 login regression + 13 import tests, export tests rewritten in place). Previous baselines: 1029 after owner-reported issue 1 (2026-09-01; +12 suggest tests + 1 poster-URL regression), 1017 after issues 2+3 (+18 tests: 11 film page/edit, 5 status/review, 2 finish-flow), 999 after the search UX rework (2026-08-31), 998 milestone 3, 975 milestone 2 (the drop from 1332 was removed-feature coverage: connectors, importers, book views, imports, readwise, ISNI, suggestion lists, series, cover jobs).
 
 ### After changing app code
 `docker compose up -d --build` (rebuilds the web image), then `docker compose restart nginx` (quirk #1), then wait for web healthy.
@@ -422,3 +479,6 @@ docker compose run --rm -v "$TMP:/src:z" -w /src web sh -c \
 26. **TMDB is the source of truth for film metadata; it is not user-editable in the UI** (2026-09-01): only user-generated content stays editable (review title/body, star rating, comments/interactions); TMDB-sourced fields on the film page must be locked. **Scope confirmed by owner 2026-09-01: lock only films with a `tmdb_id`; manually created films (no TMDB ID) stay fully editable** — they have no external source of truth.
 27. **One review per film** (2026-09-01): if a user has already reviewed a film, the UI offers editing that review only — no second review. (Reported live: the Home Timeline "Your Films" panel allowed a duplicate review of *Camp Hideaway Massacre*.)
 28. **Search-as-you-type dropdown design** (2026-09-01): `GET /search/suggest/?q=<term>&type=film` JSON endpoint — TMDB when the key is set (top ~8 of page 1 via `tmdb.search_films()`), local trigram fallback when unset; rows are minimal (title + year + poster, **no inline watchlist action**); **local users only** (anonymous users get no suggestions); **click-only** — clicking navigates to the film page (local match → film page; TMDB-only hit → existing click-through route), where watchlisting/reviewing happens. Vanilla JS on the main search box, ~300 ms debounce, min 2 chars, Enter still submits the normal search; no-key mode shows local matches only and nothing when there are zero.
+29. **File-based import format and entry point** (2026-09-02): "Import" (reserved by #25) accepts **TMDB-style CSVs only** — the canonical ten-column header is TMDB's own export shape (the owner's watchlist export is the reference), and ReelTalk's "Export Film List" emits the same format so exports round-trip. Entry point: Preferences → Data → "Import Film List" (`/preferences/import/`), local users only; synchronous single-transaction import with a per-row results table + summary (no background job).
+30. **File-based import semantics** (2026-09-02): **no TMDB API calls** during import — the CSV is self-sufficient. Per row: create-or-match ID-first (TMDb ID, then IMDb ID), then normalized title + year (#23); on match, empty local IDs/year backfilled. Unrated row → film added to Watchlist; rated row → TMDB's 1–10 `Your Rating` mapped ÷2 onto the 5-star scale (nearest half star) → Watched + `ReviewRating` (#19). Existing reviews are never touched (#27); non-movie rows (`Type` ≠ movie) and missing-name rows are skipped with a note. All saves use `broadcast=False` — importing your own data is not federation.
+31. **Export Film List mapping** (2026-09-02): one row per film the user has a relationship with (shelved / reviewed / commented / quoted), in the canonical TMDB ten-column format: TMDb + IMDb IDs from the film, `Type` = "movie", Release Date = stored year as `YYYY-01-01T00:00:00Z`, Your Rating = most recent rated review ×2, Date Rated from that review's published date (UTC); season/episode and community-score columns empty; review text drops out (the format carries ratings, not reviews).
