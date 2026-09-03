@@ -40,11 +40,11 @@
                 <p class="help">{% blocktrans count counter=user.mutuals %}follower you follow{% plural %}followers you follow{% endblocktrans %}</p>
             </div>
         </div>
-        {% elif user.shared_books %}
+        {% elif user.shared_films %}
         <div class="card-footer-item">
             <div class="has-text-centered">
-                <p class="title is-6 mb-0">{{ user.shared_books }}</p>
-                <p class="help">{% blocktrans count counter=user.shared_books %}film on your shelves{% plural %}films on your shelves{% endblocktrans %}</p>
+                <p class="title is-6 mb-0">{{ user.shared_films }}</p>
+                <p class="help">{% blocktrans count counter=user.shared_films %}film on your shelves{% plural %}films on your shelves{% endblocktrans %}</p>
             </div>
         </div>
         {% endif %}

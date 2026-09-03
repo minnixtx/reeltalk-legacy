@@ -34,7 +34,7 @@ class SuggestedUsers(TestCase):
 
     def test_get_rank(self, *_):
         """a float that reflects both the mutuals count and shared films"""
-        Mock = namedtuple("AnnotatedUserMock", ("mutuals", "shared_books"))
+        Mock = namedtuple("AnnotatedUserMock", ("mutuals", "shared_films"))
         annotated_user_mock = Mock(3, 27)
         rank = suggested_users.get_rank(annotated_user_mock)
         self.assertEqual(rank, 3)  # 3.9642857142857144)
@@ -146,11 +146,24 @@ class SuggestedUsers(TestCase):
         suggestion_candidate = models.User.objects.create_user(
             "rat", "rat@local.rat", "password", local=True, localname="rat"
         )
+        with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
+            film = models.Film.objects.create(title="Test Film")
+            models.ShelfFilm.objects.create(
+                user=self.local_user,
+                film=film,
+                shelf=self.local_user.shelf_set.first(),
+            )
+            models.ShelfFilm.objects.create(
+                user=suggestion_candidate,
+                film=film,
+                shelf=suggestion_candidate.shelf_set.first(),
+            )
         with patch("reeltalk.suggested_users.SuggestedUsers.get_store") as mock:
             mock.return_value = [(suggestion_candidate.id, 7.9)]
             results = suggested_users.get_suggestions(self.local_user)
         self.assertEqual(results[0], suggestion_candidate)
         self.assertEqual(results[0].mutuals, 7)
+        self.assertEqual(results[0].shared_films, 1)
 
     def test_get_suggestions_excludes_self(self, *_):
         suggestion_candidate = models.User.objects.create_user(
@@ -245,7 +258,7 @@ class SuggestedUsers(TestCase):
 
         user_1_annotated = result.get(id=user_1.id)
         self.assertEqual(user_1_annotated.mutuals, 1)
-        # self.assertEqual(user_1_annotated.shared_books, 1)
+        self.assertEqual(user_1_annotated.shared_films, 1)
 
     def test_get_annotated_users_counts(self, *_):
         """correct counting for multiple shared attributed"""
@@ -287,3 +300,4 @@ class SuggestedUsers(TestCase):
         )
         user_1_annotated = result.get(id=user_1.id)
         self.assertEqual(user_1_annotated.mutuals, 3)
+        self.assertEqual(user_1_annotated.shared_films, 3)

@@ -25,7 +25,7 @@ class SuggestedUsers(RedisStore):
 
     def get_rank(self, obj):
         """get computed rank"""
-        return obj.mutuals  # + (1.0 - (1.0 / (obj.shared_books + 1)))
+        return obj.mutuals  # + (1.0 - (1.0 / (obj.shared_films + 1)))
 
     def store_id(self, user):
         """the key used to store this user's recs"""
@@ -34,10 +34,10 @@ class SuggestedUsers(RedisStore):
         return f"{user.id}-suggestions"
 
     def get_counts_from_rank(self, rank):
-        """calculate mutuals count and shared books count from rank"""
+        """calculate mutuals count and shared films count from rank"""
         return {
             "mutuals": math.floor(rank),
-            # "shared_books": int(1 / (-1 * (rank % 1 - 1))) - 1,
+            # "shared_films": int(1 / (-1 * (rank % 1 - 1))) - 1,
         }
 
     def get_objects_for_store(self, store):
@@ -103,13 +103,22 @@ class SuggestedUsers(RedisStore):
         invalid_suggestion = (
             Q(id=user.id) | Q(followers=user) | Q(follower_requests=user)
         )
-        # annotate users with mutuals and shared book counts
+        # annotate users with mutuals and shared film counts
         users = (
             models.User.objects.filter(
                 is_active=True, reeltalk_user=True, id__in=[pk for (pk, _) in values]
             )
             .annotate(
-                mutuals=Case(*annotations, output_field=IntegerField(), default=0)
+                mutuals=Case(*annotations, output_field=IntegerField(), default=0),
+                shared_films=Count(
+                    "shelffilm__film",
+                    filter=Q(
+                        shelffilm__film__in=user.shelffilm_set.values_list(
+                            "film_id", flat=True
+                        )
+                    ),
+                    distinct=True,
+                ),
             )
             .exclude(localname=INSTANCE_ACTOR_USERNAME)
             .exclude(invalid_suggestion)
@@ -138,6 +147,13 @@ def get_annotated_users(viewer, *args, **kwargs):
                 ~Q(id=viewer.id),
                 ~Q(id__in=viewer.following.all()),
                 followers__in=viewer.following.all(),
+            ),
+            distinct=True,
+        ),
+        shared_films=Count(
+            "shelffilm__film",
+            filter=Q(
+                shelffilm__film__in=viewer.shelffilm_set.values_list("film_id", flat=True)
             ),
             distinct=True,
         ),
