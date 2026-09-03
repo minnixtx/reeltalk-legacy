@@ -37,6 +37,11 @@
         <p>
             {% blocktrans with total=summary.total created=summary.created matched=summary.matched skipped=summary.skipped %}Imported {{ total }} rows: {{ created }} films created, {{ matched }} matched to existing films, {{ skipped }} skipped.{% endblocktrans %}
         </p>
+        {% if backfill_queued %}
+        <p class="notification">
+            {% trans "Posters and details for the imported films are being fetched from TMDB in the background — they'll appear on each film's page within a few minutes." %}
+        </p>
+        {% endif %}
         <table class="table is-striped is-fullwidth">
             <thead>
                 <tr>

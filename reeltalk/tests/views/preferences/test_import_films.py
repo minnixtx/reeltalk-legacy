@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.template.response import TemplateResponse
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.test.client import RequestFactory
 
 from reeltalk import models, views
@@ -42,6 +42,7 @@ def csv_upload(rows, header=CANONICAL_HEADER):
 @patch("reeltalk.activitystreams.populate_stream_task.delay")
 @patch("reeltalk.suggested_users.rerank_suggestions_task.delay")
 @patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async")
+@patch("reeltalk.tmdb.backfill_imported_films_task.delay")
 class ImportFilmsViews(TestCase):
     """file-based film import"""
 
@@ -267,3 +268,26 @@ class ImportFilmsViews(TestCase):
         self.assertEqual(
             [r["line"] for r in result.context_data["results"]], [2, 3, 4]
         )
+
+    @override_settings(TMDB_API_KEY="test-key")
+    def test_import_queues_tmdb_backfill(self, backfill_delay, *_):
+        """imported films are queued for background TMDB backfill after commit"""
+        rows = [
+            TRACKDOWN_ROW,  # created stub
+            dict(TRACKDOWN_ROW, **{"TMDb ID": "42", "Name": "Test Film"}),  # matched
+        ]
+        with self.captureOnCommitCallbacks(execute=True):
+            result = self.post_import(rows)
+
+        trackdown_id = models.Film.objects.get(title="Trackdown").id
+        backfill_delay.assert_called_once_with([trackdown_id, self.film.id])
+        self.assertTrue(result.context_data["backfill_queued"])
+
+    @override_settings(TMDB_API_KEY="")
+    def test_import_no_backfill_when_unconfigured(self, backfill_delay, *_):
+        """without a TMDB key there is nothing to backfill"""
+        with self.captureOnCommitCallbacks(execute=True):
+            result = self.post_import([TRACKDOWN_ROW])
+
+        backfill_delay.assert_not_called()
+        self.assertNotIn("backfill_queued", result.context_data)

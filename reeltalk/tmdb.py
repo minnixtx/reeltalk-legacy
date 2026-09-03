@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import time
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -11,6 +13,9 @@ from django.core.files.base import ContentFile
 
 from reeltalk import models
 from reeltalk.models.film import normalize_sort_title
+from reeltalk.tasks import IMPORTS, app
+
+logger = logging.getLogger(__name__)
 
 API_BASE = "https://api.themoviedb.org/3"
 IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
@@ -237,3 +242,36 @@ def add_poster(
             f"tmdb-{film.tmdb_id or 'unknown'}.jpg", ContentFile(content), save=False
         )
         film.save()
+
+
+# seconds to wait between TMDB detail fetches in the import backfill; keeps a
+# large import well under TMDB's 50-requests-per-10-seconds rate limit
+BACKFILL_REQUEST_INTERVAL = 0.25
+
+
+@app.task(queue=IMPORTS)
+def backfill_imported_films_task(film_ids):
+    """fetch TMDB metadata + poster for films created by a file import
+
+    The import itself makes no API calls (decision #30); this runs afterwards
+    so imported films get their posters and details without any user action.
+    Idempotent: films that already have a poster and description are skipped,
+    and a failure on one film never stops the rest of the batch.
+    """
+    if not is_configured():
+        return
+    for film_id in film_ids:
+        film = models.Film.objects.filter(
+            id=film_id, tmdb_id__isnull=False
+        ).first()
+        if film is None or not film.tmdb_id:
+            continue
+        if film.poster and film.description:
+            continue
+        try:
+            details = get_film_details(film.tmdb_id)
+            backfill_film_from_tmdb(film, details)
+        except TmdbError:
+            logger.warning("TMDB backfill failed for film %s", film.id)
+            continue
+        time.sleep(BACKFILL_REQUEST_INTERVAL)

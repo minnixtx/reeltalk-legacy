@@ -11,7 +11,7 @@ from django.template.response import TemplateResponse
 from django.utils.decorators import method_decorator
 from django.views import View
 
-from reeltalk import models
+from reeltalk import models, tmdb
 from reeltalk.models.film import normalize_sort_title
 
 logger = logging.getLogger(__name__)
@@ -106,14 +106,14 @@ def shelve_film(user, shelf, film):
 
 
 def import_row(user, watchlist_shelf, watched_shelf, row):
-    """process one CSV row; returns (status, note) for the results table"""
+    """process one CSV row; returns (status, note, film) for the results table"""
     name = (row.get("Name") or "").strip()
     film_type = (row.get("Type") or "movie").strip().lower()
 
     if film_type and film_type != "movie":
-        return "skipped", f"not a movie ({film_type})"
+        return "skipped", f"not a movie ({film_type})", None
     if not name:
-        return "skipped", "missing name"
+        return "skipped", "missing name", None
 
     rating = parse_tmdb_rating(row.get("Your Rating"))
     film, created = find_or_create_film(row)
@@ -123,21 +123,21 @@ def import_row(user, watchlist_shelf, watched_shelf, row):
         if models.ShelfFilm.objects.filter(
             film=film, shelf=watchlist_shelf
         ).exists():
-            return status, "already on your Watchlist"
+            return status, "already on your Watchlist", film
         shelve_film(user, watchlist_shelf, film)
-        return status, "added to Watchlist"
+        return status, "added to Watchlist", film
 
     # a rated row lands on Watched with a rating-only entry (decision #19);
     # one review per film (decision #27): an existing review is never touched
     if models.Review.objects.filter(
         user=user, film=film, deleted=False
     ).exists():
-        return status, "you already have a review; rating not imported"
+        return status, "you already have a review; rating not imported", film
     shelve_film(user, watched_shelf, film)
     entry = models.ReviewRating(user=user, film=film, rating=rating)
     # a bulk import is data migration, not sharing: don't federate the entries
     entry.save(broadcast=False)
-    return status, f"Watched — {rating:g} stars"
+    return status, f"Watched — {rating:g} stars", film
 
 
 @method_decorator(login_required, name="dispatch")
@@ -199,8 +199,9 @@ class ImportFilms(View):
         ).first()
 
         results = []
+        films = []
         for line_number, row in enumerate(rows, start=2):
-            status, note = import_row(user, watchlist_shelf, watched_shelf, row)
+            status, note, film = import_row(user, watchlist_shelf, watched_shelf, row)
             results.append(
                 {
                     "line": line_number,
@@ -209,6 +210,7 @@ class ImportFilms(View):
                     "note": note,
                 }
             )
+            films.append(film)
 
         data = {
             "results": results,
@@ -219,4 +221,16 @@ class ImportFilms(View):
                 "skipped": sum(1 for r in results if r["status"] == "skipped"),
             },
         }
+
+        # imported films are ID stubs (no API calls during import, decision
+        # #30): fetch their posters and details in the background so the list
+        # looks complete. Matched films are included too, so re-importing a
+        # previously imported list backfills any stubs it left behind
+        backfill_ids = [film.id for film in films if film is not None]
+        if backfill_ids and tmdb.is_configured():
+            data["backfill_queued"] = True
+            transaction.on_commit(
+                lambda: tmdb.backfill_imported_films_task.delay(backfill_ids)
+            )
+
         return TemplateResponse(request, "preferences/import_films.html", data)

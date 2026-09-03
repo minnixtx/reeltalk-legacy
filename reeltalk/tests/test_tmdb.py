@@ -1,9 +1,13 @@
 """tests for the TMDB client used by global film search"""
 
+import pathlib
+from unittest.mock import patch
+
 import responses
+from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
 
-from reeltalk import tmdb
+from reeltalk import models, tmdb
 
 
 SEARCH_PAYLOAD = {
@@ -164,3 +168,77 @@ class TmdbClientTests(TestCase):
     def test_not_configured(self):
         """an empty key means the import page shows its notice"""
         self.assertFalse(tmdb.is_configured())
+
+
+class BackfillTaskTests(TestCase):
+    """async TMDB backfill for file-imported films (decision #32)"""
+
+    @classmethod
+    def setUpTestData(cls):
+        with open(
+            pathlib.Path(__file__).parent.joinpath("../static/images/default_avi.jpg"),
+            "rb",
+        ) as image_file:
+            cls.image_data = image_file.read()
+        cls.film = models.Film.objects.create(
+            title="Trackdown", year=1976, tmdb_id="102938"
+        )
+
+    @override_settings(TMDB_API_KEY="")
+    def test_backfill_noop_when_unconfigured(self):
+        """without an API key the task does nothing"""
+        with patch("reeltalk.tmdb.get_film_details") as details:
+            tmdb.backfill_imported_films_task([self.film.id])
+        details.assert_not_called()
+
+    def test_backfill_skips_complete_films(self):
+        """a film that already has a poster and description is untouched"""
+        self.film.poster = "posters/existing.jpg"
+        self.film.description = "A heist goes wrong."
+        self.film.save()
+        with patch("reeltalk.tmdb.get_film_details") as details:
+            tmdb.backfill_imported_films_task([self.film.id])
+        details.assert_not_called()
+
+    def test_backfill_skips_films_without_tmdb_id(self):
+        """a manually created film has no TMDB source to fetch from"""
+        manual = models.Film.objects.create(title="Manual Film")
+        with patch("reeltalk.tmdb.get_film_details") as details:
+            tmdb.backfill_imported_films_task([manual.id])
+        details.assert_not_called()
+
+    @override_settings(TMDB_API_KEY="test-key")
+    def test_backfill_fills_stub_film(self):
+        """missing metadata and poster are filled from the TMDB details"""
+        with (
+            patch("reeltalk.tmdb.get_film_details", return_value=DETAILS_PAYLOAD),
+            patch("reeltalk.tmdb.download_poster", return_value=self.image_data),
+            patch("reeltalk.tmdb.time.sleep"),
+        ):
+            tmdb.backfill_imported_films_task([self.film.id])
+        self.film.refresh_from_db()
+        self.assertIn("replicants", self.film.description)
+        self.assertEqual(self.film.directors, ["Ridley Scott"])
+        self.assertTrue(self.film.poster.name.endswith("tmdb-102938.jpg"))
+
+    @override_settings(TMDB_API_KEY="test-key")
+    def test_backfill_continues_past_failures(self):
+        """a TMDB error on one film never stops the rest of the batch"""
+        good = models.Film.objects.create(
+            title="Blade Runner", year=1982, tmdb_id="78"
+        )
+        bad = models.Film.objects.create(title="Ghost Film", tmdb_id="999999")
+
+        def details_or_error(tmdb_id):
+            if tmdb_id == "999999":
+                raise tmdb.TmdbError("TMDB request failed (404)")
+            return DETAILS_PAYLOAD
+
+        with (
+            patch("reeltalk.tmdb.get_film_details", side_effect=details_or_error),
+            patch("reeltalk.tmdb.download_poster", return_value=self.image_data),
+            patch("reeltalk.tmdb.time.sleep"),
+        ):
+            tmdb.backfill_imported_films_task([bad.id, good.id])
+        good.refresh_from_db()
+        self.assertIn("replicants", good.description)
