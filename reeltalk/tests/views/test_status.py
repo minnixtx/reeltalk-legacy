@@ -143,6 +143,16 @@ class StatusViews(TestCase):
         self.assertEqual(status.film, self.film)
         self.assertIsNone(status.edited_date)
 
+    def test_create_status_compose_get(self, *_):
+        """the compose view renders for a new status (no draft) without crashing"""
+        view = views.CreateStatus.as_view()
+        request = self.factory.get("/post/review/", {"film": self.film.id})
+        request.user = self.local_user
+
+        response = view(request, "review")
+
+        self.assertEqual(response.status_code, 200)
+
     def test_create_status_rating(self, *_):
         """create a status"""
         view = views.CreateStatus.as_view()

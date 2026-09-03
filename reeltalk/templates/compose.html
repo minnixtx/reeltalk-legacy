@@ -44,7 +44,7 @@
     <div class="column">
         {% if draft.reply_parent %}
         {% include 'snippets/status/status.html' with status=draft.reply_parent no_interact=True %}
-        {% else %}
+        {% elif draft %}
         <div class="block">
             {% include "snippets/status/header.html" with status=draft %}
         </div>
