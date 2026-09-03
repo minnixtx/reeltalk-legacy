@@ -15,14 +15,14 @@
   - Attribution to BookWyrm / Mouse Reeve is never stripped; upstream references (`bookwyrm.social`, `github.com/bookwyrm-social/*`, `joinbookwyrm.com`) are intentional provenance links — do not "fix" them.
   - Any move toward commercial use must stop and be flagged to the owner (ACRL forbids it).
 
-## 2. Current state (as of 2026-08-25)
+## 2. Current state (as of 2026-09-03)
 
 | Area | State |
 |---|---|
 | Phase 1 (rebrand + deployment simplification) | ✅ Done, pushed, verified (full test suite green ×2) |
 | Pre-Phase-2 changes (no HTTPS, no anubis, :3030 endpoint, no CONTRIBUTING) | ✅ Done, pushed (owner-directed, 2026-08-23) |
 | CSRF trusted-origins fix | ✅ Done, pushed (2026-08-24) |
-| Local instance | ✅ Running, **migrated to 0250** (2026-08-31): `initdb` seeded, admin account via `/setup` wizard (2 users), `install_mode=false`. Reachable at **http://192.168.1.138:3030**. **DB contents are disposable test data** — owner confirmed 2026-09-01 that nothing in it needs to persist; sessions may freely create, modify, or reset data during live verification |
+| Local instance | ✅ Running, **migrated to 0253** (2026-09-03): `initdb` seeded, admin account via `/setup` wizard (2 users), `install_mode=false`. Reachable at **http://192.168.1.138:3030**. ⚠️ **The DB now holds the owner's REAL data** (their 1,378-film TMDB watchlist import + backfill, 2026-09-02) — never wipe or mangle it; throwaway users created for verification are fine to hard-delete. Daily pg_dump backups land in the `backups` volume |
 | Phase 2 — milestone 1 (UI rebrand books→films + binary film shelf model) | ✅ Done, committed, pushed, verified live (full test suite green: 1332 passed) |
 | Phase 2 — milestone 2 (film domain model + AP rework) | ✅ **Done, live-verified, PUSHED 2026-08-30** — `08af0c971` (model/AP/migrations), `2726a1067` (app layer), `dfa704781` (4 conversion-artifact fixes) + `192ea709f` (test rework, new baseline 975 passed). Migrations 0247→0249 applied to the live DB; full click-through green (37/37). Fork main = `a00c7cd1e` |
 | Phase 2 — milestone 3 (TMDB film importer) | ✅ **Done, live-verified, PUSHED 2026-08-31** — `e709614e2` (TMDB client), `e9bd0b007` (import page). Suite green: 998 passed. Fork main = `a0342a3c0`. Decisions #21–24 |
@@ -33,11 +33,20 @@
 | Phase 2 — file-based film import + export rework (decisions #29–31) | ✅ **Done, suite + live-verified 2026-09-02, PUSHED to fork 2026-09-03** — `aea3e497c` (import), `01e179539` (export to TMDB format). Live-verified with the owner's real 1,670-row TMDB watchlist export. Suite green: **1043 passed / 1 skipped / 1 xfailed** |
 | Phase 2 — async TMDB backfill for imported films (decision #32) | ✅ **Done, suite + live-verified 2026-09-02, PUSHED to fork 2026-09-03** — `694c621eb`. Owner reported no posters/metadata on their imported films (a design gap in #29–31: the import makes no API calls and left ID stubs); a background task now fetches TMDB details + poster after each import. Live-verified: 1,372 of the owner's 1,378 stubs backfilled; the 6 remaining confirmed poster-less on TMDB. Suite green: **1050 passed / 1 skipped / 1 xfailed** |
 | Phase 2 — housekeeping fixes (login 500 on missing field, nginx error caching) | ✅ Done 2026-09-02, PUSHED to fork 2026-09-03 — `0c840369d`, `802e3a658` (both live-verified) |
-| Phase 2 — remainder after rework (artwork, Crowdin, public deploy) | ⬜ Not started |
+| Phase 2 — structural correctness audit + Quotation removal (decision #33) | ✅ **Done, suite + live-verified 2026-09-03, awaiting owner review** — `c22868337` (Quotation removed end-to-end), `1d857c0a5` (four flagged nits), `daa64522b` (shared_films annotation), `4c3554d2a`/`989f84cbe`/`331ad10ba`/`1bb4fdf40` (four live-verification bugs, incl. a cross-user shelf deletion that damaged one owner row — restored from pg_dump). Suite green: **1051 passed / 1 skipped / 1 xfailed**. Live stack rebuilt to 0253; owner data verified intact at baseline counts |
+| Phase 2 — remainder after rework (artwork, Crowdin, public deploy) | ⬜ Not started (owner: design work happens with the owner, at the very end) |
 
 ## 3. Commit history (`main`)
 
 ```
+1bb4fdf40 Scope reading-status lookup to the requesting user (cross-user shelf deletion)      ← live audit bug 4/4 (owner row restored from dump)
+331ad10ba Skip author header in compose view when there is no draft (500 on GET /post/<type>/)  ← live audit bug 3/4
+989f84cbe Guard empty ids in get_mergeable_object_or_404 (absorbed lookup matched every row)   ← live audit bug 2/4
+4c3554d2a Fix 0252 feed-filter data migration crash (queryset .update(), regression test)      ← live audit bug 1/4 (crashed the rebuild)
+daa64522b Annotate suggested users with shared film counts (directory, feed, group surfaces)   ← shared_books dead-stat gap
+1d857c0a5 Fix four flagged app nits from the milestone 2 sweep                                  ← six flagged nits (two died with Quotation)
+c22868337 Remove the Quotation feature end-to-end (decision 33)                                 ← decision #33
+3ca6248b8 Record push of file-based import, backfill, and housekeeping fixes to fork
 42887fe1f Record async TMDB backfill for imported films (decision 32); note per-service image gotcha
 694c621eb Backfill TMDB metadata + posters for imported films in the background (decision 32)  ← file-based import: poster/metadata gap
 01e179539 Rework Export Film List to the canonical TMDB CSV format (decision 31)          ← file-based import (commit 2/2)
@@ -336,6 +345,34 @@ After importing their own watchlist into the live instance, the owner reported t
 
 **Verification:** full CI-faithful suite green — **1050 passed / 1 skipped / 1 xfailed** (baseline 1043 + 7). Live at :3030: rebuilt web **and** the celery worker/beat onto the new image (the worker's per-service image is separate — an un-rebuilt worker silently drops the new task as "unregistered"), then queued a one-off backfill of the owner's existing 1,378 stubs. Task succeeded in 925 s, zero failures: 1,372 films now have poster + description + directors (sampled rows verified); the 6 remaining were confirmed genuinely poster-less on TMDB (`poster_path: None` for all six — obscure titles). A film page renders with its poster (`/images/posters/tmdb-*.jpg`, 200 image/jpeg).
 
+### Phase 2 — structural correctness audit + Quotation removal (decision #33; executed 2026-09-03, awaiting owner review)
+
+Owner redirect after the backfill milestone: *"The artwork and design choices I want to leave until the very end. I first want to make sure that structurally everything works as it should so I will let you pick what we should focus on to achieve that goal."* Focus chosen: structural correctness — fix the six flagged app nits from the milestone-2 sweep, close the `shared_books` dead-stat gap, settle the Quotation question (decision #33), then verify live at :3030. Constraint for the whole session: **the live DB now holds the owner's real data** (their 1,378-film TMDB watchlist import + backfill) — never wipe or mangle it; throwaway users are fine to hard-delete.
+
+**Commit `c22868337` — Quotation removed end-to-end (decision #33):**
+- Clarified with the owner first: "quotation" is the book-era feature of quoting a line *from* a book — not one user quoting another in a reply. The owner confirmed film users won't add quotes from films (only reviews and star ratings) → remove entirely.
+- Removed (47 files, +103/−516): `Quotation` model + MTI table (**migration 0251**), the `"Quotation"` AP wire type, the Quotation form + create/edit views/routes/templates (incl. the Quote tab in the create-status dropdown), quotation branches in notification item templates, the quotes RSS feed (`/user/<u>/rss-quotes/`), discover/feed/hashtag/user-page quotation handling, export of quotations, and all remaining "quotation" strings/tests.
+- **Migration 0252 (data):** strips `"quotation"` from every user's `feed_status_types`; **migration 0253:** drops the choice from the field definition (choices are now review/comment/everything).
+- Inbound federation: remote Quotation activities are gracefully skipped via the `naive_parse` ignore list — a remote instance quoting will not crash or create content here.
+- Two of the six flagged nits died with this feature (`Status.delete()` clearing a nonexistent `quotation` attr; `Quotation.pure_content` dead regex).
+
+**Commit `1d857c0a5` — the four remaining flagged nits:**
+- `Film.viewer_aware_objects()`: anonymous viewers now get an empty queryset instead of a raw Manager (consistent with authenticated users; all call sites chain `.filter()`).
+- `ShelfFilm.save()`: the missing-user guard no longer raises on an unsaved instance without a user.
+- `rating_tags.get_rating`: now excludes soft-deleted reviews from a film's average, matching `get_user_rating`.
+- `settings/link_domains/link_domains.html`: "shown on book pages" → films wording (string-pass leftover).
+
+**Commit `daa64522b` — shared film counts (the `shared_books` gap):**
+- `user.shared_books` was referenced by the directory user card + suggested-users snippets but no longer existed on User, so those "N films you share" stats silently didn't render. `suggested_users.py` now annotates both `get_annotated_users()` (directory) and `get_suggestions()` (feed / get-started / group surfaces) with a `shared_films` count — films on both users' shelves — and the three templates use it.
+
+**Live verification at :3030 found four real bugs the 1,050-test suite could not** (all live-data-shape-dependent; each fixed + regression-tested):
+1. **Migration 0252 crashed the live rebuild** (`4c3554d2a`): it called `user.save(broadcast=False)` — but RunPython migrations get *bare historical models* with no AP-mixin save override, so the kwarg is rejected; the suite never ran the loop body (no test user had "quotation" in their filter). Rewrote both directions with queryset `.update()` (no signals, no broadcasts) + new `tests/test_migrations.py` covering strip/restore.
+2. **GET `/post/<type>/` without a film → 500** (`989f84cbe`): `get_mergeable_object_or_404(klass, id=None)` compiled the absorbed fallback to `WHERE deleted_id IS NULL`, matching every row → `MultipleObjectsReturned`. Empty ids now raise Http404 early.
+3. **GET `/post/review/?film=<id>` → 500** (`331ad10ba`): compose.html included the status header with `status=draft` even when `draft` was undefined (Django passes `""` for undefined vars), crashing `get_header_template`'s attribute lookups. Header now skipped when there is no draft.
+4. **Cross-user shelf deletion — data damage** (`1bb4fdf40`): `ReadingStatus.post` looked up `film.shelffilm_set` unscoped by user, so the audit's "want" POST deleted the **owner's** Watched ShelfFilm for film 16 (row id 22). Detected via the ShelfFilm count (1379 vs baseline 1380) + a pg_dump pair diff; the exact row was restored from the pre-rebuild dump (original id/timestamps/remote_id), and the lookup is now scoped to `request.user`. Verified live with a second throwaway user — the owner's row survived.
+
+**Verification:** full CI-faithful suite green — **1051 passed / 1 skipped / 1 xfailed** (was 1050: Quotation-removal test deletions largely offset by the new regression tests). Live at :3030: full rebuild applied **migrations 0251–0253**; stale Quotation content type + permissions manually cleaned (Django never deletes them on migrate); AP probes green (nodeinfo, webfinger, Person + Film docs all 200); removed routes clean 404 (`/film/<id>/quote`, `/user/<u>/rss-quotes/`); **final click-through audit 34/34** as a throwaway local user — decisions #19 (rating required), #26 (TMDB films locked from editing), #27 (one review per film, incl. in-place update via the finish modal), #30–31 (export round-trip: CSV header + Your Rating mapping) and the async user-export tar job all hold live. Throwaway users hard-deleted; owner data verified intact at baseline counts (User 2 / Film 1,381 / Status 4 / Review 2 / Shelf 4 / ShelfFilm 1,380); fresh full pg_dump taken in the `backups` volume.
+
 ## 5. What still needs to be done
 
 ### Milestone 2 — pushed ✅ (2026-08-30)
@@ -375,14 +412,14 @@ Owner redirect after reviewing milestone 3: TMDB should be the **primary film ca
 **Optional if time permits:** the six flagged app nits in §4 (viewer_aware_objects Manager, Status.delete quotation attr, Quotation.pure_content regex, ShelfFilm.save latent crash, get_rating soft-delete count, link-domains "book pages" wording) — each is small and owner-blessed to fix opportunistically.
 
 **Known small gaps found during the sweep (non-blocking, fix opportunistically):**
-- `user.shared_books` is referenced in `directory/user_card.html` + `groups/suggested_users.html` but no longer exists on User — those "N films on your shelves" stats silently don't render. Implementing a `shared_films` annotate in the directory/group views is a small follow-up.
+- ~~`user.shared_books` is referenced in `directory/user_card.html` + `groups/suggested_users.html` but no longer exists on User~~ — ✅ **Resolved 2026-09-03** (`daa64522b`): both suggested-users surfaces now annotate `shared_films` (films on both users' shelves) and the directory user card + group/feed snippets render it.
 - Guided-tour search steps were re-anchored to the new `tour-*-film*` ids, but the tour copy still describes the old flow; polish with the owner if the tour matters for alpha.
 
 - If the host's LAN IP changes again: update `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` in the live `.env`, then `docker compose up -d && docker compose restart nginx` (see §7 quirks).
 
 ### Phase 2 — remainder (DESIGN WITH THE OWNER FIRST; no solo design decisions)
 Milestones 1–3 and the search UX rework are done and pushed. What remains, from PLAN.md §12 plus the owner's 13-item list (plus the owner-reported backlog below):
-- **File-based film import** — ✅ **Done 2026-09-02, awaiting owner review.** "Import" was reserved for this by decision #25; design settled with the owner (decisions #29–32): TMDB-style CSVs only, no API calls during import, synchronous per-row results, export round-trips, async TMDB backfill of posters/details after import. `aea3e497c` + `01e179539` + `694c621eb` — execution records in §4.
+- **File-based film import** — ✅ **Done 2026-09-02, PUSHED to fork 2026-09-03.** "Import" was reserved for this by decision #25; design settled with the owner (decisions #29–32): TMDB-style CSVs only, no API calls during import, synchronous per-row results, export round-trips, async TMDB backfill of posters/details after import. `aea3e497c` + `01e179539` + `694c621eb` — execution records in §4. The owner has since imported their real 1,378-film watchlist into the live instance (backfilled per #32) — that data now lives in the local DB and must never be wiped or mangled.
 - Custom ReelTalk artwork replacing BookWyrm's placeholder/wyrm imagery.
 - Re-point `locale/**` at a ReelTalk Crowdin project (still contains BookWyrm strings).
 - Public instance deployment of the alpha (operator's own TLS proxy in front of :3030).
@@ -458,7 +495,7 @@ docker compose run --rm -v "$TMP:/src:z" -w /src web sh -c \
   "python manage.py check && python manage.py compile_themes && python manage.py collectstatic --no-input && pytest -n 3"
 ```
 - Skipping `compile_themes` + `collectstatic` causes ~237 spurious failures (manifest_strict ValueError on theme CSS).
-- **Green baseline:** **1050 passed / 1 skipped / 1 xfailed** (~3.5 min with `-n 3`) — as of the async TMDB backfill (2026-09-02; +7 tests). Previous baselines: 1043 after the file-based film import (2026-09-02; +1 login regression + 13 import tests, export tests rewritten in place), 1029 after owner-reported issue 1 (2026-09-01; +12 suggest tests + 1 poster-URL regression), 1017 after issues 2+3 (+18 tests: 11 film page/edit, 5 status/review, 2 finish-flow), 999 after the search UX rework (2026-08-31), 998 milestone 3, 975 milestone 2 (the drop from 1332 was removed-feature coverage: connectors, importers, book views, imports, readwise, ISNI, suggestion lists, series, cover jobs).
+- **Green baseline:** **1051 passed / 1 skipped / 1 xfailed** (~3.5 min with `-n 3`) — as of the structural correctness audit + Quotation removal (2026-09-03; Quotation-removal test deletions largely offset by new regression tests). Previous baselines: 1050 after the async TMDB backfill (2026-09-02; +7 tests), 1043 after the file-based film import (2026-09-02; +1 login regression + 13 import tests, export tests rewritten in place), 1029 after owner-reported issue 1 (2026-09-01; +12 suggest tests + 1 poster-URL regression), 1017 after issues 2+3 (+18 tests: 11 film page/edit, 5 status/review, 2 finish-flow), 999 after the search UX rework (2026-08-31), 998 milestone 3, 975 milestone 2 (the drop from 1332 was removed-feature coverage: connectors, importers, book views, imports, readwise, ISNI, suggestion lists, series, cover jobs).
 
 ### After changing app code
 `docker compose up -d --build` (rebuilds all app images), then `docker compose restart nginx` (quirk #1), then wait for web healthy.
@@ -498,3 +535,4 @@ docker compose run --rm -v "$TMP:/src:z" -w /src web sh -c \
 30. **File-based import semantics** (2026-09-02): **no TMDB API calls** during import — the CSV is self-sufficient. Per row: create-or-match ID-first (TMDb ID, then IMDb ID), then normalized title + year (#23); on match, empty local IDs/year backfilled. Unrated row → film added to Watchlist; rated row → TMDB's 1–10 `Your Rating` mapped ÷2 onto the 5-star scale (nearest half star) → Watched + `ReviewRating` (#19). Existing reviews are never touched (#27); non-movie rows (`Type` ≠ movie) and missing-name rows are skipped with a note. All saves use `broadcast=False` — importing your own data is not federation.
 31. **Export Film List mapping** (2026-09-02): one row per film the user has a relationship with (shelved / reviewed / commented / quoted), in the canonical TMDB ten-column format: TMDb + IMDb IDs from the film, `Type` = "movie", Release Date = stored year as `YYYY-01-01T00:00:00Z`, Your Rating = most recent rated review ×2, Date Rated from that review's published date (UTC); season/episode and community-score columns empty; review text drops out (the format carries ratings, not reviews).
 32. **Async TMDB backfill for imported films** (2026-09-02): the file import creates ID stubs (no API calls, #30), so a background Celery task now runs after each import and fetches TMDB details + poster for every imported film (created **and** matched — re-importing self-heals leftover stubs). Rate-limit-friendly pacing (~15 min for 1,378 films), idempotent (skips films that already have a poster + description), per-film failures skipped and logged, no-op without an API key. Result: the watchlist looks complete without any user action (Letterboxd model). Triggered by the owner reporting blue placeholder boxes on their imported films.
+33. **Quotation feature removed entirely** (2026-09-03): book-era holdover — it is quoting a line *from* a book (not one user quoting another in a reply, which is the Reply tab). Film users don't add quotes from films; only reviews and star ratings. Removed end-to-end: model + MTI table (migration 0251), AP wire type, feed-filter choices (migrations 0252–0253), views/forms/templates/tests; inbound remote Quotation activities are gracefully skipped via the `naive_parse` ignore list.
