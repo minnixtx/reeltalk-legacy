@@ -73,10 +73,13 @@ class ReadingStatus(View):
         cache.delete(f"active_shelf-{request.user.id}-{film_id}")
 
         # gets the first shelf that indicates a reading status, or None
+        # film.shelffilm_set spans all users: an unscoped lookup would delete
+        # another user's read-status entry for the same film
         shelves = [
             s
             for s in film.shelffilm_set.select_related("shelf")
-            if s.shelf.identifier in models.Shelf.READ_STATUS_IDENTIFIERS
+            if s.user_id == request.user.id
+            and s.shelf.identifier in models.Shelf.READ_STATUS_IDENTIFIERS
         ]
         current_status_shelffilm = shelves[0] if shelves else None
 

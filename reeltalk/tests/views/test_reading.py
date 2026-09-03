@@ -199,6 +199,30 @@ class ReadingViews(TestCase):
         self.assertFalse(to_read.films.exists())
         self.assertEqual(models.ReviewRating.objects.count(), 1)
 
+    def test_finish_preserves_other_users_read_status(self, *_):
+        """another user's read-status entry for the same film is left intact"""
+        other = models.User.objects.create_user(
+            "rat@local.com",
+            "rat@rat.com",
+            "ratword",
+            local=True,
+            localname="rat",
+            reeltalk_user=False,
+        )
+        watched = other.shelf_set.get(identifier=models.Shelf.READ_FINISHED)
+        models.ShelfFilm.objects.create(user=other, film=self.film, shelf=watched)
+
+        result = self.post_finish({"rating": "4"})
+        self.assertEqual(result.status_code, 302)
+
+        # the other user's Watched entry survives alongside local_user's own
+        self.assertTrue(
+            models.ShelfFilm.objects.filter(
+                user=other, film=self.film, shelf=watched
+            ).exists()
+        )
+        self.assertEqual(models.ShelfFilm.objects.filter(film=self.film).count(), 2)
+
     def test_finish_already_read(self, *_):
         """finishing a film that is already read just redirects"""
         result = self.post_finish({"rating": "3"})
