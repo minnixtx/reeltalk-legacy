@@ -71,6 +71,13 @@ class ViewsHelpers(TestCase):
         """given a film id, returns the film"""
         self.assertEqual(views.helpers.get_film(self.film.id), self.film)
 
+    def test_get_mergeable_object_or_404_empty_id(self, *_):
+        """an empty id 404s instead of matching every row in the absorbed lookup"""
+        with self.assertRaises(Http404):
+            views.helpers.get_mergeable_object_or_404(models.Film, None)
+        with self.assertRaises(Http404):
+            views.helpers.get_mergeable_object_or_404(models.Film, "")
+
     def test_get_user_from_username(self, *_):
         """works for either localname or username"""
         self.assertEqual(

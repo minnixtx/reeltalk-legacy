@@ -247,6 +247,9 @@ def get_mergeable_object_or_404(klass, id):
     """variant of get_object_or_404 that also redirects if id has been merged
     into another object"""
     queryset = _get_queryset(klass)
+    # an empty id would make the absorbed__deleted_id lookup match every row
+    if not id:
+        raise Http404(f"No {queryset.model.__name__} with ID {id} exists")
     try:
         return queryset.get(pk=id)
     except queryset.model.DoesNotExist:
