@@ -4,20 +4,20 @@ from django.db import migrations
 
 
 def strip_quotation(apps, schema_editor):
+    # queryset .update() on purpose: Model.save() in a migration context does
+    # not accept broadcast=, and save() would fire post_save signals + AP broadcasts
     User = apps.get_model("reeltalk", "User")
     for user in User.objects.filter(feed_status_types__contains=["quotation"]):
-        user.feed_status_types = [
-            t for t in user.feed_status_types if t != "quotation"
-        ]
-        user.save(broadcast=False, update_fields=["feed_status_types"])
+        types = [t for t in user.feed_status_types if t != "quotation"]
+        User.objects.filter(pk=user.pk).update(feed_status_types=types)
 
 
 def restore_quotation(apps, schema_editor):
     User = apps.get_model("reeltalk", "User")
     for user in User.objects.all():
         if "quotation" not in user.feed_status_types:
-            user.feed_status_types.append("quotation")
-            user.save(broadcast=False, update_fields=["feed_status_types"])
+            types = list(user.feed_status_types) + ["quotation"]
+            User.objects.filter(pk=user.pk).update(feed_status_types=types)
 
 
 class Migration(migrations.Migration):
