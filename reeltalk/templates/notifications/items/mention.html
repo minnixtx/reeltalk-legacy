@@ -28,12 +28,6 @@
         <a href="{{ related_user_link }}">{{ related_user }}</a> mentioned you in a <a href="{{ related_path }}">comment on <em>{{ book_title }}</em></a>
 
     {% endblocktrans %}
-    {% elif related_status.status_type == 'Quotation' %}
-    {% blocktrans trimmed %}
-
-        <a href="{{ related_user_link }}">{{ related_user }}</a> mentioned you in a <a href="{{ related_path }}">quote from <em>{{ book_title }}</em></a>
-
-    {% endblocktrans %}
     {% else %}
     {% blocktrans trimmed %}
 

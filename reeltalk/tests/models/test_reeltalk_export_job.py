@@ -128,21 +128,6 @@ class ReeltalkExportJob(TestCase):
                 film=self.film,
                 deleted=True,
             )
-            # quote
-            models.Quotation.objects.create(
-                content="check this out",
-                quote="A rose by any other name",
-                user=self.local_user,
-                film=self.film,
-            )
-            # deleted quote
-            models.Quotation.objects.create(
-                content="check this out",
-                quote="A rose by any other name",
-                user=self.local_user,
-                film=self.film,
-                deleted=True,
-            )
 
             self.job = models.ReeltalkExportJob.objects.create(user=self.local_user)
 
@@ -165,7 +150,6 @@ class ReeltalkExportJob(TestCase):
         self.assertEqual(len(entry["lists"]), 1)
         self.assertEqual(len(entry["comments"]), 1)
         self.assertEqual(len(entry["reviews"]), 1)
-        self.assertEqual(len(entry["quotations"]), 1)
 
         self.assertEqual(
             entry["film"]["poster"]["url"], f"images/{self.film.poster.name}"

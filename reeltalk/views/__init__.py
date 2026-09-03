@@ -135,7 +135,6 @@ from .report import Report
 from .rss_feed import (
     RssFeed,
     RssReviewsOnlyFeed,
-    RssQuotesOnlyFeed,
     RssCommentsOnlyFeed,
 )
 from .search import (

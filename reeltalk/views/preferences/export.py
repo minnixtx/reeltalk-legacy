@@ -40,10 +40,9 @@ class Export(View):
         films_shelves = films.filter(Q(shelffilm__user=request.user)).distinct()
         films_review = films.filter(Q(review__user=request.user)).distinct()
         films_comment = films.filter(Q(comment__user=request.user)).distinct()
-        films_quotation = films.filter(Q(quotation__user=request.user)).distinct()
 
         films = set(
-            list(films_shelves) + list(films_review) + list(films_comment) + list(films_quotation)
+            list(films_shelves) + list(films_review) + list(films_comment)
         )
 
         csv_string = io.StringIO()

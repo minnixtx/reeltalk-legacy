@@ -10,8 +10,6 @@ register = template.Library()
 @register.filter(name="load_subclass")
 def load_subclass(status):
     """sometimes you didn't select_subclass"""
-    if hasattr(status, "quotation"):
-        return status.quotation
     if hasattr(status, "review"):
         return status.review
     if hasattr(status, "comment"):

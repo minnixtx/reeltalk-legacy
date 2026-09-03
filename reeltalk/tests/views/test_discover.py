@@ -57,7 +57,7 @@ class DiscoverViews(TestCase):
 
         # a distinct film per status: the discover page renders one finish
         # modal per film tile and reusing a film would duplicate its ids
-        films = [models.Film.objects.create(title=f"hi {i}") for i in range(4)]
+        films = [models.Film.objects.create(title=f"hi {i}") for i in range(3)]
 
         models.ReviewRating.objects.create(
             film=films[0],
@@ -73,12 +73,6 @@ class DiscoverViews(TestCase):
         models.Comment.objects.create(
             film=films[2],
             user=self.local_user,
-            content="hello",
-        )
-        models.Quotation.objects.create(
-            film=films[3],
-            user=self.local_user,
-            quote="beep",
             content="hello",
         )
         models.Status.objects.create(user=self.local_user, content="beep")

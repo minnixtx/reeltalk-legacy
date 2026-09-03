@@ -36,7 +36,6 @@ class Hashtag(View):
                 "reply_parent",
                 "review__film",
                 "comment__film",
-                "quotation__film",
             )
             .prefetch_related(
                 "mention_films",

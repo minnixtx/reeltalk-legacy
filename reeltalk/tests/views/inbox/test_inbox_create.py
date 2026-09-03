@@ -54,17 +54,16 @@ class TransactionInboxCreate(TransactionTestCase):
         models.Film.objects.create(title="Test Film", remote_id=FILM_ID)
         activity = self.create_json
         activity["object"] = {
-            "id": "https://example.com/user/mouse/quotation/13",
-            "url": "https://example.com/user/mouse/quotation/13",
+            "id": "https://example.com/user/mouse/comment/6",
+            "url": "https://example.com/user/mouse/comment/6",
             "published": "2020-05-10T02:38:31.150343+00:00",
             "attributedTo": "https://example.com/user/mouse",
             "to": ["https://www.w3.org/ns/activitystreams#Public"],
             "cc": ["https://example.com/user/mouse/followers"],
             "sensitive": False,
             "content": "commentary",
-            "type": "Quotation",
+            "type": "Comment",
             "inReplyToFilm": FILM_ID,
-            "quote": "quote body",
         }
 
         with patch("reeltalk.activitystreams.add_status_task.apply_async") as mock:
@@ -119,8 +118,8 @@ class InboxCreate(TestCase):
             "object": {},
         }
 
-    def test_create_status(self, *_):
-        """the "it justs works" mode"""
+    def test_create_quotation_ignored(self, *_):
+        """quotations are no longer supported; inbound ones are skipped"""
         activity = self.create_json
         activity["object"] = {
             "id": "https://example.com/user/mouse/quotation/13",
@@ -137,19 +136,11 @@ class InboxCreate(TestCase):
         }
 
         views.inbox.activity_task(activity)
+        self.assertEqual(models.Status.objects.count(), 0)
 
-        status = models.Quotation.objects.get()
-        self.assertEqual(
-            status.remote_id, "https://example.com/user/mouse/quotation/13"
-        )
-        self.assertEqual(status.quote, "quote body")
-        self.assertEqual(status.content, "commentary")
-        self.assertEqual(status.user, self.local_user)
-        self.assertEqual(status.thread_id, status.id)
-
-        # while we're here, lets ensure we avoid dupes
+        # a redelivery is just as harmless
         views.inbox.activity_task(activity)
-        self.assertEqual(models.Status.objects.count(), 1)
+        self.assertEqual(models.Status.objects.count(), 0)
 
     def test_create_comment_with_reading_status(self, *_):
         """a comment on a film with a reading status"""

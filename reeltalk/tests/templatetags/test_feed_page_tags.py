@@ -38,13 +38,6 @@ class FeedPageTags(TestCase):
         self.assertIsInstance(status, models.Status)
         self.assertIsInstance(feed_page_tags.load_subclass(status), models.Review)
 
-        quote = models.Quotation.objects.create(
-            user=self.user, film=self.film, content="hi", quote="quoted"
-        )
-        status = models.Status.objects.get(id=quote.id)
-        self.assertIsInstance(status, models.Status)
-        self.assertIsInstance(feed_page_tags.load_subclass(status), models.Quotation)
-
         comment = models.Comment.objects.create(
             user=self.user, film=self.film, content="hi"
         )

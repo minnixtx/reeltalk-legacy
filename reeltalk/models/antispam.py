@@ -129,7 +129,7 @@ def automod_statuses(reporter):
         return []
 
     filters = []
-    for field in ["content", "content_warning", "quotation__quote", "review__name"]:
+    for field in ["content", "content_warning", "review__name"]:
         filters += [{f"{field}__icontains": r} for r in status_rules]
 
     status_model = apps.get_model("reeltalk", "Status", require_ready=True)

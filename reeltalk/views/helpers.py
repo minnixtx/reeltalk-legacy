@@ -202,10 +202,6 @@ def filter_stream_by_status_type(activities, allowed_types=None):
         activities = activities.filter(
             Q(comment__isnull=True), Q(boost__boosted_status__comment__isnull=True)
         )
-    if "quotation" not in allowed_types:
-        activities = activities.filter(
-            Q(quotation__isnull=True), Q(boost__boosted_status__quotation__isnull=True)
-        )
     if "everything" not in allowed_types:
         activities = activities.filter(
             Q(generatednote__isnull=True),

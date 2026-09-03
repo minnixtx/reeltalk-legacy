@@ -15,7 +15,7 @@ from django.core.files.storage import storages
 from reeltalk import settings
 
 from reeltalk.models import Film, ShelfFilm, ListItem
-from reeltalk.models import Review, Comment, Quotation
+from reeltalk.models import Review, Comment
 from reeltalk.models import UserFollows, User, UserBlocks
 from reeltalk.models.job import ParentJob, ParentTask
 from reeltalk.tasks import app, IMPORTS
@@ -244,14 +244,11 @@ def export_film(user: User, film: Film):
     # Can't use select_subclasses here because
     # we need to filter on the "film" value,
     # which is not available on an ordinary Status
-    for status in ["comments", "quotations", "reviews"]:
+    for status in ["comments", "reviews"]:
         data[status] = []
 
     comments = Comment.objects.filter(user=user, film=film, deleted=False).all()
     data["comments"] = [status.to_activity() for status in comments]
-
-    quotes = Quotation.objects.filter(user=user, film=film, deleted=False).all()
-    data["quotations"] = [status.to_activity() for status in quotes]
 
     reviews = Review.objects.filter(user=user, film=film, deleted=False).all()
     data["reviews"] = [status.to_activity() for status in reviews]
@@ -272,15 +269,10 @@ def get_films_for_user(user):
     comments = Comment.objects.filter(user=user, deleted=False).values_list(
         "film_id", flat=True
     )
-    quotes = Quotation.objects.filter(user=user, deleted=False).values_list(
-        "film_id", flat=True
-    )
 
     films = (
         Film.objects.filter(
-            id__in=(
-                set(shelf_ids) | set(reviews) | set(lists) | set(comments) | set(quotes)
-            )
+            id__in=(set(shelf_ids) | set(reviews) | set(lists) | set(comments))
         )
         .distinct()
     )

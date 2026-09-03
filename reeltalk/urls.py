@@ -18,7 +18,6 @@ status_types = [
     "review",
     "reviewrating",
     "comment",
-    "quotation",
     "boost",
     "generatednote",
 ]
@@ -457,11 +456,6 @@ urlpatterns = [
         name="user-reviews-rss",
     ),
     re_path(
-        rf"{USER_PATH}/rss-quotes/?$",
-        views.rss_feed.RssQuotesOnlyFeed(),
-        name="user-quotes-rss",
-    ),
-    re_path(
         rf"{USER_PATH}/rss-comments/?$",
         views.rss_feed.RssCommentsOnlyFeed(),
         name="user-comments-rss",
@@ -707,7 +701,7 @@ urlpatterns = [
     re_path(rf"{FILM_PATH}(.json)?/?$", views.Film.as_view(), name="film"),
     re_path(rf"{FILM_PATH}{regex.SLUG}/?$", views.Film.as_view(), name="film"),
     re_path(
-        rf"{FILM_PATH}/(?P<user_statuses>review|comment|quote)/?$",
+        rf"{FILM_PATH}/(?P<user_statuses>review|comment)/?$",
         views.Film.as_view(),
         name="film-user-statuses",
     ),

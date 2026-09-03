@@ -36,7 +36,7 @@ def get_unread_status_string(request, stream="home"):
         count += sum(
             c
             for (k, c) in counts_by_type
-            if k not in ["review", "comment", "quotation"]
+            if k not in ["review", "comment"]
         )
 
     if not count:

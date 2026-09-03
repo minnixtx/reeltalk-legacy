@@ -4,7 +4,7 @@ from django.contrib.syndication.views import Feed
 from django.template.loader import get_template
 from django.utils.translation import gettext_lazy as _
 from django.shortcuts import get_object_or_404
-from ..models import Review, Quotation, Comment
+from ..models import Review, Comment
 
 from .helpers import get_user_from_username
 
@@ -83,48 +83,6 @@ class RssReviewsOnlyFeed(Feed):
     def items(self, obj):
         """the user's activity feed"""
         return Review.objects.filter(
-            user=obj,
-            privacy__in=["public", "unlisted"],
-        ).order_by("-published_date")[:10]
-
-    def item_link(self, item):
-        """link to the status"""
-        return item.local_path
-
-    def item_pubdate(self, item):
-        """publication date of the item"""
-        return item.published_date
-
-
-class RssQuotesOnlyFeed(Feed):
-    """serialize user's quotes in rss feed"""
-
-    description_template = "rss/content.html"
-
-    def item_title(self, item):
-        """render the item title"""
-        if hasattr(item, "pure_name") and item.pure_name:
-            return item.pure_name
-        title_template = get_template("snippets/status/header_content.html")
-        title = title_template.render({"status": item})
-        template = get_template("rss/title.html")
-        return template.render({"user": item.user, "item_title": title}).strip()
-
-    def get_object(self, request, username):
-        """the user who's posts get serialized"""
-        return get_user_from_username(request.user, username)
-
-    def link(self, obj):
-        """link to the user's profile"""
-        return obj.local_path
-
-    def title(self, obj):
-        """title of the rss feed entry"""
-        return _(f"Quotes from {obj.display_name}")
-
-    def items(self, obj):
-        """the user's activity feed"""
-        return Quotation.objects.filter(
             user=obj,
             privacy__in=["public", "unlisted"],
         ).order_by("-published_date")[:10]

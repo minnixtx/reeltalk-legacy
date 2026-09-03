@@ -79,14 +79,12 @@ class User(PrivateProfileMixin, View):
                 privacy="direct",
                 review__isnull=True,
                 comment__isnull=True,
-                quotation__isnull=True,
             )
             .select_related(
                 "user",
                 "reply_parent",
                 "review__film",
                 "comment__film",
-                "quotation__film",
             )
             .prefetch_related(
                 "mention_films",
@@ -133,7 +131,6 @@ class UserReviewsComments(PrivateProfileMixin, View):
                 "reply_parent",
                 "review__film",
                 "comment__film",
-                "quotation__film",
             )
             .prefetch_related(
                 "mention_films",

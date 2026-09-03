@@ -27,10 +27,6 @@
     {% blocktrans trimmed %}
     <a href="{{ user_path}}">{{ username }}</a> commented on <a href="{{ film_path }}">{{ film_title }}</a>
     {% endblocktrans %}
-{% elif status.status_type == 'Quotation' %}
-    {% blocktrans trimmed %}
-    <a href="{{ user_path}}">{{ username }}</a> quoted <a href="{{ film_path }}">{{ film_title }}</a>
-    {% endblocktrans %}
 {% endif %}
 
 {% endwith %}

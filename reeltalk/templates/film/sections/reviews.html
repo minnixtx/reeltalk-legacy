@@ -17,7 +17,7 @@
 {% endif %}
 <div class="block" id="reviews">
     {% if request.user.is_authenticated %}
-    {% if user_statuses.review_count or user_statuses.comment_count or user_statuses.quotation_count %}
+    {% if user_statuses.review_count or user_statuses.comment_count %}
     <nav class="tabs">
         <ul>
             {% url 'film' film.id film.title|slugify as tab_url %}
@@ -34,12 +34,6 @@
             {% url 'film-user-statuses' film.id 'comment' as tab_url %}
             <li {% if tab_url == request.path %}class="is-active"{% endif %}>
                 <a href="{{ tab_url }}#reviews">{% trans "Your comments" %} ({{ user_statuses.comment_count }})</a>
-            </li>
-            {% endif %}
-            {% if user_statuses.quotation_count %}
-            {% url 'film-user-statuses' film.id 'quote' as tab_url %}
-            <li {% if tab_url == request.path %}class="is-active"{% endif %}>
-                <a href="{{ tab_url }}#reviews">{% trans "Your quotes" %} ({{ user_statuses.quotation_count }})</a>
             </li>
             {% endif %}
         </ul>

@@ -9,7 +9,7 @@ from .link import Link, LinkDomain
 from .shelf import Shelf, ShelfFilm
 from .list import List, ListItem
 
-from .status import Status, GeneratedNote, Comment, Quotation
+from .status import Status, GeneratedNote, Comment
 from .status import Review, ReviewRating
 from .status import Boost
 from .attachment import Image

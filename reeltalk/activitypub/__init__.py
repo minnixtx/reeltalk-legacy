@@ -11,7 +11,7 @@ from .base_activity import (
     get_representative,
 )
 from .image import Document, Image
-from .note import Note, GeneratedNote, Article, Comment, Quotation
+from .note import Note, GeneratedNote, Article, Comment
 from .note import Review, Rating
 from .note import Tombstone
 from .ordered_collection import OrderedCollection, OrderedCollectionPage

@@ -84,7 +84,6 @@ class ActivityStream(RedisStore):
                 "reply_parent",
                 "comment__film",
                 "review__film",
-                "quotation__film",
             )
             .prefetch_related("mention_films", "mention_users")
             .order_by("-published_date")
@@ -136,7 +135,6 @@ class ActivityStream(RedisStore):
         ).values_list(
             "comment__film",
             "review__film",
-            "quotation__film",
             "mention_films",
         )
         # flatten the list of sets into a single set of only non-None values
@@ -210,12 +208,9 @@ class ActivityStream(RedisStore):
         ).exclude(user=user.id)
 
         film_comments = statuses.filter(Q(comment__film=film))
-        film_quotations = statuses.filter(Q(quotation__film=film))
         film_reviews = statuses.filter(Q(review__film=film))
         film_mentions = statuses.filter(Q(mention_films=film))
-        film_statuses = film_comments.union(
-            film_quotations, film_reviews, film_mentions
-        )
+        film_statuses = film_comments.union(film_reviews, film_mentions)
 
         self.bulk_add_objects_to_store(film_statuses, self.stream_id(user.id))
 
@@ -241,12 +236,9 @@ class ActivityStream(RedisStore):
         )
 
         film_comments = statuses.filter(Q(comment__film=film))
-        film_quotations = statuses.filter(Q(quotation__film=film))
         film_reviews = statuses.filter(Q(review__film=film))
         film_mentions = statuses.filter(Q(mention_films=film))
-        film_statuses = film_comments.union(
-            film_quotations, film_reviews, film_mentions
-        )
+        film_statuses = film_comments.union(film_reviews, film_mentions)
 
         self.bulk_remove_objects_from_store(film_statuses, self.stream_id(user.id))
 
@@ -305,13 +297,10 @@ class HomeStream(ActivityStream):
         )
 
         film_comments = statuses.filter(Q(comment__film=film))
-        film_quotations = statuses.filter(Q(quotation__film=film))
         film_reviews = statuses.filter(Q(review__film=film))
         film_mentions = statuses.filter(Q(mention_films=film))
 
-        film_statuses = film_comments.union(
-            film_quotations, film_reviews, film_mentions
-        )
+        film_statuses = film_comments.union(film_reviews, film_mentions)
 
         self.bulk_add_objects_to_store(film_statuses, self.stream_id(user.id))
 
@@ -386,7 +375,6 @@ class FilmsStream(ActivityStream):
             )
             .filter(
                 Q(comment__film__id__in=films)
-                | Q(quotation__film__id__in=films)
                 | Q(review__film__id__in=films)
                 | Q(mention_films__id__in=films)
             )
@@ -697,7 +685,5 @@ def get_status_type(status):
             status_type = "review"
         if hasattr(status.boost.boosted_status, "comment"):
             status_type = "comment"
-        if hasattr(status.boost.boosted_status, "quotation"):
-            status_type = "quotation"
 
     return status_type

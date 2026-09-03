@@ -94,7 +94,6 @@ class DirectMessage(View):
             .filter(
                 review__isnull=True,
                 comment__isnull=True,
-                quotation__isnull=True,
                 generatednote__isnull=True,
             )
             .order_by("-published_date")

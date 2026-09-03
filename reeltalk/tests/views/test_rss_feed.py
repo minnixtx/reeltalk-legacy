@@ -70,22 +70,6 @@ class RssFeedView(TestCase):
         result = view(request, username=self.local_user.username)
         self.assertEqual(result.status_code, 200)
 
-    def test_rss_quotation(self, *_):
-        """load an rss feed"""
-        models.Quotation.objects.create(
-            quote="a sickening sense",
-            content="test content",
-            user=self.local_user,
-            film=self.film,
-        )
-        view = rss_feed.RssFeed()
-        request = self.factory.get("/user/rss_user/rss")
-        request.user = self.local_user
-        result = view(request, username=self.local_user.username)
-        self.assertEqual(result.status_code, 200)
-
-        self.assertIn(b"a sickening sense", result.content)
-
     def test_rss_comment_only(self, *_):
         """load an rss feed"""
         models.Comment.objects.create(
@@ -114,22 +98,6 @@ class RssFeedView(TestCase):
         request.user = self.local_user
         result = view(request, username=self.local_user.username)
         self.assertEqual(result.status_code, 200)
-
-    def test_rss_quotation_only(self, *_):
-        """load an rss feed"""
-        models.Quotation.objects.create(
-            quote="a sickening sense",
-            content="test content",
-            user=self.local_user,
-            film=self.film,
-        )
-        view = rss_feed.RssQuotesOnlyFeed()
-        request = self.factory.get("/user/rss_user/rss")
-        request.user = self.local_user
-        result = view(request, username=self.local_user.username)
-        self.assertEqual(result.status_code, 200)
-
-        self.assertIn(b"a sickening sense", result.content)
 
     def test_rss_shelf(self, *_):
         """load the rss feed of a shelf"""

@@ -108,14 +108,6 @@ class Comment(Note):
 
 
 @dataclass(init=False)
-class Quotation(Comment):
-    """a quote and commentary on a film"""
-
-    quote: str
-    type: str = "Quotation"
-
-
-@dataclass(init=False)
 class Review(Comment):
     """a full film review"""
 

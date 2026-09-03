@@ -2,7 +2,6 @@
 
 from dataclasses import MISSING
 from typing import Optional, Iterable
-import re
 
 from django.apps import apps
 from django.core.cache import cache
@@ -105,8 +104,6 @@ class Status(OrderedCollectionPageMixin, ReelTalkModel):
         self.deleted = True
         # clear user content
         self.content = None
-        if hasattr(self, "quotation"):
-            self.quotation = None
         self.deleted_date = timezone.now()
         self.save(*args, **kwargs)
 
@@ -279,10 +276,9 @@ class Status(OrderedCollectionPageMixin, ReelTalkModel):
         blocked = viewer.blocked_films.values_list("id", flat=True)
 
         film_comments = queryset.filter(comment__film__in=blocked)
-        film_quotations = queryset.filter(quotation__film__in=blocked)
         film_reviews = queryset.filter(review__film__in=blocked)
         film_mentions = queryset.filter(mention_films__in=blocked)
-        film_statuses = film_comments.union(film_quotations, film_reviews, film_mentions)
+        film_statuses = film_comments.union(film_reviews, film_mentions)
 
         threads = film_statuses.values_list("thread_id", flat=True)
         thread_statuses = queryset.exclude(
@@ -366,32 +362,6 @@ class Comment(FilmStatus):
     @property
     def page_title(self):
         return _("%(display_name)s's comment on %(film_title)s") % {
-            "display_name": self.user.display_name,
-            "film_title": self.film.title,
-        }
-
-
-class Quotation(FilmStatus):
-    """like a review but without a rating and transient"""
-
-    quote = fields.HtmlField()
-    raw_quote = models.TextField(blank=True, null=True)
-
-    @property
-    def pure_content(self):
-        """indicate the film in question for mastodon (or w/e) users"""
-        quote = re.sub(r"^<p>", '<p>"', self.quote)
-        quote = re.sub(r"</p>$", '"</p>', quote)
-        title, href = self.film.title, self.film.remote_id
-        director = f"{name}: " if (name := self.film.director_text) else ""
-        citation = f'— {director}<a href="{href}"><i>{title}</i></a>'
-        return f"{quote} <p>{citation}</p>{self.content}"
-
-    activity_serializer = activitypub.Quotation
-
-    @property
-    def page_title(self):
-        return _("%(display_name)s's quote from %(film_title)s") % {
             "display_name": self.user.display_name,
             "film_title": self.film.title,
         }

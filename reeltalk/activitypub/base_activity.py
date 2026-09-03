@@ -104,7 +104,7 @@ def naive_parse(activity_objects, activity_json, serializer=None):
             activity_json["type"] = "PublicKey"
 
         activity_type = activity_json.get("type")
-        if activity_type in ["Question", "Article"]:
+        if activity_type in ["Question", "Article", "Quotation"]:
             return None
         try:
             serializer = activity_objects[activity_type]

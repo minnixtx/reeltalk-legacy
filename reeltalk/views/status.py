@@ -102,8 +102,6 @@ class CreateStatus(View):
         status = form.save(request, commit=False)
         # save the plain, unformatted version of the status for future editing
         status.raw_content = status.content
-        if hasattr(status, "quote"):
-            status.raw_quote = status.quote
 
         status.sensitive = status.content_warning not in [None, ""]
         # the status has to be saved now before we can add many to many fields
@@ -140,9 +138,6 @@ class CreateStatus(View):
         # don't apply formatting to generated notes
         if not isinstance(status, models.GeneratedNote) and content:
             status.content = to_markdown(content)
-        # do apply formatting to quotes
-        if hasattr(status, "quote"):
-            status.quote = to_markdown(status.quote)
 
         status.save(created=created)
 

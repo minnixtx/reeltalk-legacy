@@ -53,10 +53,8 @@ class Film(View):
         if user_statuses:
             if user_statuses == "review":
                 queryset = film.review_set.select_subclasses()
-            elif user_statuses == "comment":
-                queryset = film.comment_set
             else:
-                queryset = film.quotation_set
+                queryset = film.comment_set
             queryset = queryset.filter(user=request.user, deleted=False)
         else:
             queryset = reviews.exclude(Q(content__isnull=True) | Q(content=""))
@@ -94,7 +92,6 @@ class Film(View):
             data["user_statuses"] = {
                 "review_count": film.review_set.filter(**filters).count(),
                 "comment_count": film.comment_set.filter(**filters).count(),
-                "quotation_count": film.quotation_set.filter(**filters).count(),
             }
 
         return TemplateResponse(request, "film/film.html", data)

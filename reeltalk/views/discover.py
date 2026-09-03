@@ -23,7 +23,6 @@ class Discover(View):
             .filter(
                 Q(comment__isnull=False)
                 | Q(review__isnull=False)
-                | Q(quotation__isnull=False)
                 | Q(mention_films__isnull=False)
             )
         )
@@ -31,18 +30,13 @@ class Discover(View):
         large_activities = Paginator(
             activities.filter(mention_films__isnull=True)
             # exclude statuses with no user-provided content for large panels
-            .exclude(
-                Q(Q(content="") | Q(content__isnull=True)) & Q(quotation__isnull=True),
-            ),
+            .exclude(Q(content="") | Q(content__isnull=True)),
             6,
         )
         small_activities = Paginator(
             activities.filter(
                 Q(mention_films__isnull=False)
-                | Q(
-                    Q(Q(content="") | Q(content__isnull=True))
-                    & Q(quotation__isnull=True),
-                )
+                | Q(Q(content="") | Q(content__isnull=True))
             ),
             4,
         )

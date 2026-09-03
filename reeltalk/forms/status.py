@@ -50,20 +50,6 @@ class CommentForm(CustomForm):
         ]
 
 
-class QuotationForm(CustomForm):
-    class Meta:
-        model = models.Quotation
-        fields = [
-            "user",
-            "film",
-            "quote",
-            "content",
-            "content_warning",
-            "sensitive",
-            "privacy",
-        ]
-
-
 class ReplyForm(CustomForm):
     class Meta:
         model = models.Status

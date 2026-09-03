@@ -5,7 +5,7 @@
 
 {% get_user_review film request.user as user_review %}
 {% with status_type=request.GET.status_type %}
-<div class="tab-group tour-review-comment-quote">
+<div class="tab-group tour-review-comment">
     <div class="bw-tabs is-boxed" role="tablist">
         {% if user_review %}
         {# one review per film: an existing review can only be edited #}
@@ -38,16 +38,6 @@
             data-category="tab-option-{{ film.id }}">
             {% trans "Comment" %}
         </a>
-        <a
-            class="{% if status_type == 'quote' %}is-active{% endif %}"
-            role="tab"
-            href="{{ request.path }}?status_type=quote&amp;film={{ film.id }}"
-            id="tab_quote_{{ film.id }}"
-            aria-selected="{% if status_type == 'quote' %}true{% else %}false{% endif %}"
-            aria-controls="quote_{{ film.id }}"
-            data-category="tab-option-{{ film.id }}">
-            {% trans "Quote" %}
-        </a>
     </div>
 
     <div class="tab-option-{{ film.id }}" id="review_{{ film.id }}" role="tabpanel" aria-labelledby="tab_review_{{ film.id }}" {% if status_type and status_type != "review" %}hidden{% endif %}>
@@ -66,12 +56,6 @@
     <div class="tab-option-{{ film.id }}" id="comment_{{ film.id }}" role="tabpanel" aria-labelledby="tab_comment_{{ film.id }}" {% if status_type != "comment" %}hidden{% endif %}>
         {% with 0|uuid as uuid %}
         {% include 'snippets/create_status/status.html' with type="comment" %}
-        {% endwith %}
-    </div>
-
-    <div class="tab-option-{{ film.id }}" id="quote_{{ film.id }}" role="tabpanel" aria-labelledby="tab_quote_{{ film.id }}" {% if status_type != "quote" %}hidden{% endif %}>
-        {% with 0|uuid as uuid %}
-        {% include 'snippets/create_status/status.html' with type="quotation" %}
         {% endwith %}
     </div>
 </div>
