@@ -35,11 +35,16 @@
 | Phase 2 — housekeeping fixes (login 500 on missing field, nginx error caching) | ✅ Done 2026-09-02, PUSHED to fork 2026-09-03 — `0c840369d`, `802e3a658` (both live-verified) |
 | Phase 2 — structural correctness audit + Quotation removal (decision #33) | ✅ **Done, suite + live-verified 2026-09-03, PUSHED to fork 2026-09-03** — `c22868337` (Quotation removed end-to-end), `1d857c0a5` (four flagged nits), `daa64522b` (shared_films annotation), `4c3554d2a`/`989f84cbe`/`331ad10ba`/`1bb4fdf40` (four live-verification bugs, incl. a cross-user shelf deletion that damaged one owner row — restored from pg_dump). Suite green: **1051 passed / 1 skipped / 1 xfailed**. Live stack rebuilt to 0253; owner data verified intact at baseline counts |
 | Phase 2 — Crowdin/translation removal (decision #34) | ✅ **Done, suite + live-verified 2026-09-03, PUSHED to fork 2026-09-04** — `ba4b3cb18` (set_language removed), `ccd5747f2` (User.preferred_language + migration 0254), `110c47da1` (crowdin.yml + locale/ + settings i18n wiring). English-only for now; re-introduction = new Crowdin project + crowdin.yml + makemessages. Suite green: **1051 passed / 1 skipped / 1 xfailed** (baseline unchanged — no test touched translations). Live stack rebuilt to 0254 |
+| CI checks green (ruff, mypy, ESLint, stylelint, CodeQL) | ✅ **Done 2026-09-04** — all five previously-failing workflows fixed (pre-existing debt from earlier milestones, not the Crowdin work). ruff: 31 files formatted + 15 dead-code findings dropped; mypy: strict scope in reeltalk.utils (import-cycle break + ContentFile annotation); ESLint/stylelint: search suggest assets (+ one libsass-incompatible rule disabled); CodeQL: security-events permission added. Suite green: **1051 passed / 1 skipped / 1 xfailed** |
 | Phase 2 — remainder after rework (artwork, public deploy) | ⬜ Not started (owner: design work happens with the owner, at the very end) |
 
 ## 3. Commit history (`main`)
 
 ```
+3738518e7 Grant CodeQL workflow the permissions to upload its results                          ← CI green (commit 4/4)
+21791cbea Fix ESLint + stylelint findings in the search suggest assets                         ← CI green (commit 3/4)
+bdd73b4a9 Satisfy mypy strict scope in reeltalk.utils                                          ← CI green (commit 2/4)
+39350893a Make ruff green: format 31 files, drop 15 dead-code findings                         ← CI green (commit 1/4)
 110c47da1 Remove the Crowdin/translation component; pin English (decision 34)                ← decision #34 (commit 3/3: crowdin.yml + locale/ + settings i18n wiring)
 ccd5747f2 Remove User.preferred_language (English-only, decision 34)                         ← decision #34 (commit 2/3: migration 0254 + form field + template control)
 ba4b3cb18 Drop the set_language helper and its call sites (English-only, decision 34)        ← decision #34 (commit 1/3)
@@ -398,6 +403,28 @@ Owner directive: ReelTalk is **English-only for now**; translations may be re-ad
 **Verification:** full CI-faithful suite green — **1051 passed / 1 skipped / 1 xfailed** (baseline unchanged: no test touched translations; `makemigrations --check` clean). Live at :3030: stack rebuilt, **migration 0254 applied cleanly**; login as a throwaway user → plain redirect to `/2fa-prompt` with **no `django_language` cookie set**; `/preferences/profile/` renders without the Language control (timezone/theme intact); profile-save POST → 302 to the user page with values persisted; password-change flow OK; the `LoginWith2FA` call site is covered by its six suite tests. Throwaway user hard-deleted — note: `User.delete()` is a **soft delete** ("we don't actually delete the database entry": deactivates + erases data), so a true removal needs queryset-level `User.objects.filter(...).delete()` after clearing ShelfFilm/Shelf/UserSession. DB back to exactly 2 users, all other counts at baseline (Film 1,381 / Status 4 / Review 2 / Shelf 4 / ShelfFilm 1,380).
 
 **Owner note (2026-09-03):** the current live-DB contents are **disposable test data**, not precious production data — the earlier "never wipe" constraint is relaxed accordingly.
+
+### CI checks green (executed 2026-09-04)
+
+Owner reported six failing GitHub checks after the decision #34 push; investigation showed all were **pre-existing** (CodeQL + Python workflows red on every run since 2026-09-01, JS/CSS linters since 2026-09-02 — none of it touched by the Crowdin work). All five failing workflows fixed:
+
+**Commit 1/4 (`39350893a`) — ruff:**
+- `ruff format --check` was failing on 31 files from the film-model/TMDB milestones → applied `ruff format` (CI-pinned ruff 0.14.7 in a local venv).
+- That unmasked a hidden layer: the job stops at the format step, so `ruff check` had **never run in CI** — 15 dead-code findings sat behind it (10 unused imports + 5 unused locals; one orphaned by decision #34's set_language removal). All removed; four of the five locals are create-for-side-effect test fixtures (calls kept, assignments dropped).
+
+**Commit 2/4 (`bdd73b4a9`) — mypy:**
+- Strict scope is `reeltalk.utils.*` + `celerytalk.*` (the rest of reeltalk.* is `ignore_errors = true`) — which is why exactly two files failed.
+- `utils/http.py`: the models ↔ utils.http import cycle broke mypy's type resolution for `settings.QUERY_TIMEOUT` → direct `from reeltalk.settings import USER_AGENT, QUERY_TIMEOUT` + in-function lazy `from reeltalk import models`. ContentFile: django-stubs declares it generic but the real class is not subscriptable at runtime → PEP 563 (`from __future__ import annotations`) + annotated assignment `image_content: ContentFile[bytes] = ContentFile(resp.content)`. (A first attempt as a runtime subscript, `ContentFile[bytes](...)`, broke the 8 image tests — caught by the suite before committing.)
+- `utils/block_films.py`: annotated per the redis_store `QuerySet[Any]` convention.
+
+**Commit 3/4 (`21791cbea`) — ESLint + stylelint:**
+- `search_suggest.js` (decision #28 milestone): `eslint --fix` — blank lines only; prettier@2.5.1 (CI-pinned) still passes after the fix.
+- `_search_suggest.scss`: blank line before comment; and disabled `color-function-alias-notation` in dev-tools/.stylelintrc.js — its autofix rewrites `rgba()` → `rgb(R,G,B,A)`, which the project's libsass cannot parse (compile_themes crashes on both modern rgb syntaxes). Consistent with the sibling notation rules (`color-function-notation`, `alpha-value-notation`) already disabled for the same reason.
+
+**Commit 4/4 (`3738518e7`) — CodeQL:**
+- Analysis itself passed (674/674 Python files) but the SARIF upload failed ("Resource not accessible by integration") — the job had no `permissions:` key → added `contents: read` + `security-events: write`.
+
+**Verification:** ruff format+check green (ruff 0.14.7 venv); eslint/stylelint/prettier green in a node:20 container with CI's exact invocations and pinned versions; mypy "no issues found in 672 source files" (web container + `pip install --group dev`); full CI-faithful suite **1051 passed / 1 skipped / 1 xfailed** — baseline unchanged. Local-repro note for future sessions: the host has no ruff/node/mypy — use a venv with `pip install ruff==0.14.7`, node:20 docker containers (npm-install into the mounted tree, run `./node_modules/.bin/<tool>`, then sudo-rm the root-owned node_modules) for JS/CSS linters, and `docker compose run --rm web` + `pip install --group dev` for mypy.
 
 ## 5. What still needs to be done
 
