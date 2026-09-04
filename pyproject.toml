@@ -79,7 +79,6 @@ addopts = "--cov=reeltalk"
 testpaths = ["reeltalk/tests"]
 
 env = [
-    "LANGUAGE_CODE = en-US",
     "SECRET_KEY = beepbeep",
     "DEBUG = true",
     "DOMAIN = localhost",

@@ -47,10 +47,6 @@ EMAIL_SENDER = f"{EMAIL_SENDER_NAME}@{EMAIL_SENDER_DOMAIN}"
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR: AnyStr = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOCALE_PATHS = [
-    os.path.join(BASE_DIR, "locale"),
-]
-LANGUAGE_COOKIE_NAME = env.str("LANGUAGE_COOKIE_NAME", "django_language")
 
 STATIC_ROOT = os.path.join(BASE_DIR, env("STATIC_ROOT", "static"))
 MEDIA_ROOT = os.path.join(BASE_DIR, env("MEDIA_ROOT", "images"))
@@ -131,7 +127,6 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "csp.middleware.CSPMiddleware",
@@ -338,31 +333,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/3.2/topics/i18n/
 
-LANGUAGE_CODE = env("LANGUAGE_CODE", "en-us")
-LANGUAGES = [
-    ("en-us", _("English")),
-    ("ca-es", _("Català (Catalan)")),
-    ("de-de", _("Deutsch (German)")),
-    ("eo-uy", _("Esperanto (Esperanto)")),
-    ("es-es", _("Español (Spanish)")),
-    ("eu-es", _("Euskara (Basque)")),
-    ("gl-es", _("Galego (Galician)")),
-    ("it-it", _("Italiano (Italian)")),
-    ("ko-kr", _("한국어 (Korean)")),
-    ("fi-fi", _("Suomi (Finnish)")),
-    ("fr-fr", _("Français (French)")),
-    ("lt-lt", _("Lietuvių (Lithuanian)")),
-    ("nl-nl", _("Nederlands (Dutch)")),
-    ("no-no", _("Norsk (Norwegian)")),
-    ("pl-pl", _("Polski (Polish)")),
-    ("pt-br", _("Português do Brasil (Brazilian Portuguese)")),
-    ("pt-pt", _("Português Europeu (European Portuguese)")),
-    ("ro-ro", _("Română (Romanian)")),
-    ("sv-se", _("Svenska (Swedish)")),
-    ("uk-ua", _("Українська (Ukrainian)")),
-    ("zh-hans", _("简体中文 (Simplified Chinese)")),
-    ("zh-hant", _("繁體中文 (Traditional Chinese)")),
-]
+# English-only for now (decision 34); re-adding translations is a new Crowdin
+# project + crowdin.yml + makemessages, not a code change.
+LANGUAGE_CODE = "en-us"
 
 LANGUAGE_ARTICLES = {
     "en-us": {

@@ -32,7 +32,6 @@ COPY entrypoint.sh /entrypoint.sh
 COPY README.md LICENSE.md VERSION /app/
 COPY manage.py gunicorn.conf.py /app/
 COPY celerytalk /app/celerytalk
-COPY locale /app/locale
 COPY reeltalk /app/reeltalk
 
 RUN python3 -mcompileall /app/reeltalk /app/celerytalk /app/manage.py /app/gunicorn.conf.py
