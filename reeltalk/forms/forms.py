@@ -1,6 +1,5 @@
 """using django model forms"""
 
-from django import forms
 from django.forms import widgets
 
 from reeltalk import models

@@ -260,9 +260,7 @@ class ViewsHelpers(TestCase):
                 identifier="reading",
                 user=self.local_user,
             )
-        views.helpers.handle_reading_status(
-            self.local_user, shelf, self.film, "public"
-        )
+        views.helpers.handle_reading_status(self.local_user, shelf, self.film, "public")
         self.assertFalse(models.GeneratedNote.objects.exists())
 
     def test_handle_reading_status_read(self, *_):

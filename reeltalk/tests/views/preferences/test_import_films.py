@@ -153,13 +153,15 @@ class ImportFilmsViews(TestCase):
                 film=film, shelf=self.watchlist_shelf, user=self.local_user
             ).exists()
         )
-        self.assertEqual(result.context_data["results"][0]["note"], "Watched — 4.5 stars")
+        self.assertEqual(
+            result.context_data["results"][0]["note"], "Watched — 4.5 stars"
+        )
 
     def test_import_matches_existing_by_tmdb_id(self, *_):
         """a row whose TMDB ID is known matches instead of duplicating"""
         row = dict(
             TRACKDOWN_ROW,
-            **{"TMDb ID": "42", "Name": "Test Film", "IMDb ID": "tt0111111"}
+            **{"TMDb ID": "42", "Name": "Test Film", "IMDb ID": "tt0111111"},
         )
         result = self.post_import([row])
 
@@ -265,9 +267,7 @@ class ImportFilmsViews(TestCase):
         self.assertEqual(summary["matched"], 1)
         self.assertEqual(summary["skipped"], 1)
         # line numbers point at the rows in the uploaded file (header is line 1)
-        self.assertEqual(
-            [r["line"] for r in result.context_data["results"]], [2, 3, 4]
-        )
+        self.assertEqual([r["line"] for r in result.context_data["results"]], [2, 3, 4])
 
     @override_settings(TMDB_API_KEY="test-key")
     def test_import_queues_tmdb_backfill(self, backfill_delay, *_):

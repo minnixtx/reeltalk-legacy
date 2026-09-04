@@ -38,6 +38,7 @@ class InteractionViews(TestCase):
                 inbox="https://example.com/users/rat/inbox",
                 outbox="https://example.com/users/rat/outbox",
             )
+
     def setUp(self):
         """individual test setup"""
         self.factory = RequestFactory()

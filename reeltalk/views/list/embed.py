@@ -43,9 +43,7 @@ class EmbedList(View):
         if direction == "descending":
             directional_sort_by = "-" + directional_sort_by
 
-        items = book_list.listitem_set.prefetch_related(
-            "user", "film"
-        )
+        items = book_list.listitem_set.prefetch_related("user", "film")
         if sort_by == "rating":
             items = items.annotate(
                 average_rating=Avg(

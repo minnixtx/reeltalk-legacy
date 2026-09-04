@@ -54,9 +54,7 @@ class BlockedFilmsViews(TestCase):
         request = self.factory.post("")
         request.user = self.local_user
 
-        with patch(
-            "reeltalk.activitystreams.remove_blocked_film_statuses_task.delay"
-        ):
+        with patch("reeltalk.activitystreams.remove_blocked_film_statuses_task.delay"):
             view(request, self.film.id)
 
         self.assertTrue(self.film in self.local_user.blocked_films.all())
@@ -69,9 +67,7 @@ class BlockedFilmsViews(TestCase):
 
         request = self.factory.post("")
         request.user = self.local_user
-        with patch(
-            "reeltalk.activitystreams.add_blocked_film_statuses_task.delay"
-        ):
+        with patch("reeltalk.activitystreams.add_blocked_film_statuses_task.delay"):
             views.unblock_film(request, self.film.id)
 
         self.assertFalse(self.film in self.local_user.blocked_films.all())

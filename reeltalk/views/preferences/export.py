@@ -41,9 +41,7 @@ class Export(View):
         films_review = films.filter(Q(review__user=request.user)).distinct()
         films_comment = films.filter(Q(comment__user=request.user)).distinct()
 
-        films = set(
-            list(films_shelves) + list(films_review) + list(films_comment)
-        )
+        films = set(list(films_shelves) + list(films_review) + list(films_comment))
 
         csv_string = io.StringIO()
         writer = csv.writer(csv_string)
@@ -71,9 +69,7 @@ class Export(View):
                     "",  # Episode Number
                     "",  # Rating (TMDB community score — not stored)
                     int(review.rating * 2) if review else "",
-                    review.published_date.astimezone(UTC).strftime(
-                        "%Y-%m-%dT%H:%M:%SZ"
-                    )
+                    review.published_date.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
                     if review and review.published_date
                     else "",
                 ]

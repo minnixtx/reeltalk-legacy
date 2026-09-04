@@ -153,7 +153,9 @@ def get_annotated_users(viewer, *args, **kwargs):
         shared_films=Count(
             "shelffilm__film",
             filter=Q(
-                shelffilm__film__in=viewer.shelffilm_set.values_list("film_id", flat=True)
+                shelffilm__film__in=viewer.shelffilm_set.values_list(
+                    "film_id", flat=True
+                )
             ),
             distinct=True,
         ),

@@ -90,9 +90,7 @@ class StatusDisplayTags(TestCase):
     def test_get_boosted(self, *_):
         """load a boosted status"""
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            status = models.Review.objects.create(
-                user=self.remote_user, film=self.film
-            )
+            status = models.Review.objects.create(user=self.remote_user, film=self.film)
             boost = models.Boost.objects.create(user=self.user, boosted_status=status)
         boosted = status_display.get_boosted(boost)
         self.assertIsInstance(boosted, models.Review)

@@ -76,9 +76,7 @@ class Film(TestCase):
         # the media directory persists between runs, so Django may suffix the
         # stored filename; build the expectation from the saved file (§7 quirk 6)
         self.assertTrue(activity["poster"]["url"].endswith(self.film.poster.name))
-        self.assertEqual(
-            activity["poster"]["name"], "Jane Doe: Example Film (1999)"
-        )
+        self.assertEqual(activity["poster"]["name"], "Jane Doe: Example Film (1999)")
 
     def test_serialize_model_last_edited_by(self):
         """the last editor is serialized as a remote id"""

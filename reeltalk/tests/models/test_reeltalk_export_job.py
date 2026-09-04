@@ -142,7 +142,9 @@ class ReeltalkExportJob(TestCase):
         self.assertEqual(len(self.job.export_json["films"]), 2)
 
         entry = next(
-            f for f in self.job.export_json["films"] if f["film"]["id"] == self.film.remote_id
+            f
+            for f in self.job.export_json["films"]
+            if f["film"]["id"] == self.film.remote_id
         )
 
         self.assertEqual(entry["film"]["title"], "Example Film")
@@ -196,9 +198,7 @@ class ReeltalkExportJob(TestCase):
         data = models.reeltalk_export_job.get_films_for_user(self.local_user)
 
         self.assertEqual(len(data), 2)
-        self.assertCountEqual(
-            [f.title for f in data], ["Example Film", "Another Film"]
-        )
+        self.assertCountEqual([f.title for f in data], ["Example Film", "Another Film"])
 
     def test_archive(self):
         """actually create the TAR file"""

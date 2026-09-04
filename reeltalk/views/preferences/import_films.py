@@ -120,18 +120,14 @@ def import_row(user, watchlist_shelf, watched_shelf, row):
     status = "created" if created else "matched"
 
     if rating is None:
-        if models.ShelfFilm.objects.filter(
-            film=film, shelf=watchlist_shelf
-        ).exists():
+        if models.ShelfFilm.objects.filter(film=film, shelf=watchlist_shelf).exists():
             return status, "already on your Watchlist", film
         shelve_film(user, watchlist_shelf, film)
         return status, "added to Watchlist", film
 
     # a rated row lands on Watched with a rating-only entry (decision #19);
     # one review per film (decision #27): an existing review is never touched
-    if models.Review.objects.filter(
-        user=user, film=film, deleted=False
-    ).exists():
+    if models.Review.objects.filter(user=user, film=film, deleted=False).exists():
         return status, "you already have a review; rating not imported", film
     shelve_film(user, watched_shelf, film)
     entry = models.ReviewRating(user=user, film=film, rating=rating)
@@ -153,9 +149,7 @@ class ImportFilms(View):
         """parse the upload and import every row"""
         user = request.user
         if not user.local:
-            data = {
-                "error": "Film import is only available on your home instance."
-            }
+            data = {"error": "Film import is only available on your home instance."}
             return TemplateResponse(request, "preferences/import_films.html", data)
 
         upload = request.FILES.get("csv_file")

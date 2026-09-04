@@ -55,9 +55,7 @@ class Film(ObjectMixin, ReelTalkModel):
     directors = fields.ArrayField(
         models.CharField(max_length=255), blank=True, default=list
     )
-    cast = fields.ArrayField(
-        models.CharField(max_length=255), blank=True, default=list
-    )
+    cast = fields.ArrayField(models.CharField(max_length=255), blank=True, default=list)
 
     poster = fields.ImageField(
         upload_to="posters/", blank=True, null=True, alt_field="alt_text"
@@ -97,7 +95,9 @@ class Film(ObjectMixin, ReelTalkModel):
         poster_bw_film_medium_webp = ImageSpecField(
             source="poster", id="film:medium:webp"
         )
-        poster_bw_film_medium_jpg = ImageSpecField(source="poster", id="film:medium:jpg")
+        poster_bw_film_medium_jpg = ImageSpecField(
+            source="poster", id="film:medium:jpg"
+        )
         poster_bw_film_large_webp = ImageSpecField(
             source="poster", id="film:large:webp"
         )
@@ -105,11 +105,15 @@ class Film(ObjectMixin, ReelTalkModel):
         poster_bw_film_xlarge_webp = ImageSpecField(
             source="poster", id="film:xlarge:webp"
         )
-        poster_bw_film_xlarge_jpg = ImageSpecField(source="poster", id="film:xlarge:jpg")
+        poster_bw_film_xlarge_jpg = ImageSpecField(
+            source="poster", id="film:xlarge:jpg"
+        )
         poster_bw_film_xxlarge_webp = ImageSpecField(
             source="poster", id="film:xxlarge:webp"
         )
-        poster_bw_film_xxlarge_jpg = ImageSpecField(source="poster", id="film:xxlarge:jpg")
+        poster_bw_film_xxlarge_jpg = ImageSpecField(
+            source="poster", id="film:xxlarge:jpg"
+        )
 
     @property
     def director_text(self):

@@ -270,11 +270,8 @@ def get_films_for_user(user):
         "film_id", flat=True
     )
 
-    films = (
-        Film.objects.filter(
-            id__in=(set(shelf_ids) | set(reviews) | set(lists) | set(comments))
-        )
-        .distinct()
-    )
+    films = Film.objects.filter(
+        id__in=(set(shelf_ids) | set(reviews) | set(lists) | set(comments))
+    ).distinct()
 
     return films

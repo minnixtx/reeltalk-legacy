@@ -52,9 +52,7 @@ class Activitystreams(TestCase):
     def test_remove_film_statuses_task(self):
         """remove statuses related to a film"""
         with patch("reeltalk.activitystreams.FilmsStream.remove_film_statuses") as mock:
-            activitystreams.remove_film_statuses_task(
-                self.local_user.id, self.film.id
-            )
+            activitystreams.remove_film_statuses_task(self.local_user.id, self.film.id)
         self.assertTrue(mock.called)
         args = mock.call_args[0]
         self.assertEqual(args[0], self.local_user)

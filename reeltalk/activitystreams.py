@@ -346,11 +346,7 @@ class FilmsStream(ActivityStream):
 
     def _get_audience(self, status, exclude_self=True):
         """anyone with the mentioned film on their shelves except the poster"""
-        film = (
-            status.film
-            if hasattr(status, "film")
-            else status.mention_films.first()
-        )
+        film = status.film if hasattr(status, "film") else status.mention_films.first()
 
         audience = super()._get_audience(status, exclude_self=exclude_self)
         return audience.filter(shelffilm__film=film)

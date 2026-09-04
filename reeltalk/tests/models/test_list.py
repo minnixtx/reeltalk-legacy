@@ -5,7 +5,6 @@ from unittest.mock import patch
 from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 
-from reeltalk import activitypub
 from reeltalk import models, settings
 
 

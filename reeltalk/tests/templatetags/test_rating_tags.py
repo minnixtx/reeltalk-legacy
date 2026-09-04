@@ -91,9 +91,7 @@ class RatingTags(TestCase):
     def test_get_user_rating(self, *_):
         """get a user's most recent rating of a film"""
         with patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"):
-            models.Review.objects.create(
-                user=self.local_user, film=self.film, rating=3
-            )
+            models.Review.objects.create(user=self.local_user, film=self.film, rating=3)
         self.assertEqual(rating_tags.get_user_rating(self.film, self.local_user), 3)
 
     def test_get_user_rating_most_recent(self, *_):
@@ -105,9 +103,7 @@ class RatingTags(TestCase):
                 rating=2,
                 published_date=timezone.now() - timedelta(days=1),
             )
-            models.Review.objects.create(
-                user=self.local_user, film=self.film, rating=5
-            )
+            models.Review.objects.create(user=self.local_user, film=self.film, rating=5)
         self.assertEqual(rating_tags.get_user_rating(self.film, self.local_user), 5)
 
     def test_get_user_rating_deleted(self, *_):

@@ -40,9 +40,7 @@ class UserViews(TestCase):
         )
         cls.film = models.Film.objects.create(title="test")
         cls.another_film = models.Film.objects.create(title="test 2")
-        cls.film_recently_shelved = models.Film.objects.create(
-            title="recently shelved"
-        )
+        cls.film_recently_shelved = models.Film.objects.create(title="recently shelved")
         with (
             patch("reeltalk.models.activitypub_mixin.broadcast_task.apply_async"),
             patch("reeltalk.suggested_users.rerank_suggestions_task.delay"),
@@ -379,4 +377,3 @@ class UserViews(TestCase):
         self.assertIsInstance(result, TemplateResponse)
         validate_html(result.render())
         self.assertEqual(result.status_code, 200)
-

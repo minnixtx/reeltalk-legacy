@@ -37,9 +37,7 @@ class FilmDisplayTags(TestCase):
 
         self.film.description = "hello"
         self.film.save(broadcast=False)
-        self.assertEqual(
-            film_display_tags.get_film_description(self.film), "hello"
-        )
+        self.assertEqual(film_display_tags.get_film_description(self.film), "hello")
 
     def test_get_review_count(self, *_):
         """count non-deleted reviews"""
@@ -85,10 +83,9 @@ class FilmDisplayTags(TestCase):
 
     def test_blocked_film_filter_no_film_field(self, *_):
         """querysets without a film field are returned untouched"""
-        other_film = models.Film.objects.create(title="Other Film")
+        # second film so the count assertion has something to compare against
+        models.Film.objects.create(title="Other Film")
         self.user.blocked_films.add(self.film)
 
-        results = film_display_tags.blocked_film_filter(
-            models.Film.objects, self.user
-        )
+        results = film_display_tags.blocked_film_filter(models.Film.objects, self.user)
         self.assertEqual(results.count(), 2)

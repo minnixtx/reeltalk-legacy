@@ -33,11 +33,7 @@ def get_unread_status_string(request, stream="home"):
         allowed_status_types = request.user.feed_status_types
         count = sum(c for (k, c) in counts_by_type if k in allowed_status_types)
         # if "everything else" is allowed, add other types to the sum
-        count += sum(
-            c
-            for (k, c) in counts_by_type
-            if k not in ["review", "comment"]
-        )
+        count += sum(c for (k, c) in counts_by_type if k not in ["review", "comment"])
 
     if not count:
         return JsonResponse({})

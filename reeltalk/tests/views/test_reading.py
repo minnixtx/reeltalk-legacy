@@ -112,9 +112,7 @@ class ReadingViews(TestCase):
         result = self.post_finish({"rating": "4"})
         self.assertEqual(result.status_code, 302)
 
-        shelf = self.local_user.shelf_set.get(
-            identifier=models.Shelf.READ_FINISHED
-        )
+        shelf = self.local_user.shelf_set.get(identifier=models.Shelf.READ_FINISHED)
         self.assertEqual(shelf.films.get(), self.film)
 
         status = models.ReviewRating.objects.get()
@@ -131,14 +129,10 @@ class ReadingViews(TestCase):
 
     def test_finish_with_content(self, *_):
         """finishing with a written review creates a Review"""
-        result = self.post_finish(
-            {"rating": "4.5", "content": "a fine film"}
-        )
+        result = self.post_finish({"rating": "4.5", "content": "a fine film"})
         self.assertEqual(result.status_code, 302)
 
-        shelf = self.local_user.shelf_set.get(
-            identifier=models.Shelf.READ_FINISHED
-        )
+        shelf = self.local_user.shelf_set.get(identifier=models.Shelf.READ_FINISHED)
         self.assertEqual(shelf.films.get(), self.film)
 
         status = models.Status.objects.select_subclasses().get()
@@ -184,9 +178,7 @@ class ReadingViews(TestCase):
 
     def test_finish_moves_from_to_read(self, *_):
         """a want-to-watch film moves to the read shelf on finish"""
-        to_read = self.local_user.shelf_set.get(
-            identifier=models.Shelf.TO_READ
-        )
+        to_read = self.local_user.shelf_set.get(identifier=models.Shelf.TO_READ)
         models.ShelfFilm.objects.create(
             film=self.film, shelf=to_read, user=self.local_user
         )

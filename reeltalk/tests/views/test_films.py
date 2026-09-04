@@ -148,9 +148,7 @@ class FilmViews(TestCase):
         response = self.client.get(self.tmdb_film.local_path)
         validate_html(response)
         content = response.content.decode()
-        self.assertNotIn(
-            reverse("edit-film", args=[self.tmdb_film.id]), content
-        )
+        self.assertNotIn(reverse("edit-film", args=[self.tmdb_film.id]), content)
         self.assertNotIn("Add Description", content)
         self.assertNotIn(f"add_poster_{self.tmdb_film.id}", content)
 
@@ -176,7 +174,7 @@ class FilmViews(TestCase):
         validate_html(response)
         content = response.content.decode()
         self.assertIn("Edit your review", content)
-        self.assertNotIn(f'form_review_{self.manual_film.id}', content)
+        self.assertNotIn(f"form_review_{self.manual_film.id}", content)
 
     def test_film_page_review_tab_for_new_reviewer(self, *_):
         """a user without a review still gets the review form"""
@@ -184,4 +182,4 @@ class FilmViews(TestCase):
         response = self.client.get(self.manual_film.local_path)
         validate_html(response)
         content = response.content.decode()
-        self.assertIn(f'form_review_{self.manual_film.id}', content)
+        self.assertIn(f"form_review_{self.manual_film.id}", content)

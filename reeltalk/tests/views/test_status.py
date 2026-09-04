@@ -1,12 +1,10 @@
 """test for app action functionality"""
 
 from unittest.mock import patch
-import dateutil
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseBadRequest
 from django.test import TestCase, TransactionTestCase
 from django.test.client import RequestFactory
-from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from reeltalk import forms, models, views
@@ -502,7 +500,6 @@ class StatusViews(TestCase):
     def test_format_image_helper(self, *_):
         """find and format images into tags"""
         fake_file = SimpleUploadedFile("foo.jpg", b"a")
-        user = self.local_user
         upload = models.UserUpload.objects.create(
             original_name="foo.jpg", original_file=fake_file, user=self.local_user
         )

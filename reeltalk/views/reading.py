@@ -5,7 +5,7 @@ from django.core.cache import cache
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.utils.decorators import method_decorator
 from django.views import View

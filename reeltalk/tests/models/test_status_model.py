@@ -377,9 +377,7 @@ class Status(TestCase):
     def test_reviewrating_requires_rating(self, *_):
         """a rating-only status can't be saved without a rating"""
         with self.assertRaises(ValueError):
-            models.ReviewRating.objects.create(
-                user=self.local_user, film=self.film
-            )
+            models.ReviewRating.objects.create(user=self.local_user, film=self.film)
 
     def test_favorite(self, *_):
         """fav a status"""

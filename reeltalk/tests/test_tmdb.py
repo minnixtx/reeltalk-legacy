@@ -4,7 +4,6 @@ import pathlib
 from unittest.mock import patch
 
 import responses
-from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
 
 from reeltalk import models, tmdb
@@ -69,7 +68,9 @@ class TmdbClientTests(TestCase):
         self.assertEqual(results.rows[0].tmdb_id, "78")
         self.assertEqual(results.rows[0].title, "Blade Runner")
         self.assertEqual(results.rows[0].year, 1982)
-        self.assertTrue(results.rows[0].poster_url.startswith("https://image.tmdb.org/"))
+        self.assertTrue(
+            results.rows[0].poster_url.startswith("https://image.tmdb.org/")
+        )
         self.assertIsNone(results.rows[1].year)
         self.assertIsNone(results.rows[1].poster_url)
 
@@ -224,9 +225,7 @@ class BackfillTaskTests(TestCase):
     @override_settings(TMDB_API_KEY="test-key")
     def test_backfill_continues_past_failures(self):
         """a TMDB error on one film never stops the rest of the batch"""
-        good = models.Film.objects.create(
-            title="Blade Runner", year=1982, tmdb_id="78"
-        )
+        good = models.Film.objects.create(title="Blade Runner", year=1982, tmdb_id="78")
         bad = models.Film.objects.create(title="Ghost Film", tmdb_id="999999")
 
         def details_or_error(tmdb_id):

@@ -15,7 +15,7 @@ from django.shortcuts import redirect, _get_queryset
 from django.http import Http404
 
 from reeltalk import activitypub, models
-from reeltalk.utils.http import RemoteDataError, get_data
+from reeltalk.utils.http import get_data
 from reeltalk.status import create_generated_note
 from reeltalk.utils import regex, sanitizer
 from reeltalk.utils.validate import validate_url_domain

@@ -8,7 +8,6 @@ from django.core.exceptions import PermissionDenied
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
-from django.utils.translation import gettext_lazy as _
 
 from reeltalk import activitypub
 from reeltalk.settings import BASE_URL
@@ -197,9 +196,7 @@ class AbstractListItem(CollectionItemMixin, ReelTalkModel):
 class ListItem(AbstractListItem):
     """ok"""
 
-    film = fields.ForeignKey(
-        "Film", on_delete=models.PROTECT, activitypub_field="film"
-    )
+    film = fields.ForeignKey("Film", on_delete=models.PROTECT, activitypub_field="film")
 
     film_list = models.ForeignKey("List", on_delete=models.CASCADE)
     approved = models.BooleanField(default=True)

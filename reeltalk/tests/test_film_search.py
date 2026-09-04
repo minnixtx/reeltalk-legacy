@@ -77,9 +77,7 @@ class FilmSearch(TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0], self.first_film)
 
-        results = book_search.search(
-            "Film", filters=[Q(genres__contains=["Drama"])]
-        )
+        results = book_search.search("Film", filters=[Q(genres__contains=["Drama"])])
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0], self.third_film)
 
@@ -116,7 +114,9 @@ class FilmSearch(TestCase):
 
     def test_search_title_return_first(self):
         """sorts by rank"""
-        result = book_search.search_title("Example", min_confidence=0, return_first=True)
+        result = book_search.search_title(
+            "Example", min_confidence=0, return_first=True
+        )
         self.assertEqual(result, self.first_film)
 
     def test_format_search_result(self):
@@ -223,9 +223,7 @@ class SearchVectorTest(TestCase):
     def test_search_vector_on_director_update(self):
         """update search when a director name changes"""
         film = self._create_film("The Long Goodbye", directors=["The Rays"])
-        self.assertEqual(
-            film.search_vector, "'goodby':3A 'long':2A 'rays':5C 'the':4C"
-        )
+        self.assertEqual(film.search_vector, "'goodby':3A 'long':2A 'rays':5C 'the':4C")
 
         film.directors = ["Jeremy"]
         film.save(broadcast=False)
@@ -235,9 +233,7 @@ class SearchVectorTest(TestCase):
     def test_search_vector_on_director_delete(self):
         """update search when a director is removed"""
         film = self._create_film("The Long Goodbye", directors=["The Rays"])
-        self.assertEqual(
-            film.search_vector, "'goodby':3A 'long':2A 'rays':5C 'the':4C"
-        )
+        self.assertEqual(film.search_vector, "'goodby':3A 'long':2A 'rays':5C 'the':4C")
 
         film.directors = []
         film.save(broadcast=False)
@@ -245,7 +241,9 @@ class SearchVectorTest(TestCase):
         self.assertEqual(film.search_vector, "'goodby':3A 'long':2A")
 
     @staticmethod
-    def _create_film(title, /, *, subtitle=None, directors=None, cast=None, genres=None):
+    def _create_film(
+        title, /, *, subtitle=None, directors=None, cast=None, genres=None
+    ):
         """quickly create a film"""
         film = models.Film.objects.create(
             title=title,
@@ -334,6 +332,4 @@ class SearchVectorUpdates(TestCase):
     @staticmethod
     def _search(query, *, return_first=False):
         """wrapper around search"""
-        return book_search.search(
-            query, min_confidence=0, return_first=return_first
-        )
+        return book_search.search(query, min_confidence=0, return_first=return_first)

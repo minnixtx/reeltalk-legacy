@@ -204,9 +204,7 @@ def ensure_local_film(
 
     if details is None:
         details = get_film_details(tmdb_id)
-    film = models.Film.objects.create(
-        **film_fields_from_tmdb(details), tmdb_id=tmdb_id
-    )
+    film = models.Film.objects.create(**film_fields_from_tmdb(details), tmdb_id=tmdb_id)
     add_poster(film, details)
     return film
 
@@ -228,9 +226,7 @@ def backfill_film_from_tmdb(film: models.Film, details: dict[str, Any]) -> None:
     add_poster(film, details)
 
 
-def add_poster(
-    film: models.Film, details: Optional[dict[str, Any]] = None
-) -> None:
+def add_poster(film: models.Film, details: Optional[dict[str, Any]] = None) -> None:
     """download the TMDB poster onto a film that doesn't have one yet"""
     if film.poster:
         return
@@ -261,9 +257,7 @@ def backfill_imported_films_task(film_ids):
     if not is_configured():
         return
     for film_id in film_ids:
-        film = models.Film.objects.filter(
-            id=film_id, tmdb_id__isnull=False
-        ).first()
+        film = models.Film.objects.filter(id=film_id, tmdb_id__isnull=False).first()
         if film is None or not film.tmdb_id:
             continue
         if film.poster and film.description:

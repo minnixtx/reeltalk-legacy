@@ -150,8 +150,10 @@ class SearchResult:
     confidence: float = 1.0
 
     def __repr__(self):
-        return "<SearchResult key={!r} title={!r} director={!r} confidence={!r}>".format(
-            self.key, self.title, self.director, self.confidence
+        return (
+            "<SearchResult key={!r} title={!r} director={!r} confidence={!r}>".format(
+                self.key, self.title, self.director, self.confidence
+            )
         )
 
     def json(self):

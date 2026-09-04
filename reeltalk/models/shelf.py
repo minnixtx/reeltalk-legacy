@@ -93,9 +93,7 @@ class Shelf(OrderedCollectionMixin, ReelTalkModel):
 class ShelfFilm(CollectionItemMixin, ReelTalkModel):
     """many to many join table for films and shelves"""
 
-    film = fields.ForeignKey(
-        "Film", on_delete=models.PROTECT, activitypub_field="film"
-    )
+    film = fields.ForeignKey("Film", on_delete=models.PROTECT, activitypub_field="film")
     shelf = models.ForeignKey("Shelf", on_delete=models.PROTECT)
     shelved_date = models.DateTimeField(default=timezone.now)
     user = fields.ForeignKey(

@@ -14,7 +14,6 @@ from django.template.response import TemplateResponse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
-from django.views.decorators.http import require_POST
 
 import mistune
 from reeltalk import forms, models
@@ -92,9 +91,12 @@ class CreateStatus(View):
         # one review per film: an existing review can only be edited
         if status_type == "Review" and not existing_status:
             film = form.cleaned_data.get("film")
-            if film and models.Review.objects.filter(
-                film=film, user=request.user, deleted=False
-            ).exists():
+            if (
+                film
+                and models.Review.objects.filter(
+                    film=film, user=request.user, deleted=False
+                ).exists()
+            ):
                 if is_api_request(request):
                     return HttpResponseBadRequest()
                 return redirect_to_referer(request)

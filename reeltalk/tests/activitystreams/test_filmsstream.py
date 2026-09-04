@@ -40,7 +40,8 @@ class Activitystreams(TestCase):
 
     def test_get_statuses_for_user_films(self, *_):
         """create a stream for a user"""
-        status = models.Status.objects.create(
+        # generic (non-film) status must be filtered out of the stream
+        models.Status.objects.create(
             user=self.local_user, content="hi", privacy="public"
         )
         comment = models.Comment.objects.create(
@@ -57,7 +58,8 @@ class Activitystreams(TestCase):
 
     def test_film_statuses(self, *_):
         """statuses about a film"""
-        status = models.Status.objects.create(
+        # generic (non-film) status must be filtered out of the stream
+        models.Status.objects.create(
             user=self.local_user, content="hi", privacy="public"
         )
         comment = models.Comment.objects.create(

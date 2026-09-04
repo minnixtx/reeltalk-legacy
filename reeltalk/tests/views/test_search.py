@@ -310,7 +310,9 @@ class TmdbSearchViews(TestCase):
     @responses.activate
     def test_tmdb_search_renders_results(self, *_):
         """a configured instance searches TMDB and renders the hits"""
-        responses.add(responses.GET, TMDB_SEARCH_URL, json=TMDB_SEARCH_PAYLOAD, status=200)
+        responses.add(
+            responses.GET, TMDB_SEARCH_URL, json=TMDB_SEARCH_PAYLOAD, status=200
+        )
         self.client.force_login(self.local_user)
         response = self.search_get()
 
@@ -328,7 +330,9 @@ class TmdbSearchViews(TestCase):
     @responses.activate
     def test_tmdb_search_local_match_links_film_page(self, *_):
         """a hit already in the library links straight to the film page"""
-        responses.add(responses.GET, TMDB_SEARCH_URL, json=TMDB_SEARCH_PAYLOAD, status=200)
+        responses.add(
+            responses.GET, TMDB_SEARCH_URL, json=TMDB_SEARCH_PAYLOAD, status=200
+        )
         film = models.Film.objects.create(title="Blade Runner", tmdb_id="78")
         self.client.force_login(self.local_user)
         response = self.search_get()
@@ -341,7 +345,9 @@ class TmdbSearchViews(TestCase):
     @responses.activate
     def test_tmdb_search_anonymous_sees_results_without_add(self, *_):
         """anonymous users get results but no watchlist action"""
-        responses.add(responses.GET, TMDB_SEARCH_URL, json=TMDB_SEARCH_PAYLOAD, status=200)
+        responses.add(
+            responses.GET, TMDB_SEARCH_URL, json=TMDB_SEARCH_PAYLOAD, status=200
+        )
         response = self.search_get()
 
         content = response.content.decode()
@@ -352,7 +358,9 @@ class TmdbSearchViews(TestCase):
     @responses.activate
     def test_tmdb_search_watchlist_state(self, *_):
         """a hit already on the user's watchlist shows its state"""
-        responses.add(responses.GET, TMDB_SEARCH_URL, json=TMDB_SEARCH_PAYLOAD, status=200)
+        responses.add(
+            responses.GET, TMDB_SEARCH_URL, json=TMDB_SEARCH_PAYLOAD, status=200
+        )
         film = models.Film.objects.create(title="Blade Runner", tmdb_id="78")
         models.ShelfFilm.objects.create(
             film=film, shelf=self.want_shelf, user=self.local_user
@@ -369,7 +377,9 @@ class TmdbSearchViews(TestCase):
     @responses.activate
     def test_tmdb_search_excludes_blocked_local_match(self, *_):
         """a locally blocked film is dropped from the TMDB results"""
-        responses.add(responses.GET, TMDB_SEARCH_URL, json=TMDB_SEARCH_PAYLOAD, status=200)
+        responses.add(
+            responses.GET, TMDB_SEARCH_URL, json=TMDB_SEARCH_PAYLOAD, status=200
+        )
         film = models.Film.objects.create(title="Blade Runner", tmdb_id="78")
         self.local_user.blocked_films.add(film)
         self.client.force_login(self.local_user)
@@ -395,7 +405,9 @@ class TmdbSearchViews(TestCase):
     @responses.activate
     def test_clickthrough_creates_film(self, *_):
         """clicking an unmatched hit creates the local film and opens it"""
-        responses.add(responses.GET, TMDB_DETAILS_URL, json=TMDB_DETAILS_PAYLOAD, status=200)
+        responses.add(
+            responses.GET, TMDB_DETAILS_URL, json=TMDB_DETAILS_PAYLOAD, status=200
+        )
         responses.add(responses.GET, TMDB_POSTER_URL, body=b"jpeg", status=200)
         response = self.client.get("/search/film/78/")
 
@@ -411,7 +423,9 @@ class TmdbSearchViews(TestCase):
     def test_clickthrough_existing_film_no_duplicate(self, *_):
         """clicking a hit that is already in the library creates no duplicate"""
         film = models.Film.objects.create(title="Blade Runner", tmdb_id="78")
-        responses.add(responses.GET, TMDB_DETAILS_URL, json=TMDB_DETAILS_PAYLOAD, status=200)
+        responses.add(
+            responses.GET, TMDB_DETAILS_URL, json=TMDB_DETAILS_PAYLOAD, status=200
+        )
         responses.add(responses.GET, TMDB_POSTER_URL, body=b"jpeg", status=200)
         response = self.client.get("/search/film/78/")
 
@@ -423,7 +437,9 @@ class TmdbSearchViews(TestCase):
     def test_clickthrough_backfills_manual_film(self, *_):
         """a manually created film matching title + year is backfilled, not duplicated"""
         manual = models.Film.objects.create(title="Blade Runner", year=1982)
-        responses.add(responses.GET, TMDB_DETAILS_URL, json=TMDB_DETAILS_PAYLOAD, status=200)
+        responses.add(
+            responses.GET, TMDB_DETAILS_URL, json=TMDB_DETAILS_PAYLOAD, status=200
+        )
         responses.add(responses.GET, TMDB_POSTER_URL, body=b"jpeg", status=200)
         response = self.client.get("/search/film/78/")
 
@@ -444,7 +460,9 @@ class TmdbSearchViews(TestCase):
     @responses.activate
     def test_watchlist_add_creates_film_and_shelves(self, *_):
         """one click creates the film and shelves it on the Watchlist"""
-        responses.add(responses.GET, TMDB_DETAILS_URL, json=TMDB_DETAILS_PAYLOAD, status=200)
+        responses.add(
+            responses.GET, TMDB_DETAILS_URL, json=TMDB_DETAILS_PAYLOAD, status=200
+        )
         responses.add(responses.GET, TMDB_POSTER_URL, body=b"jpeg", status=200)
         self.client.force_login(self.local_user)
         response = self.client.post(
@@ -471,7 +489,9 @@ class TmdbSearchViews(TestCase):
         models.ShelfFilm.objects.create(
             film=film, shelf=self.want_shelf, user=self.local_user
         )
-        responses.add(responses.GET, TMDB_DETAILS_URL, json=TMDB_DETAILS_PAYLOAD, status=200)
+        responses.add(
+            responses.GET, TMDB_DETAILS_URL, json=TMDB_DETAILS_PAYLOAD, status=200
+        )
         responses.add(responses.GET, TMDB_POSTER_URL, body=b"jpeg", status=200)
         self.client.force_login(self.local_user)
         response = self.client.post(
@@ -616,7 +636,9 @@ class FilmSuggestViews(TestCase):
     @responses.activate
     def test_suggest_tmdb_rows(self, *_):
         """configured instances suggest TMDB hits with the right link targets"""
-        responses.add(responses.GET, TMDB_SEARCH_URL, json=TMDB_SEARCH_PAYLOAD, status=200)
+        responses.add(
+            responses.GET, TMDB_SEARCH_URL, json=TMDB_SEARCH_PAYLOAD, status=200
+        )
         film = models.Film.objects.create(title="Blade Runner", tmdb_id="78")
         self.client.force_login(self.local_user)
         response = self.suggest_get("blade runner")
@@ -673,7 +695,9 @@ class FilmSuggestViews(TestCase):
     @responses.activate
     def test_suggest_tmdb_blocked_local_match_excluded(self, *_):
         """a locally blocked film is dropped from the suggestions"""
-        responses.add(responses.GET, TMDB_SEARCH_URL, json=TMDB_SEARCH_PAYLOAD, status=200)
+        responses.add(
+            responses.GET, TMDB_SEARCH_URL, json=TMDB_SEARCH_PAYLOAD, status=200
+        )
         film = models.Film.objects.create(title="Blade Runner", tmdb_id="78")
         self.local_user.blocked_films.add(film)
         self.client.force_login(self.local_user)
