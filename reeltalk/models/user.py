@@ -21,7 +21,7 @@ from reeltalk import activitypub
 from reeltalk.utils.http import get_data, RemoteDataError
 from reeltalk.models.shelf import Shelf
 from reeltalk.models.status import Status
-from reeltalk.settings import BASE_URL, LANGUAGES
+from reeltalk.settings import BASE_URL
 from reeltalk.signatures import create_key_pair
 from reeltalk.tasks import app, MISC
 from reeltalk.utils import regex
@@ -172,12 +172,6 @@ class User(OrderedCollectionPageMixin, AbstractUser):
     preferred_timezone = models.CharField(
         choices=[(str(tz), str(tz)) for tz in sorted(zoneinfo.available_timezones())],
         default=str(datetime.timezone.utc),
-        max_length=255,
-    )
-    preferred_language = models.CharField(
-        choices=LANGUAGES,
-        null=True,
-        blank=True,
         max_length=255,
     )
     deactivation_reason = models.CharField(

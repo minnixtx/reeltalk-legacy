@@ -26,7 +26,6 @@ class EditUserForm(CustomForm):
             "discoverable",
             "hide_follows",
             "preferred_timezone",
-            "preferred_language",
             "theme",
         ]
         help_texts = {f: None for f in fields}
