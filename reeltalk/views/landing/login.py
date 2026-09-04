@@ -12,7 +12,6 @@ from django.views import View
 from django.views.decorators.debug import sensitive_variables, sensitive_post_parameters
 
 from reeltalk import forms, models
-from reeltalk.views.helpers import set_language
 
 
 class Login(View):
@@ -76,7 +75,7 @@ class Login(View):
             )
 
             if request.POST.get("first_login"):
-                return set_language(user, redirect("get-started-profile"))
+                return redirect("get-started-profile")
 
             if user.two_factor_auth is None:
                 # set to false so this page doesn't pop up again
@@ -84,9 +83,9 @@ class Login(View):
                 user.save(broadcast=False, update_fields=["two_factor_auth"])
 
                 # show the 2fa prompt page
-                return set_language(user, redirect("prompt-2fa"))
+                return redirect("prompt-2fa")
 
-            return set_language(user, redirect("/"))
+            return redirect("/")
 
         user_attempt = models.User.objects.filter(
             username=username, is_active=False

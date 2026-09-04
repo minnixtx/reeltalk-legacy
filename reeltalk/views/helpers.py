@@ -1,7 +1,7 @@
 """helper functions used in various views"""
 
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 import dateutil.parser
 import dateutil.tz
 from dateutil.parser import ParserError
@@ -11,12 +11,10 @@ import mistune
 
 from requests import HTTPError
 from django.db.models import Q
-from django.conf import settings as django_settings
 from django.shortcuts import redirect, _get_queryset
 from django.http import Http404
-from django.utils import translation
 
-from reeltalk import activitypub, models, settings
+from reeltalk import activitypub, models
 from reeltalk.utils.http import RemoteDataError, get_data
 from reeltalk.status import create_generated_note
 from reeltalk.utils import regex, sanitizer
@@ -175,18 +173,6 @@ def load_date_in_user_tz_as_utc(date_str: str, user: models.User) -> datetime:
         return date.replace(tzinfo=user_tz).astimezone(dateutil.tz.UTC)
     except ParserError:
         return None
-
-
-def set_language(user, response):
-    """Updates a user's language"""
-    if user.preferred_language:
-        translation.activate(user.preferred_language)
-    response.set_cookie(
-        settings.LANGUAGE_COOKIE_NAME,
-        user.preferred_language,
-        expires=datetime.now() + timedelta(seconds=django_settings.SESSION_COOKIE_AGE),
-    )
-    return response
 
 
 def filter_stream_by_status_type(activities, allowed_types=None):

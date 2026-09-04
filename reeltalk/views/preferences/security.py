@@ -20,7 +20,6 @@ from django.views.decorators.http import require_POST
 
 from reeltalk import forms, models
 from reeltalk.settings import DOMAIN, TWO_FACTOR_LOGIN_MAX_SECONDS
-from reeltalk.views.helpers import set_language
 
 SessionStore = import_module(settings.SESSION_ENGINE).SessionStore
 
@@ -195,7 +194,7 @@ class LoginWith2FA(View):
             ip_address=ip_address,
             agent_string=agent_string,
         )
-        return set_language(user, redirect("/"))
+        return redirect("/")
 
 
 @method_decorator(login_required, name="dispatch")

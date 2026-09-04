@@ -12,7 +12,6 @@ from django.utils.decorators import method_decorator
 from django.views import View
 
 from reeltalk import forms
-from reeltalk.views.helpers import set_language
 
 
 @method_decorator(login_required, name="dispatch")
@@ -36,7 +35,7 @@ class EditUser(View):
 
         user = save_user_form(request, form)
 
-        return set_language(user, redirect("user-feed", request.user.localname))
+        return redirect("user-feed", request.user.localname)
 
 
 def save_user_form(request, form):
