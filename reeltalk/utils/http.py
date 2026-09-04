@@ -1,5 +1,7 @@
 """utilities for fetching remote data (nodeinfo, webfinger, covers)"""
 
+from __future__ import annotations
+
 import ipaddress
 import logging
 from typing import Any, Optional, Union
@@ -11,7 +13,7 @@ from PIL import Image, UnidentifiedImageError
 from requests import HTTPError
 from requests.exceptions import RequestException
 
-from reeltalk import models, settings
+from reeltalk.settings import USER_AGENT, QUERY_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +38,9 @@ def raise_not_valid_url(url: str) -> None:
         # it's not an IP address, which is good
         pass
 
+    # imported here to avoid a models <-> utils.http import cycle
+    from reeltalk import models
+
     if models.FederatedServer.is_blocked(url):
         raise RemoteDataError(f"Attempting to load data from blocked url: {url}")
 
@@ -43,12 +48,15 @@ def raise_not_valid_url(url: str) -> None:
 def get_data(
     url: str,
     params: Optional[dict[str, str]] = None,
-    timeout: int = settings.QUERY_TIMEOUT,
+    timeout: int = QUERY_TIMEOUT,
     is_activitypub: bool = True,
 ) -> dict[str, Any]:
     """wrapper for requests.get that returns parsed json"""
     # make sure this isn't a forbidden federated request
     if is_activitypub:
+        # imported here to avoid a models <-> utils.http import cycle
+        from reeltalk import models
+
         models.SiteSettings.raise_federation_disabled()
 
     # check if the url is blocked
@@ -62,7 +70,7 @@ def get_data(
                 "Accept": (
                     'application/json, application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams"; charset=utf-8'
                 ),
-                "User-Agent": settings.USER_AGENT,
+                "User-Agent": USER_AGENT,
             },
             timeout=timeout,
         )
@@ -90,14 +98,14 @@ def get_data(
 
 def get_image(
     url: str, timeout: int = 10
-) -> Union[tuple[ContentFile, str], tuple[None, None]]:
+) -> Union[tuple[ContentFile[bytes], str], tuple[None, None]]:
     """wrapper for requesting an image"""
     raise_not_valid_url(url)
     try:
         resp = requests.get(
             url,
             headers={
-                "User-Agent": settings.USER_AGENT,
+                "User-Agent": USER_AGENT,
             },
             timeout=timeout,
         )
@@ -108,7 +116,9 @@ def get_image(
     if not resp.ok:
         return None, None
 
-    image_content = ContentFile(resp.content)
+    # the real ContentFile class is not subscriptable at runtime, so the
+    # type parameter lives in this annotation (deferred by PEP 563)
+    image_content: ContentFile[bytes] = ContentFile(resp.content)
     try:
         with Image.open(image_content) as im:
             extension = str(im.format).lower()
