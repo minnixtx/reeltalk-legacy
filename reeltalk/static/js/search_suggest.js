@@ -31,22 +31,27 @@
 
             if (!rows.length) {
                 hide();
+
                 return;
             }
 
             rows.forEach((row) => {
                 const item = document.createElement("a");
+
                 item.href = row.url;
                 item.className = "search-suggest-item";
                 item.setAttribute("role", "option");
 
                 const poster = document.createElement("span");
+
                 poster.className = "search-suggest-poster";
 
                 if (row.poster) {
                     const img = document.createElement("img");
+
                     img.src = row.poster;
                     img.alt = "";
+
                     // No loading="lazy": it is unreliable inside the scrollable
                     // menu (rows are capped at 8, so eager load is cheap).
                     img.decoding = "async";
@@ -57,22 +62,25 @@
                 item.appendChild(poster);
 
                 const text = document.createElement("span");
+
                 text.className = "search-suggest-text";
 
                 const title = document.createElement("span");
+
                 title.className = "search-suggest-title";
                 title.textContent = row.title;
                 text.appendChild(title);
 
                 if (row.year) {
                     const year = document.createElement("span");
+
                     year.className = "has-text-grey search-suggest-year";
                     year.textContent = `(${row.year})`;
                     text.appendChild(year);
                 }
                 item.appendChild(text);
 
-                // click-only: close the dropdown, then let the anchor navigate
+                // Click-only: close the dropdown, then let the anchor navigate
                 item.addEventListener("click", hide);
                 menu.appendChild(item);
             });
@@ -85,6 +93,7 @@
 
             if (query.length < MIN_CHARS) {
                 hide();
+
                 return;
             }
 
@@ -99,7 +108,7 @@
             debounceTimer = setTimeout(fetchSuggestions, DEBOUNCE_MS);
         });
 
-        // close on outside clicks; mousedown fires before the item's click,
+        // Close on outside clicks; mousedown fires before the item's click,
         // and items inside .search-suggest are exempt
         document.addEventListener("mousedown", (event) => {
             if (!event.target.closest(".search-suggest")) {

@@ -13,6 +13,7 @@ module.exports = {
             "declarations"
         ],
         "property-no-vendor-prefix": null,
+        "color-function-alias-notation": null,
         "color-function-notation": null,
         "declaration-block-no-redundant-longhand-properties": null,
         "no-descending-specificity": null,
