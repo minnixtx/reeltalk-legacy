@@ -6,7 +6,7 @@ ReelTalk is a fork of [BookWyrm](https://github.com/bookwyrm-social/bookwyrm) �
 
 ## Status
 
-🚧 **Alpha.** Phase 1 (rebrand + simplified Docker self-hosting) and the film domain rework are complete: books/editions/authors have been replaced by a flat film model (title, year, runtime, cast, directors, genres, poster), the UI is fully film-first with binary watch state (Watchlist / Watched — marking a film watched requires a star rating), and TMDB is the primary film catalog: the main search box queries TMDB directly, with one-click "Add to Watchlist" and click-through to film pages. Federation runs over a new `Film` ActivityPub wire type between ReelTalk instances. Next up: polish items from live use, file-based film import, custom ReelTalk artwork, and a first public instance. See [PROGRESS.md](PROGRESS.md) for the full milestone history and owner decision log.
+🚧 **Alpha.** Phase 1 (rebrand + simplified Docker self-hosting) and the film domain rework are complete: books/editions/authors have been replaced by a flat film model (title, year, runtime, cast, directors, genres, poster), the UI is fully film-first with binary watch state (Watchlist / Watched — marking a film watched requires a star rating), and TMDB is the primary film catalog: the main search box queries TMDB directly, with one-click "Add to Watchlist" and click-through to film pages. Federation runs over a new `Film` ActivityPub wire type between ReelTalk instances. Search-as-you-type suggestions (with posters) and file-based import/export of TMDB-style CSVs — including an automatic background backfill of metadata and posters for imported films — are also in; the site is currently English-only. Next up: custom ReelTalk artwork and a first public instance (design work with the owner, at the very end). See [PROGRESS.md](PROGRESS.md) for the full milestone history and owner decision log.
 
 ## What ReelTalk will be
 
@@ -46,7 +46,7 @@ docker compose up -d --build
 - [x] Full fork + rebrand of BookWyrm (Phase 1)
 - [x] Film domain model (titles, years, cast, ratings)
 - [x] Metadata integration (TMDB as the primary film catalog via global search)
-- [ ] File-based film import (e.g. a CSV exported from TMDB)
+- [x] File-based film import/export (e.g. a CSV exported from TMDB, with background metadata backfill)
 - [ ] Custom ReelTalk artwork
 - [ ] First public instance
 
