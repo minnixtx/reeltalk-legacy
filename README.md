@@ -1,3 +1,9 @@
+> ## ⛔ FROZEN — 2026-09-04
+>
+> This repository is **frozen as a reference-only copy** of the original ReelTalk (the BookWyrm fork under the Anti-Capitalist Software License v1.4). It will not receive further development and is archived on GitHub.
+>
+> The project continues as a **ground-up rewrite under AGPLv3** at **[minnixtx/reeltalk](https://github.com/minnixtx/reeltalk)**. Use this repository only as a functional reference (feature inventory, behavior, design decisions — see [PROGRESS.md](PROGRESS.md)); do not copy code from it into the new project.
+
 # ReelTalk
 
 A federated social network for tracking, reviewing, and discovering films.
